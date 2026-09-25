@@ -568,7 +568,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('#lap-cancel').addEventListener('click', () => setEditMode(null));
   $('#lap-sample').addEventListener('click', fillSample);
   $('#laps-table').addEventListener('click', onLapsTableClick);
-  $('#laps-refresh').addEventListener('click', loadLaps);
 
   bindButton('#agg-btn', 'agg', runAggregation);
   bindButton('#idx-btn', 'idx', runIndexes);
