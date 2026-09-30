@@ -26,7 +26,7 @@ Every section has a **"MongoDB query"** drop-down that shows the exact shell que
 **You need:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's all. Node.js and MongoDB run inside Docker.
 
 ```bash
-git clone -b claude/motorsport-lap-visualiser-pfh2qq https://github.com/AarushShetty346/motorsport-viz.git
+git clone https://github.com/AarushShetty346/motorsport-viz.git
 cd motorsport-viz
 docker compose up --build
 ```
