@@ -1,6 +1,6 @@
 // End-to-end API tests: starts the real server against a throwaway database
-// ("motorsport_test") on the local MongoDB and exercises all 10 functionalities.
-// Requires MongoDB to be running (docker compose up -d mongo).
+// ("motorsport_test") on the local MongoDB, seeded with the real 2025 season,
+// and exercises all 10 functionalities. Requires MongoDB (docker compose up -d mongo).
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 const { spawn } = require('node:child_process');
@@ -36,7 +36,7 @@ before(async () => {
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('server did not start in 60s')), 60000);
+    const timer = setTimeout(() => reject(new Error('server did not start in 90s')), 90000);
     server.stdout.on('data', (d) => {
       if (d.toString().includes('running at')) { clearTimeout(timer); resolve(); }
     });
@@ -49,130 +49,151 @@ after(async () => {
   await dropTestDb();
 });
 
-let driversByName;
+let driversByCode;
+let totalLaps;
 
-test('seed data: 3 drivers and 8 laps', async () => {
+test('seed data: the 2025 season (24 races, full grid, every lap)', async () => {
   const { body: drivers } = await api('/api/drivers');
-  assert.equal(drivers.length, 3);
-  driversByName = Object.fromEntries(drivers.map((d) => [d.name, d]));
-  assert.deepEqual(
-    drivers.map((d) => [d.name, d.team, d.number]),
-    [['Max Verstappen', 'Red Bull', 1], ['Lando Norris', 'McLaren', 4], ['Charles Leclerc', 'Ferrari', 16]]
-  );
-  const { body } = await api('/api/laps');
-  assert.equal(body.results.length, 8);
-  assert.deepEqual([...new Set(body.results.map((l) => l.circuit))].sort(), ['Monza', 'Silverstone']);
+  assert.ok(drivers.length >= 20);
+  driversByCode = Object.fromEntries(drivers.map((d) => [d.code, d]));
+  assert.equal(driversByCode.NOR.name, 'Lando Norris');
+  assert.equal(driversByCode.VER.number, 1);
+
+  const { body: races } = await api('/api/races');
+  assert.equal(races.length, 24);
+  assert.equal(races[0].name, 'Australian Grand Prix');
+  assert.equal(races[23].name, 'Abu Dhabi Grand Prix');
+  assert.ok(races.every((r) => r.results.length >= 20 && r.track.x.length > 100));
+
+  const { body: health } = await api('/api/health');
+  totalLaps = health.counts.laps;
+  assert.ok(totalLaps > 25000, `expected a full season of laps, got ${totalLaps}`);
 });
 
-test('NoSQL 1: CRUD — insert, update, delete', async () => {
+test('NoSQL 1: CRUD — paginated read, insert, update, delete', async () => {
+  const page = await api('/api/laps?round=16&limit=10');
+  assert.equal(page.body.results.length, 10);
+  assert.ok(page.body.total > 800);
+  assert.ok(page.body.results.every((l) => l.round === 16 && l.driver.name));
+
   const lap = {
-    driverId: driversByName['Charles Leclerc']._id, lapNumber: 2, lapTime: 80.5, circuit: 'Monza',
+    driverId: driversByCode.LEC._id, round: 16, lapNumber: 60, lapTime: 80.5, position: 1,
     telemetry: { speed: 356, rpm: 12100, throttle: 83, brake: 10 },
   };
   const created = await api('/api/laps', { method: 'POST', body: lap });
   assert.equal(created.status, 201);
+  assert.equal(created.body.document.circuit, 'Monza', 'raceId, race and circuit are filled in from the round');
   const id = created.body.insertedId;
-  assert.equal((await api('/api/laps')).body.results.length, 9);
 
   const updated = await api(`/api/laps/${id}`, { method: 'PUT', body: { ...lap, lapTime: 80.4 } });
-  assert.equal(updated.status, 200);
   assert.equal(updated.body.modifiedCount, 1);
-  const after = (await api('/api/laps')).body.results.find((l) => l._id === id);
-  assert.equal(after.lapTime, 80.4);
-  assert.equal(after.driver.name, 'Charles Leclerc');
+  const mine = await api(`/api/laps?round=16&driverId=${lap.driverId}&limit=200`);
+  assert.equal(mine.body.results.find((l) => l._id === id).lapTime, 80.4);
 
-  const bad = await api('/api/laps', { method: 'POST', body: { driverId: lap.driverId, lapNumber: 3, circuit: 'Monza' } });
+  const bad = await api('/api/laps', { method: 'POST', body: { driverId: lap.driverId, round: 16, lapNumber: 3 } });
   assert.equal(bad.status, 400);
   assert.equal(bad.body.mongoError.code, 121);
 
   const unknownDriver = await api('/api/laps', { method: 'POST', body: { ...lap, driverId: '000000000000000000000000' } });
   assert.equal(unknownDriver.status, 400);
 
-  const del = await api(`/api/laps/${id}`, { method: 'DELETE' });
-  assert.equal(del.body.deletedCount, 1);
-  assert.equal((await api('/api/laps')).body.results.length, 8);
+  assert.equal((await api(`/api/laps/${id}`, { method: 'DELETE' })).body.deletedCount, 1);
   assert.equal((await api(`/api/laps/${id}`, { method: 'DELETE' })).status, 404);
+  assert.equal((await api('/api/health')).body.counts.laps, totalLaps);
 });
 
-test('NoSQL 2: aggregation — avg + fastest per driver, sorted by avg', async () => {
+test('NoSQL 2: aggregation — championship standings from embedded results', async () => {
   const { body } = await api('/api/nosql/aggregation');
-  assert.equal(body.results.length, 3);
-  const ver = body.results.find((r) => r.name === 'Max Verstappen');
-  assert.equal(ver.laps, 3);
-  assert.equal(ver.fastestLap, 80.987);
-  assert.equal(ver.avgLapTime, Number(((81.452 + 80.987 + 88.301) / 3).toFixed(3)));
-  const avgs = body.results.map((r) => r.avgLapTime);
-  assert.deepEqual(avgs, [...avgs].sort((a, b) => a - b));
+  const top3 = body.results.slice(0, 3).map((r) => [r.code, r.points]);
+  assert.deepEqual(top3, [['NOR', 423], ['VER', 421], ['PIA', 410]]);
+  const points = body.results.map((r) => r.points);
+  assert.deepEqual(points, [...points].sort((a, b) => b - a));
+  const nor = body.results[0];
+  assert.equal(nor.starts, 24);
+  assert.ok(nor.wins > 0 && nor.podiums >= nor.wins && nor.bestFinish === 1 && nor.avgFinish > 1);
 });
 
-test('NoSQL 3: indexes — _id, compound, text; explain uses IXSCAN', async () => {
+test('NoSQL 3: indexes — compound, text; explain uses IXSCAN and reads far fewer docs', async () => {
   const { body } = await api('/api/nosql/indexes');
   const names = body.results.map((i) => i.name).sort();
-  assert.deepEqual(names, ['_id_', 'circuit_text', 'driverId_1_lapNumber_1']);
-  assert.deepEqual(body.results.find((i) => i.name === 'driverId_1_lapNumber_1').key, { driverId: 1, lapNumber: 1 });
-  assert.deepEqual(body.results.find((i) => i.name === 'circuit_text').weights, { circuit: 1 });
-  assert.equal(body.explain.indexUsed, 'driverId_1_lapNumber_1');
+  for (const n of ['_id_', 'driverId_1_round_1_lapNumber_1', 'race_circuit_country_text', 'round_1_lapTime_1']) assert.ok(names.includes(n), n);
+  assert.equal(body.explain.indexUsed, 'driverId_1_round_1_lapNumber_1');
+  assert.equal(body.explain.totalDocsExamined, body.explain.nReturned);
+  assert.equal(body.explain.collscan.totalDocsExamined, totalLaps);
 });
 
-test('NoSQL 4: schema validation rejects invalid lap with code 121', async () => {
+test('NoSQL 4: schema validation rejects an invalid lap with code 121', async () => {
   const { status, body } = await api('/api/nosql/invalid-insert', { method: 'POST' });
   assert.equal(status, 200);
   assert.equal(body.mongoError.code, 121);
   assert.equal(body.mongoError.errmsg, 'Document failed validation');
   const required = body.mongoError.errInfo.details.schemaRulesNotSatisfied.find((r) => r.operatorName === 'required');
-  assert.deepEqual(required.missingProperties.sort(), ['driverId', 'lapTime', 'telemetry']);
-  assert.equal((await api('/api/laps')).body.results.length, 8, 'invalid lap was not stored');
+  assert.deepEqual(required.missingProperties.sort(), ['driverId', 'lapTime', 'raceId', 'round', 'telemetry']);
+  assert.equal((await api('/api/health')).body.counts.laps, totalLaps, 'invalid lap was not stored');
 });
 
-test('NoSQL 5: embedded telemetry + driverId reference', async () => {
+test('NoSQL 5: embedded telemetry + driverId / raceId references', async () => {
   const { body } = await api('/api/nosql/embedded');
-  assert.deepEqual(Object.keys(body.lap.telemetry).sort(), ['brake', 'rpm', 'speed', 'throttle']);
+  for (const k of ['speed', 'rpm', 'throttle', 'brake']) assert.equal(typeof body.lap.telemetry[k], 'number');
   assert.equal(body.lap.driverId, body.referencedDriver._id);
+  assert.equal(body.lap.raceId, body.referencedRace._id);
+  assert.equal(body.referencedRace.results.length, 3);
 });
 
-test('User 1: laps for one driver', async () => {
-  const { body } = await api(`/api/user/driver-laps/${driversByName['Lando Norris']._id}`);
-  assert.equal(body.results.length, 3);
-  assert.ok(body.results.every((l) => l.driverId === driversByName['Lando Norris']._id));
+test('User 1: laps for one driver (whole season and one race)', async () => {
+  const all = await api(`/api/user/driver-laps/${driversByCode.NOR._id}`);
+  assert.ok(all.body.results.length > 1000);
+  assert.ok(all.body.results.every((l) => l.driverId === driversByCode.NOR._id));
+  const monza = await api(`/api/user/driver-laps/${driversByCode.NOR._id}?round=16`);
+  assert.ok(monza.body.results.length >= 50 && monza.body.results.every((l) => l.round === 16));
   assert.equal((await api('/api/user/driver-laps/not-an-id')).status, 400);
 });
 
-test('User 2: compare two drivers', async () => {
-  const a = driversByName['Max Verstappen']._id;
-  const b = driversByName['Charles Leclerc']._id;
+test('User 2: compare two drivers race by race', async () => {
+  const a = driversByCode.NOR._id;
+  const b = driversByCode.PIA._id;
   const { body } = await api(`/api/user/compare?a=${a}&b=${b}`);
-  assert.equal(body.results[0].driver.name, 'Max Verstappen');
-  assert.equal(body.results[1].driver.name, 'Charles Leclerc');
-  assert.equal(body.results[0].stats.avgLapTime, Number(((81.452 + 80.987 + 88.301) / 3).toFixed(3)));
-  assert.equal(body.results[1].stats.avgLapTime, Number(((81.203 + 88.912) / 2).toFixed(3)));
-  assert.equal(body.results[1].stats.perCircuit.length, 2);
+  assert.equal(body.results[0].driver.code, 'NOR');
+  assert.equal(body.results[1].driver.code, 'PIA');
+  assert.ok(body.results[0].stats.perRace.length >= 20);
+  assert.ok(body.duel.length >= 20);
+  assert.equal((await api('/api/user/compare?a=x&b=y')).status, 400);
 });
 
-test('User 3: fastest lap leaderboard', async () => {
-  const { body } = await api('/api/user/leaderboard');
-  assert.deepEqual(body.results.map((r) => [r.name, r.lapTime]), [
-    ['Max Verstappen', 80.987], ['Charles Leclerc', 81.203], ['Lando Norris', 81.588],
-  ]);
+test('User 3: fastest lap leaderboard for a race', async () => {
+  const { body } = await api('/api/user/leaderboard?round=16');
+  assert.ok(body.results.length >= 18);
+  const times = body.results.map((r) => r.lapTime);
+  assert.deepEqual(times, [...times].sort((x, y) => x - y));
+  assert.ok(times[0] > 78 && times[0] < 85, 'Monza race pace is around 1:20-1:22');
+  assert.equal((await api('/api/user/leaderboard')).status, 400);
 });
 
-test('User 4: laps above a speed threshold', async () => {
+test('User 4: laps above a speed threshold (dot notation)', async () => {
   const { body } = await api('/api/user/speed?min=350');
-  assert.equal(body.results.length, 2);
+  assert.ok(body.total > 0);
   assert.ok(body.results.every((l) => l.telemetry.speed > 350));
-  assert.equal((await api('/api/user/speed?min=0')).body.results.length, 8);
+  const all = await api('/api/user/speed?min=0&limit=1');
+  assert.ok(all.body.total > totalLaps * 0.99 && all.body.total <= totalLaps);
+  const monza = await api('/api/user/speed?min=300&round=16');
+  assert.ok(monza.body.results.every((l) => l.round === 16));
   assert.equal((await api('/api/user/speed?min=abc')).status, 400);
 });
 
-test('User 5: text search on circuit', async () => {
-  assert.equal((await api('/api/user/search?q=monza')).body.results.length, 4);
-  assert.equal((await api('/api/user/search?q=Silverstone')).body.results.length, 4);
-  assert.equal((await api('/api/user/search?q=monza%20silverstone')).body.results.length, 8);
-  assert.equal((await api('/api/user/search?q=monaco')).body.results.length, 0);
-  assert.ok((await api('/api/user/search?q=monza')).body.results.every((l) => l.score > 0));
+test('User 5: text search on race, circuit and country', async () => {
+  const monza = (await api('/api/user/search?q=monza')).body.results;
+  assert.equal(monza.length, 1);
+  assert.equal(monza[0].race, 'Italian Grand Prix');
+  const italy = (await api('/api/user/search?q=italy')).body.results.map((r) => r.round).sort((x, y) => x - y);
+  assert.deepEqual(italy, [7, 16], 'Imola and Monza');
+  assert.equal((await api('/api/user/search?q=monza%20silverstone')).body.results.length, 2);
+  assert.equal((await api('/api/user/search?q=nurburgring')).body.results.length, 0);
+  assert.equal((await api('/api/user/search?q=')).status, 400);
 });
 
-test('reset re-seeds demo data', async () => {
-  await api(`/api/laps/${(await api('/api/laps')).body.results[0]._id}`, { method: 'DELETE' });
+test('reset re-seeds the season', async () => {
+  const first = (await api('/api/laps?limit=1')).body.results[0];
+  await api(`/api/laps/${first._id}`, { method: 'DELETE' });
   const { body } = await api('/api/reset', { method: 'POST' });
-  assert.deepEqual(body, { ok: true, drivers: 3, laps: 8 });
+  assert.deepEqual(body, { ok: true, drivers: 21, races: 24, laps: totalLaps });
 });

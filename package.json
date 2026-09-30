@@ -1,23 +1,41 @@
 {
-  "name": "motorsport-lap-visualiser",
+  "name": "lap-by-lap",
   "version": "1.0.0",
-  "description": "Motorsport Lap by Lap Visualiser - a MongoDB / DBMS demo (Node.js + Express + local MongoDB)",
+  "description": "Lap by Lap: the 2025 Formula 1 season, every lap, in MongoDB (Node.js + Express + React)",
   "main": "server.js",
   "private": true,
   "scripts": {
+    "prestart": "npm run build",
     "start": "node server.js",
+    "build": "vite build",
+    "dev": "vite",
+    "serve": "node server.js",
     "test": "node --test test/api.test.js",
+    "data:build": "python3 scripts/build_season.py",
     "docker": "docker compose up --build",
     "db:up": "docker compose up -d mongo",
     "db:down": "docker compose down",
     "shell": "docker compose exec mongo mongosh motorsport"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.19"
   },
   "license": "MIT",
   "dependencies": {
     "express": "^5.2.1",
     "mongodb": "^6.21.0"
+  },
+  "devDependencies": {
+    "@fontsource-variable/inter": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource/barlow-condensed": "^5.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "animejs": "^4.5.0",
+    "country-flag-icons": "^1.6.20",
+    "lenis": "^1.3.26",
+    "motion": "^13.4.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "vite": "^8.3.1"
   }
 }

@@ -1,0 +1,19 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/jetbrains-mono';
+import '@fontsource/barlow-condensed/600.css';
+import '@fontsource/barlow-condensed/700.css';
+import '@fontsource/barlow-condensed/700-italic.css';
+import 'lenis/dist/lenis.css';
+import './styles.css';
+import App from './App.jsx';
+import { RouterProvider } from './lib/router.jsx';
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <RouterProvider>
+      <App />
+    </RouterProvider>
+  </StrictMode>
+);
