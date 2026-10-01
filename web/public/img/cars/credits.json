@@ -1,1 +1,38 @@
-{}
+{
+  "red-bull-racing": {
+    "photo": "red-bull-racing.jpg",
+    "author": "Liauzh",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2025_Japan_GP_-_Red_Bull_-_Yuki_Tsunoda_-_Qualifying.jpg"
+  },
+  "alpine": {
+    "photo": "alpine.jpg",
+    "author": "Liauzh",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2025_Japan_GP_-_Alpine_-_Pierre_Gasly_-_FP2.jpg"
+  },
+  "williams": {
+    "photo": "williams.jpg",
+    "author": "Liauzh",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2025_Singapore_GP_-_Williams_-_Carlos_Sainz_-_FP2.jpg"
+  },
+  "racing-bulls": {
+    "photo": "racing-bulls.jpg",
+    "author": "Danysan1",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:RB_VCARB_02_in_Imola_-_Rear.jpg"
+  },
+  "kick-sauber": {
+    "photo": "kick-sauber.jpg",
+    "author": "Liauzh",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2025_Japan_GP_-_Sauber_-_Gabriel_Bortoleto_-_FP2.jpg"
+  },
+  "haas-f1-team": {
+    "photo": "haas-f1-team.jpg",
+    "author": "Liauzh",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:2025_Japan_GP_-_Haas_VF-25_Show_Car_-_3.jpg"
+  }
+}
