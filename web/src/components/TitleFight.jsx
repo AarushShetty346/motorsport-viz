@@ -72,7 +72,7 @@ export default function TitleFight() {
       <div className="title-sticky">
         <div className="section-head container">
           <p className="eyebrow">The title fight</p>
-          <h2 className="display-lg">Three drivers. Twenty-four rounds. {standings[0].points - standings[1].points} points.</h2>
+          <h2 className="display-lg">Three drivers. Twenty-four rounds. <span className="nowrap">{standings[0].points - standings[1].points} points.</span></h2>
         </div>
         <div className="container title-grid">
           <aside className="title-aside">

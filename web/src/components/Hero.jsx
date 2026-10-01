@@ -13,8 +13,8 @@ export default function Hero() {
   const [photo, setPhoto] = useState('loading');
   const reduced = prefersReducedMotion();
   const { scrollYProgress } = useScroll({ target: ref, offset: ['start start', 'end start'] });
-  const mediaY = useTransform(scrollYProgress, [0, 1], reduced ? ['0%', '0%'] : ['0%', '18%']);
-  const mediaScale = useTransform(scrollYProgress, [0, 1], reduced ? [1, 1] : [1.04, 1.14]);
+  const mediaY = useTransform(scrollYProgress, [0, 1], reduced ? ['0%', '0%'] : ['0%', '8%']);
+  const mediaScale = useTransform(scrollYProgress, [0, 1], reduced ? [1, 1] : [1.02, 1.06]);
   const copyOpacity = useTransform(scrollYProgress, [0, 0.6], [1, reduced ? 1 : 0]);
 
   const [p1, p2] = standings;
@@ -42,11 +42,9 @@ export default function Hero() {
       <div className="hero-shade" />
 
       <motion.div className="hero-copy" style={{ opacity: copyOpacity }}>
-        <motion.p className="eyebrow" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: EASE_OUT, delay: 0.1 }}>
-          2025 Formula 1 World Championship
-        </motion.p>
-        <motion.h1 className="display-xl" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: EASE_OUT }}>
-          Every lap.<br />Every car.<br /><span className="accent">One season.</span>
+        <p className="eyebrow">2025 Formula 1 World Championship</p>
+        <motion.h1 className="display-xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6, ease: EASE_OUT }}>
+          The 2025 season, lap by lap.
         </motion.h1>
         <p className="hero-lede">
           {health ? fmtNum(health.counts.laps) : 'Every'} laps from 24 Grands Prix, each with its own telemetry. Replay the circuits, follow the title fight and go head to head.
