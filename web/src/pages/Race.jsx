@@ -9,6 +9,7 @@ import SpeedTrap from '../components/SpeedTrap.jsx';
 import DriverName from '../components/DriverName.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
+import Band from '../components/Band.jsx';
 
 export default function Race({ round }) {
   const { raceByRound, driverById, ready } = useSeason();
@@ -22,11 +23,12 @@ export default function Race({ round }) {
   const podium = race.results.slice(0, 3);
 
   return (
-    <article className="page race-page">
-      <header className="race-hero container">
+    <article className="page band-page race-page">
+      <Band className="race-band">
+        <div className="race-hero">
         <div className="race-hero-copy">
-          <p className="eyebrow"><Flag code={race.countryCode} /> Round {race.round} · {fmtDate(race.date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-          <h1 className="display-xl">{race.name.replace(' Grand Prix', '')}<br /><span className="muted-display">Grand Prix</span></h1>
+          <p className="band-meta"><Flag code={race.countryCode} /> Round {race.round} of 24 · {fmtDate(race.date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <h1 className="display-xl race-title">{race.name.replace(' Grand Prix', '')}<br /><span className="light-text">Grand Prix</span></h1>
           <dl className="facts">
             <div><dt>Circuit</dt><dd>{race.circuitFullName}</dd></div>
             <div><dt>Laps</dt><dd className="mono">{race.laps}</dd></div>
@@ -34,13 +36,14 @@ export default function Race({ round }) {
             <div><dt>Corners</dt><dd className="mono">{race.turns}</dd></div>
           </dl>
         </div>
-        <TrackMap race={race} variant="full" className="race-map" />
-      </header>
+        <TrackMap race={race} variant="full" className="race-map tone-dark" />
+        </div>
+      </Band>
 
       <section className="container section-tight">
         <div className="podium">
           {[podium[1], podium[0], podium[2]].map((r) => r && (
-            <div key={r.driverId} className={`podium-step p${r.position}`} style={{ '--team': driverById.get(r.driverId)?.teamColor }}>
+            <div key={r.driverId} className={`podium-step p${r.position} ${r.position === 1 ? 'tone-light' : ''}`} style={{ '--team': driverById.get(r.driverId)?.teamColor }}>
               <span className="podium-pos">{r.position}</span>
               <DriverName driver={driverById.get(r.driverId)} />
               <span className="mono muted small">{r.position === 1 ? r.time : r.gap}</span>
@@ -51,7 +54,7 @@ export default function Race({ round }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow">Race story</p>
+          <p className="eyebrow"><span className="num">01</span>Race story</p>
           <h2 className="display-md">Every position change</h2>
         </div>
         {laps.data ? <RaceTrace laps={laps.data.results} results={race.results} /> : <div className="skeleton" style={{ height: 480 }} />}
@@ -61,7 +64,7 @@ export default function Race({ round }) {
       <section className="container section two-col">
         <div>
           <div className="section-head">
-            <p className="eyebrow">Classification</p>
+            <p className="eyebrow"><span className="num">02</span>Classification</p>
             <h2 className="display-md">Result</h2>
           </div>
           <div className="table-wrap">
@@ -90,7 +93,7 @@ export default function Race({ round }) {
         </div>
         <div>
           <div className="section-head">
-            <p className="eyebrow">Fastest laps</p>
+            <p className="eyebrow"><span className="num">03</span>Fastest laps</p>
             <h2 className="display-md">One lap, flat out</h2>
           </div>
           <Leaderboard round={race.round} />

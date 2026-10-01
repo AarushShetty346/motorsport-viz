@@ -33,10 +33,10 @@ export default function Calendar() {
   const x = useTransform(scrollYProgress, [0, 1], [0, -distance]);
 
   return (
-    <section id="calendar" className={`calendar ${pinned ? 'is-pinned' : ''}`} ref={outer} style={pinned ? { height: `calc(100vh + ${distance}px)` } : undefined}>
+    <section id="calendar" className={`calendar tone-light ${pinned ? 'is-pinned' : ''}`} ref={outer} style={pinned ? { height: `calc(100vh + ${distance}px)` } : undefined}>
       <div className="calendar-sticky">
         <div className="section-head container">
-          <p className="eyebrow">Calendar</p>
+          <p className="eyebrow"><span className="num">02</span>Calendar</p>
           <h2 className="display-lg">24 races, five continents</h2>
           <p className="lede">Every circuit below is drawn from the car's own GPS trace on that race's fastest lap. Pick one to replay it.</p>
         </div>
@@ -45,7 +45,7 @@ export default function Calendar() {
             const winner = driverById.get(race.results?.[0]?.driverId);
             return (
               <li key={race.round}>
-                <Link to={`/race/${race.round}`} className="race-card" style={{ '--team': winner?.teamColor }}>
+                <Link to={`/race/${race.round}`} className="race-card tone-dark" style={{ '--team': winner?.teamColor }}>
                   <div className="race-card-top">
                     <span className="mono round-no">R{String(race.round).padStart(2, '0')}</span>
                     <span className="mono muted">{fmtDate(race.date)}</span>

@@ -14,18 +14,35 @@ export default function Nav({ onSearch }) {
   const { path } = useRouter();
   const { health, healthError } = useSeason();
   const [scrolled, setScrolled] = useState(false);
+  const [onLight, setOnLight] = useState(false);
   const [menu, setMenu] = useState(false);
 
+  // Dark ink whenever the bar sits over a yellow block (hero, page bands, calendar, footer).
   useEffect(() => {
-    const onScroll = () => setScrolled(scrollY > 24);
-    onScroll();
-    addEventListener('scroll', onScroll, { passive: true });
-    return () => removeEventListener('scroll', onScroll);
-  }, []);
+    const update = () => {
+      setScrolled(scrollY > 24);
+      const mid = 32;
+      let light = false;
+      for (const el of document.querySelectorAll('.tone-light')) {
+        const r = el.getBoundingClientRect();
+        if (r.top <= mid && r.bottom >= mid && r.width >= innerWidth * 0.9) { light = true; break; }
+      }
+      setOnLight(light);
+    };
+    update();
+    const timers = [setTimeout(update, 60), setTimeout(update, 400), setTimeout(update, 1200)];
+    addEventListener('scroll', update, { passive: true });
+    addEventListener('resize', update);
+    return () => {
+      timers.forEach(clearTimeout);
+      removeEventListener('scroll', update);
+      removeEventListener('resize', update);
+    };
+  }, [path]);
   useEffect(() => setMenu(false), [path]);
 
   return (
-    <header className={`nav ${scrolled || path !== '/' ? 'nav-solid' : ''} ${menu ? 'nav-open' : ''}`}>
+    <header className={`nav ${scrolled || path !== '/' ? 'nav-solid' : ''} ${onLight ? 'on-light' : ''} ${menu ? 'nav-open' : ''}`}>
       <div className="nav-inner">
         <Link to="/" className="brand" aria-label="Lap by Lap home">
           <svg viewBox="0 0 32 32" className="brand-mark" aria-hidden="true"><path d="M7 22 L15 10 H25 L17 22 Z" /><path d="M3 22 H10" className="brand-line" /></svg>

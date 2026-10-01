@@ -14,7 +14,7 @@ export default function Standings() {
   return (
     <section id="standings" className="section container">
       <div className="section-head">
-        <p className="eyebrow">Final standings</p>
+        <p className="eyebrow"><span className="num">03</span>Final standings</p>
         <h2 className="display-lg">The drivers</h2>
         <p className="lede">Points, wins and podiums are added up inside MongoDB from each race's embedded classification, sprints included.</p>
       </div>

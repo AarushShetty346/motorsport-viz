@@ -5,7 +5,7 @@ import { Link } from '../lib/router.jsx';
 export default function Footer() {
   const { health } = useSeason();
   return (
-    <footer className="footer">
+    <footer className="footer tone-light">
       <div className="footer-inner">
         <div>
           <p className="footer-brand">Lap by Lap</p>
@@ -35,6 +35,7 @@ export default function Footer() {
           <p>Unofficial fan project. Not associated with Formula 1 or the FIA.</p>
         </div>
       </div>
+      <p className="footer-word" aria-hidden="true">Lap by Lap</p>
     </footer>
   );
 }
