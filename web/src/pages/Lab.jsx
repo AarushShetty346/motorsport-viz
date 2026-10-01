@@ -22,48 +22,79 @@ const SECTIONS = [
   { id: 'search', n: '10', title: 'Search by circuit', tag: 'User Functionality 5' },
 ];
 
-export default function Lab() {
+// The two groups the review report lists. /lab shows both; /mongodb and
+// /my-features show one group each, numbered the way the report numbers them.
+const GROUPS = {
+  all: {
+    meta: 'Data lab · live MongoDB',
+    title: <>Under<br />the hood</>,
+    lede: 'Everything on this site is a live MongoDB query. This page shows the five MongoDB features and the five user-defined features built on top of them, each with the exact query it runs.',
+    sections: SECTIONS,
+  },
+  nosql: {
+    meta: 'NoSQL Functionality 1–5 · live MongoDB',
+    title: <>MongoDB<br />features</>,
+    lede: 'The five MongoDB features: CRUD, the aggregation pipeline, indexing, schema validation, and embedded documents with references. Each one runs live and shows the exact query.',
+    sections: SECTIONS.filter((s) => s.tag.startsWith('NoSQL')),
+  },
+  user: {
+    meta: 'User Functionality 1–5 · live MongoDB',
+    title: <>My<br />features</>,
+    lede: 'The five user-defined features built on the 2025 laps: all laps for a driver, head-to-head, the fastest lap leaderboard, a speed threshold and search by circuit. Each one runs live and shows the exact query.',
+    sections: SECTIONS.filter((s) => s.tag.startsWith('User')),
+  },
+};
+
+const BODIES = {
+  crud: { intro: "Create, read, update and delete lap documents. Leave a required field blank to watch MongoDB's validator reject the write.", el: <LapEditor /> },
+  aggregation: { intro: "$group by driverId with $avg (average lap), $min (fastest lap) and $sum (lap count), $lookup the drivers collection for names, then $sort by average. The MongoDB equivalent of SQL's GROUP BY with AVG(), MIN() and a JOIN.", el: <Aggregation /> },
+  indexes: { intro: 'db.laps.getIndexes() lists three indexes: the default _id index, a compound index on { driverId, lapNumber } and a text index on circuit. explain() then shows MongoDB using the compound index (IXSCAN) instead of scanning the whole collection (COLLSCAN).', el: <Indexes /> },
+  validation: { intro: 'The laps collection has a $jsonSchema validator. This inserts { circuit: "Monza", lapNumber: "three" } and shows what MongoDB says.', el: <Validation /> },
+  model: { intro: 'One lap document as raw JSON. The telemetry object (speed, rpm, throttle, brake) is embedded because it belongs only to that lap; driverId is a reference to the drivers collection because one driver has many laps.', el: <DocModel /> },
+  'driver-laps': { intro: 'Choose a driver and it runs find({ driverId }), sorted by circuit and lap number. This query uses the compound index.', el: <DriverLaps /> },
+  'head-to-head': { intro: 'Pick two drivers: $match keeps only their laps and $group calculates average lap times overall and per circuit. The per-circuit table keeps it fair, since a Silverstone lap is about 7 seconds longer than a Monza lap.', el: <HeadToHead /> },
+  fastest: { intro: "$sort puts every lap in order of lap time, then $group with $first keeps each driver's fastest whole lap, including its circuit, lap number and top speed.", el: <FastestLaps /> },
+  speed: { intro: 'Enter a speed and it runs find({ "telemetry.speed": { $gt: N } }). Dot notation queries a field inside the embedded telemetry document directly, with no join.', el: <SpeedThreshold /> },
+  search: { intro: 'Full-text search with $text: { $search: "..." } on the circuit text index, sorted by relevance score. It ignores case, and several words (e.g. "monza silverstone") match laps at either circuit.', el: <CircuitSearch /> },
+};
+
+export default function Lab({ group = 'all' }) {
   const { health } = useSeason();
-  const [active, setActive] = useState('crud');
+  const g = GROUPS[group] || GROUPS.all;
+  // On the single-group pages each section takes its number from the report (1–5).
+  const sections = group === 'all' ? g.sections : g.sections.map((s) => ({ ...s, n: s.tag.slice(-1).padStart(2, '0') }));
+  const [active, setActive] = useState(sections[0].id);
 
   useEffect(() => {
     const io = new IntersectionObserver((entries) => {
       for (const e of entries) if (e.isIntersecting) setActive(e.target.id);
     }, { rootMargin: '-40% 0px -55% 0px' });
-    SECTIONS.forEach((s) => { const el = document.getElementById(s.id); if (el) io.observe(el); });
+    sections.forEach((s) => { const el = document.getElementById(s.id); if (el) io.observe(el); });
     return () => io.disconnect();
-  }, []);
+  }, [group]);
 
   return (
     <article className="page band-page lab-page">
       <Band className="lab-band">
-        <p className="band-meta">Data lab · live MongoDB</p>
-        <h1 className="display-xl">Under<br />the hood</h1>
+        <p className="band-meta">{g.meta}</p>
+        <h1 className="display-xl">{g.title}</h1>
         <p className="lede">
-          Everything on this site is a live MongoDB query. This page shows the five MongoDB features and the five user-defined features
-          built on top of them, each with the exact query it runs. {health && <>The <code>{health.db}</code> database holds {fmtNum(health.counts.laps)} laps, {health.counts.races} races and {health.counts.drivers} drivers.</>}
+          {g.lede} {health && <>The <code>{health.db}</code> database holds {fmtNum(health.counts.laps)} laps, {health.counts.races} races and {health.counts.drivers} drivers.</>}
         </p>
       </Band>
       <div className="container lab-layout">
-        <nav className="lab-nav" aria-label="Data lab sections">
-          {SECTIONS.map((s) => (
+        <nav className="lab-nav" aria-label="Sections">
+          {sections.map((s) => (
             <a key={s.id} href={`#${s.id}`} className={active === s.id ? 'active' : ''} onClick={(e) => { e.preventDefault(); document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth' }); history.replaceState({}, '', `#${s.id}`); }}>
               <span className="mono">{s.n}</span>{s.title}
             </a>
           ))}
-          <ResetButton />
+          {group !== 'user' && <ResetButton />}
         </nav>
         <div className="lab-sections">
-          <LabSection s={SECTIONS[0]} intro="Create, read, update and delete lap documents. Leave a required field blank to watch MongoDB's validator reject the write."><LapEditor /></LabSection>
-          <LabSection s={SECTIONS[1]} intro="$group by driverId with $avg (average lap), $min (fastest lap) and $sum (lap count), $lookup the drivers collection for names, then $sort by average. The MongoDB equivalent of SQL's GROUP BY with AVG(), MIN() and a JOIN."><Aggregation /></LabSection>
-          <LabSection s={SECTIONS[2]} intro="db.laps.getIndexes() lists three indexes: the default _id index, a compound index on { driverId, lapNumber } and a text index on circuit. explain() then shows MongoDB using the compound index (IXSCAN) instead of scanning the whole collection (COLLSCAN)."><Indexes /></LabSection>
-          <LabSection s={SECTIONS[3]} intro='The laps collection has a $jsonSchema validator. This inserts { circuit: "Monza", lapNumber: "three" } and shows what MongoDB says.'><Validation /></LabSection>
-          <LabSection s={SECTIONS[4]} intro="One lap document as raw JSON. The telemetry object (speed, rpm, throttle, brake) is embedded because it belongs only to that lap; driverId is a reference to the drivers collection because one driver has many laps."><DocModel /></LabSection>
-          <LabSection s={SECTIONS[5]} intro="Choose a driver and it runs find({ driverId }), sorted by circuit and lap number. This query uses the compound index."><DriverLaps /></LabSection>
-          <LabSection s={SECTIONS[6]} intro="Pick two drivers: $match keeps only their laps and $group calculates average lap times overall and per circuit. The per-circuit table keeps it fair, since a Silverstone lap is about 7 seconds longer than a Monza lap."><HeadToHead /></LabSection>
-          <LabSection s={SECTIONS[7]} intro="$sort puts every lap in order of lap time, then $group with $first keeps each driver's fastest whole lap, including its circuit, lap number and top speed."><FastestLaps /></LabSection>
-          <LabSection s={SECTIONS[8]} intro='Enter a speed and it runs find({ "telemetry.speed": { $gt: N } }). Dot notation queries a field inside the embedded telemetry document directly, with no join.'><SpeedThreshold /></LabSection>
-          <LabSection s={SECTIONS[9]} intro='Full-text search with $text: { $search: "..." } on the circuit text index, sorted by relevance score. It ignores case, and several words (e.g. "monza silverstone") match laps at either circuit.'><CircuitSearch /></LabSection>
+          {sections.map((s) => (
+            <LabSection key={s.id} s={s} intro={BODIES[s.id].intro}>{BODIES[s.id].el}</LabSection>
+          ))}
         </div>
       </div>
     </article>
