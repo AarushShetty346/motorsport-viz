@@ -117,7 +117,8 @@ db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 |---|---|
 | **Season** (`/`) | Hero, the title fight (points chart that draws itself as you scroll), the 24-race calendar (slides sideways as you scroll), final driver and constructor standings, and a season-wide speed trap. |
 | **Race** (`/race/16`) | The circuit drawn from the car's real GPS trace, coloured by speed, with a car lapping it at the real pace of that race's fastest lap. Podium, race story (every position change, lap by lap), full classification, fastest-lap leaderboard and a speed trap for that race. |
-| **Driver** (`/driver/lando-norris`) | Championship stats, the season at a glance (result in every round), and a lap explorer: every lap of any race with its tyre, pit stops and telemetry. |
+| **Driver** (`/driver/lando-norris`) | Championship stats, a portrait where hovering over the head puts the driver's helmet on, the season at a glance (result in every round), and a lap explorer: every lap of any race with its tyre, pit stops and telemetry. |
+| **Team** (`/team/mclaren`) | A 3D model of the team's car in its colours that you can drag around (it settles back to the side view when you let go), the team's drivers, and its points round by round. |
 | **Head to head** (`/compare`) | Two drivers compared race by race on average racing-lap pace, plus who finished ahead each weekend. |
 | **Data lab** (`/lab`) | The database side: a lap editor (CRUD), the standings pipeline, indexes with `explain()`, schema validation and the document model. |
 | **Search** (press `/` or ⌘K) | Full-text search for a circuit, race or country (e.g. *monza*, *italy*, *marina bay*), plus drivers by name. |
@@ -233,6 +234,16 @@ npm run data:build
 ### Hero photo
 
 The home page hero is designed around a podium photo. Put a free-licensed photo at `web/public/img/podium.jpg` (Wikimedia Commons has real F1 podium champagne photos you can reuse: search [Formula 1 podium champagne](https://commons.wikimedia.org/w/index.php?search=Formula+1+podium+champagne&title=Special:MediaSearch&type=image)), then fill in the author, licence and link in `web/src/content.js`. The credit line appears on the photo and in the footer. Until a photo is there, the hero shows the Abu Dhabi circuit instead.
+
+### Driver photos
+
+The driver pages show a head-and-shoulders photo when one is in `web/public/img/drivers/`. To fetch free-licensed photos (CC BY, CC BY-SA, CC0 or public domain only) from Wikimedia Commons for every driver:
+
+```bash
+npm run photos:fetch
+```
+
+It writes `web/public/img/drivers/credits.json` with each photo's author, licence and source link, and the credit is shown under the photo. The `head` box in that file (`x`, `y`, `w` as percentages of the photo) is where the helmet appears on hover; nudge it if a helmet sits off someone's face. Drivers without a photo get a silhouette, and the helmets are drawn by the site in team colours, so they need no licence.
 
 ---
 

@@ -17,6 +17,7 @@ export default function Footer() {
         <div className="footer-links">
           <Link to="/#calendar">Races</Link>
           <Link to="/#standings">Drivers</Link>
+          <Link to="/team/mclaren">Teams</Link>
           <Link to="/compare">Head to head</Link>
           <Link to="/lab">Data lab</Link>
         </div>

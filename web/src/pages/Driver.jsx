@@ -7,12 +7,17 @@ import LapChart from '../components/LapChart.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import DriverPortrait from '../components/DriverPortrait.jsx';
+import ScrollWords from '../components/ScrollWords.jsx';
+import { useDriverPhotos } from '../lib/photos.js';
+import { teamPath } from '../lib/teams.js';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
   const driver = driverByKey.get(driverKey);
   const season = useApi(driver ? `/api/drivers/${driver._id}/season` : null);
   const [round, setRound] = useState(null);
+  const photos = useDriverPhotos();
   const laps = useApi(driver && round ? `/api/user/driver-laps/${driver._id}?round=${round}` : null);
 
   const raceRows = useMemo(() => (season.data?.results || []).filter((r) => r.kind === 'race'), [season.data]);
@@ -35,12 +40,11 @@ export default function Driver({ driverKey }) {
         <span className="driver-number" aria-hidden="true">{driver.number}</span>
         <div className="driver-hero">
         <div className="driver-hero-copy">
-          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · {driver.team} · No. {driver.number}</p>
+          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · <Link to={teamPath(driver.team)} className="band-link">{driver.team}</Link> · No. {driver.number}</p>
           <h1 className="display-xl"><span className="driver-first">{driver.firstName}</span><br />{driver.lastName}</h1>
           <div className="driver-actions">
             <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare with…</Link>
           </div>
-        </div>
         {st && (
           <dl className="driver-stats">
             <div><dt>Championship</dt><dd className="display-md">{ordinal(idx + 1)}</dd></div>
@@ -51,8 +55,16 @@ export default function Driver({ driverKey }) {
           </dl>
         )}
         </div>
+        <DriverPortrait driver={driver} photo={photos[driver.key]} />
+        </div>
         <span className="band-team" aria-hidden="true" />
       </Band>
+
+      {st && (
+        <section className="container section-tight">
+          <ScrollWords text={`${driver.firstName} ${driver.lastName} finished ${ordinal(idx + 1)} in 2025 for ${driver.team}, with ${st.points} points, ${st.wins} ${st.wins === 1 ? 'win' : 'wins'} and ${st.podiums} ${st.podiums === 1 ? 'podium' : 'podiums'} from ${st.starts} starts.`} />
+        </section>
+      )}
 
       <section className="container section-tight">
         <h2 className="h-small">Season at a glance</h2>

@@ -191,6 +191,16 @@ test('User 5: text search on race, circuit and country', async () => {
   assert.equal((await api('/api/user/search?q=')).status, 400);
 });
 
+test('team season: per-round points for one constructor', async () => {
+  const { body } = await api('/api/teams/McLaren/season');
+  assert.equal(body.results.length, 24);
+  const total = body.results.reduce((sum, r) => sum + r.points, 0);
+  const { body: c } = await api('/api/season/constructors');
+  assert.equal(total, c.results.find((t) => t._id === 'McLaren').points);
+  assert.ok(body.results.every((r) => r.entries.every((e) => e.driverId)));
+  assert.equal((await api('/api/teams/Nobody/season')).status, 404);
+});
+
 test('reset re-seeds the season', async () => {
   const first = (await api('/api/laps?limit=1')).body.results[0];
   await api(`/api/laps/${first._id}`, { method: 'DELETE' });
