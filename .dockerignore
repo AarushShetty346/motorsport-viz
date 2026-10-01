@@ -1,5 +1,7 @@
 node_modules
+dist
 npm-debug.log
 .git
 test
+scripts
 *.md

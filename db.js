@@ -1,8 +1,13 @@
-// MongoDB connection, collection setup (schema validation + indexes) and seeding.
-const { MongoClient } = require('mongodb');
+// MongoDB connection, collection setup (schema validation + indexes) and seeding
+// with the real 2025 Formula 1 season from data/season-2025.json.gz.
+const fs = require('fs');
+const path = require('path');
+const zlib = require('zlib');
+const { MongoClient, ObjectId } = require('mongodb');
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
 const DB_NAME = process.env.DB_NAME || 'motorsport';
+const SEASON_FILE = path.join(__dirname, 'data', 'season-2025.json.gz');
 
 // $jsonSchema validator for the laps collection. MongoDB itself enforces this
 // on every insert/update — the app does not pre-validate these fields.
@@ -10,11 +15,21 @@ const lapsValidator = {
   $jsonSchema: {
     bsonType: 'object',
     title: 'Lap document validation',
-    required: ['driverId', 'lapNumber', 'lapTime', 'telemetry'],
+    required: ['driverId', 'raceId', 'round', 'lapNumber', 'lapTime', 'telemetry'],
     properties: {
       driverId: {
         bsonType: 'objectId',
         description: 'must be an ObjectId referencing drivers._id (required)',
+      },
+      raceId: {
+        bsonType: 'objectId',
+        description: 'must be an ObjectId referencing races._id (required)',
+      },
+      round: {
+        bsonType: ['int', 'long'],
+        minimum: 1,
+        maximum: 24,
+        description: 'championship round, an integer from 1 to 24 (required)',
       },
       lapNumber: {
         bsonType: ['int', 'long'],
@@ -25,6 +40,11 @@ const lapsValidator = {
         bsonType: 'number',
         minimum: 0,
         description: 'lap time in seconds, must be a number >= 0 (required)',
+      },
+      position: {
+        bsonType: ['int', 'long', 'null'],
+        minimum: 1,
+        description: 'running position at the end of the lap',
       },
       circuit: {
         bsonType: 'string',
@@ -39,36 +59,37 @@ const lapsValidator = {
           rpm: { bsonType: 'number', minimum: 0, description: 'peak engine RPM' },
           throttle: { bsonType: 'number', minimum: 0, maximum: 100, description: 'average throttle %' },
           brake: { bsonType: 'number', minimum: 0, maximum: 100, description: '% of lap spent braking' },
+          drs: { bsonType: 'number', minimum: 0, maximum: 100, description: '% of lap with DRS open' },
         },
       },
     },
   },
 };
 
-const seedDrivers = [
-  { name: 'Max Verstappen', team: 'Red Bull', number: 1 },
-  { name: 'Charles Leclerc', team: 'Ferrari', number: 16 },
-  { name: 'Lando Norris', team: 'McLaren', number: 4 },
-];
+const TEAM_NAMES = {
+  mclaren: 'McLaren',
+  mercedes: 'Mercedes',
+  'red-bull': 'Red Bull Racing',
+  ferrari: 'Ferrari',
+  williams: 'Williams',
+  'racing-bulls': 'Racing Bulls',
+  'aston-martin': 'Aston Martin',
+  haas: 'Haas F1 Team',
+  'kick-sauber': 'Kick Sauber',
+  sauber: 'Kick Sauber',
+  alpine: 'Alpine',
+};
 
-// Keyed by driver number so they can be linked to the inserted driver _ids.
-// lapTime is in seconds. Telemetry: speed = top speed (km/h), rpm = peak RPM,
-// throttle = average throttle application (%), brake = % of the lap on the brakes.
-const seedLaps = [
-  { number: 1, lapNumber: 1, lapTime: 81.452, circuit: 'Monza', telemetry: { speed: 348.2, rpm: 11870, throttle: 81.4, brake: 11.2 } },
-  { number: 1, lapNumber: 2, lapTime: 80.987, circuit: 'Monza', telemetry: { speed: 351.6, rpm: 11950, throttle: 82.1, brake: 10.8 } },
-  { number: 1, lapNumber: 1, lapTime: 88.301, circuit: 'Silverstone', telemetry: { speed: 322.4, rpm: 11780, throttle: 71.3, brake: 13.9 } },
-  { number: 16, lapNumber: 1, lapTime: 81.203, circuit: 'Monza', telemetry: { speed: 352.9, rpm: 12010, throttle: 81.9, brake: 11.0 } },
-  { number: 16, lapNumber: 1, lapTime: 88.912, circuit: 'Silverstone', telemetry: { speed: 318.7, rpm: 11820, throttle: 70.2, brake: 14.6 } },
-  { number: 4, lapNumber: 1, lapTime: 81.588, circuit: 'Monza', telemetry: { speed: 346.1, rpm: 11840, throttle: 80.7, brake: 11.5 } },
-  { number: 4, lapNumber: 1, lapTime: 87.964, circuit: 'Silverstone', telemetry: { speed: 325.3, rpm: 11910, throttle: 72.4, brake: 13.2 } },
-  { number: 4, lapNumber: 2, lapTime: 88.417, circuit: 'Silverstone', telemetry: { speed: 323.8, rpm: 11890, throttle: 71.8, brake: 13.6 } },
-];
+let season;
+function loadSeason() {
+  if (!season) season = JSON.parse(zlib.gunzipSync(fs.readFileSync(SEASON_FILE)).toString('utf8'));
+  return season;
+}
 
 const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
 let db;
 
-async function connectWithRetry(attempts = 30, delayMs = 2000) {
+async function connectWithRetry(attempts = 75, delayMs = 2000) {
   for (let i = 1; i <= attempts; i++) {
     try {
       await client.connect();
@@ -94,54 +115,76 @@ async function connectWithRetry(attempts = 30, delayMs = 2000) {
 // then creates the indexes. Safe to run on every startup.
 async function setupCollections() {
   const existing = await db.listCollections({ name: 'laps' }).toArray();
+  const options = { validator: lapsValidator, validationLevel: 'strict', validationAction: 'error' };
   if (existing.length === 0) {
-    await db.createCollection('laps', {
-      validator: lapsValidator,
-      validationLevel: 'strict',
-      validationAction: 'error',
-    });
+    await db.createCollection('laps', options);
     console.log('[db] Created "laps" collection with $jsonSchema validator');
   } else {
-    await db.command({
-      collMod: 'laps',
-      validator: lapsValidator,
-      validationLevel: 'strict',
-      validationAction: 'error',
-    });
+    await db.command({ collMod: 'laps', ...options });
     console.log('[db] Applied $jsonSchema validator to existing "laps" collection');
   }
 
   const laps = db.collection('laps');
-  await laps.createIndex({ driverId: 1, lapNumber: 1 }, { name: 'driverId_1_lapNumber_1' });
-  await laps.createIndex({ circuit: 'text' }, { name: 'circuit_text' });
-  console.log('[db] Ensured indexes: { driverId: 1, lapNumber: 1 } and { circuit: "text" }');
+  // Older versions of this app had a { driverId, lapNumber } index and a circuit-only text index.
+  for (const old of ['driverId_1_lapNumber_1', 'circuit_text']) await laps.dropIndex(old).catch(() => {});
+  await laps.createIndex({ driverId: 1, round: 1, lapNumber: 1 }, { name: 'driverId_1_round_1_lapNumber_1' });
+  await laps.createIndex({ round: 1, lapTime: 1 }, { name: 'round_1_lapTime_1' });
+  await laps.createIndex(
+    { race: 'text', circuit: 'text', country: 'text' },
+    { name: 'race_circuit_country_text', weights: { circuit: 3, race: 2, country: 1 } }
+  );
+  await db.collection('races').createIndex({ round: 1 }, { name: 'round_1', unique: true });
+  await db.collection('drivers').createIndex({ key: 1 }, { name: 'key_1', unique: true });
+  console.log('[db] Ensured indexes on laps, races and drivers');
 }
 
 async function seedIfEmpty() {
   const drivers = db.collection('drivers');
+  const races = db.collection('races');
   const laps = db.collection('laps');
+  if ((await drivers.countDocuments()) > 0 && (await races.countDocuments()) > 0 && (await laps.countDocuments()) > 0) return;
 
-  if ((await drivers.countDocuments()) === 0) {
-    await drivers.insertMany(seedDrivers.map((d) => ({ ...d })));
-    console.log(`[seed] Inserted ${seedDrivers.length} drivers`);
-  }
+  // Partial or old-format data: start clean so every reference lines up.
+  await Promise.all([drivers.deleteMany({}), races.deleteMany({}), laps.deleteMany({})]);
+  const data = loadSeason();
 
-  if ((await laps.countDocuments()) === 0) {
-    const byNumber = new Map();
-    for (const d of await drivers.find().toArray()) byNumber.set(d.number, d._id);
-    const docs = seedLaps
-      .filter((l) => byNumber.has(l.number))
-      .map(({ number, ...lap }) => ({ driverId: byNumber.get(number), ...lap }));
-    if (docs.length) {
-      await laps.insertMany(docs);
-      console.log(`[seed] Inserted ${docs.length} laps`);
-    }
-  }
+  const driverDocs = data.drivers.map((d) => ({ _id: new ObjectId(), ...d }));
+  const driverIdByKey = new Map(driverDocs.map((d) => [d.key, d._id]));
+  await drivers.insertMany(driverDocs);
+
+  const teamOf = (c) => TEAM_NAMES[c] || c;
+  const classification = (rows) =>
+    rows &&
+    rows.map(({ driver, constructor, ...r }) => ({ driverId: driverIdByKey.get(driver), team: teamOf(constructor), ...r }));
+  const raceDocs = data.races.map((r) => ({
+    _id: new ObjectId(),
+    ...r,
+    results: classification(r.results),
+    sprint: classification(r.sprint),
+  }));
+  const raceByRound = new Map(raceDocs.map((r) => [r.round, r]));
+  await races.insertMany(raceDocs);
+
+  const lapDocs = data.laps.map(({ driver, round, sectors, speedTrap, ...lap }) => {
+    const race = raceByRound.get(round);
+    return {
+      driverId: driverIdByKey.get(driver),
+      raceId: race._id,
+      round,
+      race: race.name,
+      circuit: race.circuit,
+      country: race.country,
+      ...lap,
+      sectors: { s1: sectors[0], s2: sectors[1], s3: sectors[2] },
+      telemetry: { ...lap.telemetry, speedTrap },
+    };
+  });
+  for (let i = 0; i < lapDocs.length; i += 5000) await laps.insertMany(lapDocs.slice(i, i + 5000), { ordered: false });
+  console.log(`[seed] Inserted ${driverDocs.length} drivers, ${raceDocs.length} races and ${lapDocs.length} laps (2025 season)`);
 }
 
 async function resetDemoData() {
-  await db.collection('laps').drop().catch(() => {});
-  await db.collection('drivers').drop().catch(() => {});
+  for (const name of ['laps', 'races', 'drivers']) await db.collection(name).drop().catch(() => {});
   await setupCollections();
   await seedIfEmpty();
 }

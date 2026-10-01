@@ -1,70 +1,72 @@
-# Motorsport Lap by Lap Visualiser
+# Lap by Lap
 
-A full-stack DBMS / MongoDB demo: a single-page dashboard for motorsport lap data. It runs **entirely on your own machine** — Node.js + Express backend, plain HTML/CSS/JS frontend (no build step), and a **local MongoDB** in Docker. No MongoDB Atlas, no cloud account, no sign-up.
+**The 2025 Formula 1 season, every lap and every car, stored in MongoDB.**
 
-The dashboard has 10 clearly labelled sections, and each one runs a live query against MongoDB:
+Lap by Lap is a full-stack web app built on a **local MongoDB** database. It holds the real 2025 season: all 24 Grands Prix, 21 drivers and **26,657 laps**, and every lap carries its own car telemetry (top speed, peak RPM, throttle, braking, DRS). You can replay each circuit, follow the title fight round by round, dig into any driver's laps, put two drivers head to head, and look under the hood at the MongoDB queries behind every screen.
 
-| # | Section | MongoDB feature shown |
-|---|---------|-----------------------|
-| NoSQL Functionality 1 | CRUD Operations | `insertOne`, `find`/`aggregate`, `replaceOne`, `deleteOne` |
-| NoSQL Functionality 2 | Aggregation Pipeline | `$group`, `$avg`, `$min`, `$lookup`, `$sort` |
-| NoSQL Functionality 3 | Indexing | `getIndexes()`, compound + text index, `explain()` |
-| NoSQL Functionality 4 | Schema Validation | `$jsonSchema` validator, error code 121 |
-| NoSQL Functionality 5 | Embedded Documents & Referencing | nested `telemetry`, `driverId` → `drivers._id` |
-| User Functionality 1 | All laps for a driver | `find({ driverId })` (uses the compound index) |
-| User Functionality 2 | Head-to-head average lap time | two-stage `$group` + `$lookup` |
-| User Functionality 3 | Fastest lap leaderboard | `$sort` + `$group` with `$first` |
-| User Functionality 4 | Laps above a speed threshold | dot notation `{ "telemetry.speed": { $gt: N } }` |
-| User Functionality 5 | Search laps by circuit | `$text` search on the text index + `textScore` |
-
-Every section has a **"MongoDB query"** drop-down that shows the exact shell query it ran, which is useful while presenting.
+- **Backend:** Node.js + Express, talking to MongoDB with the official driver.
+- **Frontend:** React, built with Vite. Smooth scrolling with [Lenis](https://github.com/darkroomengineering/lenis), scroll-linked animation with [Motion](https://motion.dev), and circuit replays with [anime.js](https://animejs.com) motion paths.
+- **Database:** MongoDB 7 running in Docker on your own laptop. No cloud account, no sign-up.
 
 ---
 
-## 1. Setup on your laptop (one command)
+## 1. Run it on your laptop (one command)
 
-**You need:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's all. Node.js and MongoDB run inside Docker.
+**You need:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running. That's all. Node.js and MongoDB both run inside Docker.
 
-```bash
-git clone https://github.com/AarushShetty346/motorsport-viz.git
-cd motorsport-viz
-docker compose up --build
-```
+1. Open a terminal.
+2. Download the project and go into its folder:
+   ```bash
+   git clone https://github.com/AarushShetty346/motorsport-viz.git
+   cd motorsport-viz
+   ```
+3. Start everything:
+   ```bash
+   docker compose up --build
+   ```
+4. Wait until the terminal prints `Lap by Lap is running at http://localhost:3000`, then open **http://localhost:3000** in your browser.
 
-Then open **http://localhost:3000**.
+What happens on the first start:
 
-- On first start, the server creates the `laps` collection with its `$jsonSchema` validator, creates the indexes, and seeds 3 drivers and 8 laps. You'll see this in the terminal.
+- The server creates the `laps` collection with its `$jsonSchema` validator, creates the indexes, and loads the 2025 season from `data/season-2025.json.gz` into MongoDB (about 2 seconds). You'll see this in the terminal.
 - Stop it with `Ctrl+C`. Start it again later with `docker compose up`.
-- The data is kept in a Docker volume between runs. To wipe it and re-seed, click **Reset demo data** in the dashboard header, or run `docker compose down -v` and start again.
-- (If you downloaded a ZIP instead of cloning, unzip it, `cd` into the folder, and run `docker compose up --build`.)
+- The data is kept in a Docker volume between runs. To wipe it and reload the season, click **Reset demo data** in the Data lab, or run `docker compose down -v` and start again.
 
-> **Offline note:** the *first* `docker compose up --build` needs internet access once, to download the `mongo:7` and `node:22-alpine` images and the two npm packages. After that, everything runs fully offline. **Run it once before your demo** while you're online.
+> **Offline note:** the *first* `docker compose up --build` needs internet once, to download the `mongo:7` and `node:22-alpine` images and the npm packages. After that everything runs fully offline, including the fonts and the season data. **Run it once before your demo** while you're online.
 
 ### Option B: MongoDB in Docker, Node.js on your laptop
 
-If you have Node.js 18+ installed and want to run the server directly:
+Use this if you have Node.js 20.19 or newer installed and want to run the server yourself.
 
-```bash
-docker compose up -d mongo     # start only MongoDB (same as: npm run db:up)
-npm install
-npm start                      # http://localhost:3000
-```
+1. Start only MongoDB:
+   ```bash
+   docker compose up -d mongo
+   ```
+2. Install the packages (first time only):
+   ```bash
+   npm install
+   ```
+3. Build the website and start the server:
+   ```bash
+   npm start
+   ```
+   (`npm start` builds the React app into `dist/` and then starts Express.) Open **http://localhost:3000**.
 
-### Option C: no Docker (install MongoDB Community Server locally)
+While you're changing the website, `npm run dev` gives you live reload on http://localhost:5173 (keep `npm run serve` running in a second terminal for the API).
 
-Use this if Docker isn't available on the laptop. MongoDB Community Server is a free download and needs no account.
+### Option C: no Docker (MongoDB Community Server installed locally)
 
-1. **Install Node.js 18 or newer** from https://nodejs.org (the LTS installer).
-2. **Install MongoDB Community Server** (version 7.0 or 8.0):
-   - **Windows:** download the `.msi` from https://www.mongodb.com/try/download/community. In the installer choose *Complete* and keep **"Install MongoD as a Service"** ticked. MongoDB then runs automatically on `localhost:27017`. You can also tick "Install MongoDB Compass" to get a GUI.
+1. **Install Node.js 20.19 or newer** from https://nodejs.org (the LTS installer).
+2. **Install MongoDB Community Server** (7.0 or 8.0):
+   - **Windows:** download the `.msi` from https://www.mongodb.com/try/download/community. Choose *Complete* and keep **"Install MongoD as a Service"** ticked. MongoDB then runs automatically on `localhost:27017`.
    - **macOS (Homebrew):**
      ```bash
      brew tap mongodb/brew
      brew install mongodb-community@7.0
      brew services start mongodb-community@7.0
      ```
-   - **Ubuntu/Debian:** follow https://www.mongodb.com/docs/manual/administration/install-on-linux/ (adds MongoDB's apt repo and installs `mongodb-org`), then run `sudo systemctl start mongod`.
-3. **Check that it's running:** `mongosh --eval "db.adminCommand('ping')"` should print `{ ok: 1 }`. (On Windows, install *mongosh* from the same download page if it isn't there.)
+   - **Ubuntu/Debian:** follow https://www.mongodb.com/docs/manual/administration/install-on-linux/, then run `sudo systemctl start mongod`.
+3. **Check it's running:** `mongosh --eval "db.adminCommand('ping')"` should print `{ ok: 1 }`.
 4. **Run the app** from the project folder:
    ```bash
    npm install
@@ -72,132 +74,171 @@ Use this if Docker isn't available on the laptop. MongoDB Community Server is a 
    ```
    Open **http://localhost:3000**.
 
-The app connects to `mongodb://localhost:27017` by default. To use a different server, set environment variables, e.g. `MONGO_URI=mongodb://127.0.0.1:27018 DB_NAME=motorsport npm start` (on Windows PowerShell: `$env:MONGO_URI="mongodb://127.0.0.1:27018"; npm start`).
+The app connects to `mongodb://localhost:27017` by default. To use a different server, set environment variables, e.g. `MONGO_URI=mongodb://127.0.0.1:27018 DB_NAME=motorsport npm start` (Windows PowerShell: `$env:MONGO_URI="mongodb://127.0.0.1:27018"; npm start`).
 
 ### Handy commands
 
 | Command | What it does |
 |---|---|
 | `docker compose up --build` | Start MongoDB + the app (the one command) |
-| `docker compose down` | Stop everything (keeps data) |
-| `docker compose down -v` | Stop and **delete** the data volume (re-seeds next start) |
-| `npm run shell` | Open `mongosh` inside the MongoDB container, on the `motorsport` DB |
-| `npm test` | Run the automated API test suite (needs MongoDB running on localhost:27017) |
+| `docker compose down` | Stop everything (keeps the data) |
+| `docker compose down -v` | Stop and **delete** the data volume (reloads the season next start) |
+| `npm start` | Build the website, then start the server (Options B and C) |
+| `npm run dev` | Website with live reload on port 5173 (needs the server running) |
+| `npm run shell` | Open `mongosh` inside the MongoDB container, on the `motorsport` database |
+| `npm test` | Run the API test suite (needs MongoDB on localhost:27017) |
+| `npm run data:build` | Re-download and rebuild the season file (see section 4) |
 
-Useful commands to show live in `mongosh` during a demo:
+Useful things to type in `mongosh` during a demo:
 
 ```js
-db.drivers.find()
-db.laps.find().limit(2)
+db.laps.countDocuments()                                   // 26657
+db.laps.find({ round: 16 }).limit(2)                        // Monza laps
 db.laps.getIndexes()
 db.getCollectionInfos({ name: "laps" })[0].options.validator
-db.laps.insertOne({ circuit: "Monza" })      // -> MongoServerError: Document failed validation
-db.laps.find({ $text: { $search: "monza" } })
+db.laps.insertOne({ circuit: "Monza" })                     // -> Document failed validation
+db.laps.find({ $text: { $search: "silverstone" } }).count()
+db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 ```
 
 ### Troubleshooting
 
-- **"port is already allocated" for 27017**: you already have a MongoDB running locally. Stop it, or just use Option C with that one. Alternatively, change `"27017:27017"` to `"27018:27017"` in `docker-compose.yml`. The app container doesn't use that host port.
-- **Port 3000 in use:** change `"3000:3000"` to e.g. `"8080:3000"` in `docker-compose.yml` and open http://localhost:8080 (or run `PORT=8080 npm start` for options B and C).
+- **"port is already allocated" for 27017:** another MongoDB is already running. Stop it, or change `"27017:27017"` to `"27018:27017"` in `docker-compose.yml`.
+- **Port 3000 in use:** change `"3000:3000"` to e.g. `"8080:3000"` in `docker-compose.yml` and open http://localhost:8080 (or `PORT=8080 npm start` for Options B and C).
 - **"Cannot connect to the Docker daemon":** start Docker Desktop and wait until it says it's running.
 - **The server keeps printing "MongoDB not reachable yet":** MongoDB isn't running. Start it (see above). The server retries for about 2.5 minutes before giving up.
-- Apple Silicon and Intel Macs, Windows and Linux are all supported. The images are multi-architecture.
+- **The page says the web app hasn't been built:** you ran `node server.js` directly. Run `npm start` (or `npm run build` once) instead.
 
 ---
 
-## Data model
+## 2. The website
 
-**`drivers`**: `{ _id, name, team, number }`
+| Page | What's on it |
+|---|---|
+| **Season** (`/`) | Hero, the title fight (points chart that draws itself as you scroll), the 24-race calendar (slides sideways as you scroll), final driver and constructor standings, and a season-wide speed trap. |
+| **Race** (`/race/16`) | The circuit drawn from the car's real GPS trace, coloured by speed, with a car lapping it at the real pace of that race's fastest lap. Podium, race story (every position change, lap by lap), full classification, fastest-lap leaderboard and a speed trap for that race. |
+| **Driver** (`/driver/lando-norris`) | Championship stats, the season at a glance (result in every round), and a lap explorer: every lap of any race with its tyre, pit stops and telemetry. |
+| **Head to head** (`/compare`) | Two drivers compared race by race on average racing-lap pace, plus who finished ahead each weekend. |
+| **Data lab** (`/lab`) | The database side: a lap editor (CRUD), the standings pipeline, indexes with `explain()`, schema validation and the document model. |
+| **Search** (press `/` or ⌘K) | Full-text search for a circuit, race or country (e.g. *monza*, *italy*, *marina bay*), plus drivers by name. |
+
+Every feature has a **MongoDB query** drop-down that shows the exact query it ran, which is useful while presenting.
+
+### Where each of the 10 functionalities lives
+
+| # | Functionality | Where on the site | MongoDB feature shown |
+|---|---|---|---|
+| NoSQL 1 | CRUD operations | Data lab → Lap editor | `insertOne`, `aggregate` + `$lookup` (read), `replaceOne`, `deleteOne` |
+| NoSQL 2 | Aggregation pipeline | Season → standings; Data lab → Standings pipeline | `$unwind`, `$group` (`$sum`, `$avg`, `$min`), `$lookup`, `$sort` |
+| NoSQL 3 | Indexing | Data lab → Indexes | `getIndexes()`, compound + text index, `explain("executionStats")` vs a forced `COLLSCAN` |
+| NoSQL 4 | Schema validation | Data lab → Schema validation (and any bad write in the lap editor) | `$jsonSchema` validator, error code 121 |
+| NoSQL 5 | Embedded documents & referencing | Data lab → Document model | embedded `telemetry`, embedded race `results`, `driverId` / `raceId` references |
+| User 1 | All laps for a driver | Driver page → Lap explorer | `find({ driverId, round })` on the compound index |
+| User 2 | Head-to-head average lap time | Head to head | two-stage `$group` + `$lookup`, plus `$filter` on embedded results |
+| User 3 | Fastest lap leaderboard | Race page → Fastest laps | `$sort` + `$group` with `$first: "$$ROOT"` |
+| User 4 | Laps above a speed threshold | Season and race pages → Speed trap | dot notation `{ "telemetry.speed": { $gt: N } }` |
+| User 5 | Search by circuit | Search box (`/`) | `$text` search on the text index + `textScore` |
+
+---
+
+## 3. How it works
+
+### Data model
+
+Three collections in the `motorsport` database.
+
+**`drivers`** (21 documents)
 
 ```js
-{ _id: ObjectId("..."), name: "Max Verstappen", team: "Red Bull", number: 1 }
+{ _id: ObjectId("..."), key: "lando-norris", code: "NOR", name: "Lando Norris",
+  firstName: "Lando", lastName: "Norris", number: 4, team: "McLaren", teamColor: "#F47600",
+  nationality: "British", countryCode: "GB", dateOfBirth: "1999-11-13" }
 ```
 
-**`laps`**: validated by `$jsonSchema`. Required: `driverId`, `lapNumber`, `lapTime`, `telemetry`.
+**`races`** (24 documents). Each race embeds its classification (and sprint classification) as arrays of sub-documents, plus the circuit trace used for the maps.
+
+```js
+{ _id: ObjectId("..."), round: 16, name: "Italian Grand Prix", circuit: "Monza",
+  circuitFullName: "Autodromo Nazionale Monza", country: "Italy", date: "2025-09-07", laps: 53,
+  results: [ { position: 1, driverId: ObjectId("..."), team: "Red Bull Racing", grid: 1, points: 25, ... }, ... ],
+  sprint: null,
+  track: { x: [...], y: [...], speed: [...], lap: { code: "NOR", lapNumber: 53, lapTime: 80.901 } },
+  corners: [ { number: 1, x: ..., y: ... }, ... ] }
+```
+
+**`laps`** (26,657 documents), validated by `$jsonSchema`. Required: `driverId`, `raceId`, `round`, `lapNumber`, `lapTime`, `telemetry`.
 
 ```js
 {
   _id: ObjectId("..."),
   driverId: ObjectId("..."),   // reference -> drivers._id
-  lapNumber: 2,                // int >= 1
-  lapTime: 80.987,             // seconds (displayed as 1:20.987)
-  circuit: "Monza",
-  telemetry: {                 // embedded sub-document
-    speed: 351.6,              // top speed, km/h
-    rpm: 11950,                // peak engine RPM
-    throttle: 82.1,            // average throttle application, %
-    brake: 10.8                // % of the lap spent braking
+  raceId: ObjectId("..."),     // reference -> races._id
+  round: 16, race: "Italian Grand Prix", circuit: "Monza", country: "Italy",
+  lapNumber: 53, lapTime: 80.901, position: 2,
+  compound: "HARD", stint: 2, tyreLife: 29, pitIn: false, pitOut: false, deleted: false,
+  sectors: { s1: 26.6, s2: 27.1, s3: 27.2 },   // embedded
+  telemetry: {                 // embedded sub-document, summarised from the car data of that lap
+    speed: 336.0,              // top speed, km/h
+    avgSpeed: 257.8,           // average speed, km/h
+    rpm: 11912,                // peak engine RPM
+    throttle: 81.3,            // % of the lap at full/partial throttle (time-weighted average)
+    brake: 10.9,               // % of the lap on the brakes
+    drs: 21.4,                 // % of the lap with DRS open
+    gear: 8,                   // highest gear
+    speedTrap: 331             // speed at the official speed trap
   }
 }
 ```
 
-**Indexes on `laps`:** `{ _id: 1 }` (default), `{ driverId: 1, lapNumber: 1 }` (compound), `{ circuit: "text" }` (text).
+**Indexes on `laps`:** `_id` (default), `{ driverId: 1, round: 1, lapNumber: 1 }` (compound: one driver's laps, optionally in one race), `{ round: 1, lapTime: 1 }` (a race's laps, fastest first) and a text index on `race`, `circuit` and `country` (weighted 2 / 3 / 1). `races.round` and `drivers.key` have unique indexes.
 
-**Seed data** (inserted only if the collections are empty): Max Verstappen / Red Bull / 1, Charles Leclerc / Ferrari / 16, Lando Norris / McLaren / 4, plus 8 laps across Monza and Silverstone with realistic telemetry. Monza is a low-downforce circuit with ~350 km/h top speeds and ~1:21 laps; Silverstone has ~320 km/h and ~1:28 laps.
+### The 10 functionalities in detail
 
----
+**NoSQL 1: CRUD.** The Data lab's lap editor builds a lap document (including the embedded `telemetry` object) and stores it with `insertOne()`. The table below it reads laps with an aggregation that filters by race and driver, pages with `$skip`/`$limit`, and `$lookup`s each lap's driver. *Edit* loads a row into the form and saving calls `replaceOne({ _id })`; *Delete* calls `deleteOne({ _id })`. The app doesn't validate fields itself, so leaving a required field blank lets you see MongoDB's validator reject the write. MongoDB has no foreign keys, so the app checks that the chosen driver exists and fills in `raceId` from the chosen round. After any write, every page re-reads MongoDB, so standings, charts and leaderboards update straight away.
 
-## 2. The 10 functionalities (for the report)
+**NoSQL 2: Aggregation pipeline.** The championship standings are computed inside MongoDB from the results embedded in each race. `$project` merges each race's `results` and `sprint` arrays, `$unwind` turns them into one document per result, `$group` by `driverId` computes `$sum` of points, wins and podiums, `$avg` finishing position and `$min` (best) finish, `$lookup` joins the driver, and `$sort` orders by points. The result matches the official 2025 table (Norris 423, Verstappen 421, Piastri 410). The same idea powers the constructors table and the points-by-round chart.
 
-### NoSQL Functionality 1: CRUD Operations
-This section shows all four basic operations on the `laps` collection. **Create:** the form builds a lap document, including the nested `telemetry` object, and the server stores it with `insertOne()`. **Read:** the laps table is loaded with an aggregation that `$lookup`s each lap's driver so names can be displayed. **Update:** clicking *Edit* loads a row into the form, and saving calls `replaceOne({ _id })`. **Delete:** each row's *Delete* button calls `deleteOne({ _id })`. The app does no field validation of its own, so leaving a required field blank lets you see MongoDB's validator reject the write. MongoDB has no foreign keys, so the app checks that the chosen `driverId` exists before inserting. That is the usual application-level approach to referential integrity in a document database. After each change, the table and any other sections you have already run refresh automatically.
+**NoSQL 3: Indexing.** Shows `db.laps.getIndexes()` with a card per index, then runs the same query, `find({ driverId, round })`, twice with `explain("executionStats")`: once normally (MongoDB picks an `IXSCAN` on `driverId_1_round_1_lapNumber_1` and reads only the ~50 matching documents) and once forced to a full collection scan with `hint({ $natural: 1 })` (it reads all 26,657). The bars make the difference obvious.
 
-### NoSQL Functionality 2: Aggregation Pipeline
-The button *"Show avg + fastest lap per driver"* runs a multi-stage pipeline on the server. `$group` groups laps by `driverId` and computes `$avg: "$lapTime"` (average lap), `$min: "$lapTime"` (fastest lap) and `$sum: 1` (lap count). `$lookup` joins to the `drivers` collection to get each driver's name, team and number, and `$unwind` flattens the joined array. `$project` shapes and rounds the output, and `$sort` orders drivers by average lap time. All of the work happens inside MongoDB, and only three summary documents come back. This is MongoDB's equivalent of SQL's `GROUP BY` with `AVG()`/`MIN()` and a `JOIN`. The dashboard shows each driver's gap to the best average as a bar.
+**NoSQL 4: Schema validation.** The `laps` collection has a `$jsonSchema` validator (`validationLevel: "strict"`, `validationAction: "error"`). The button tries `insertOne({ circuit: "Monza", lapNumber: "three" })`. MongoDB rejects it with `Document failed validation` (code `121`), and the page shows the full `errInfo` (missing `driverId`, `raceId`, `round`, `lapTime`, `telemetry`, and `lapNumber` has the wrong type) next to a readable summary and the validator itself.
 
-### NoSQL Functionality 3: Indexing
-This section displays the raw output of `db.laps.getIndexes()`, along with a card explaining each index. `_id_` is created automatically and is unique. `driverId_1_lapNumber_1` is a **compound index**: entries are sorted by driver and then by lap number, so it serves queries on `driverId` alone (its prefix) or on `driverId` + `lapNumber`. `circuit_text` is a **text index**: it tokenises and stems the `circuit` string for full-text search. The section also runs `explain()` on a `find({ driverId, lapNumber })` query. The winning plan is `FETCH ← IXSCAN (driverId_1_lapNumber_1)`, which shows MongoDB is using the index instead of a full collection scan (`COLLSCAN`).
+**NoSQL 5: Embedded documents & referencing.** Shows a random lap as raw JSON next to the documents it references. `telemetry` and `sectors` are **embedded**: they belong to exactly one lap and come back in the same read. `driverId` and `raceId` are **references**: a driver is stored once and referenced by over a thousand laps (one-to-many), joined with `$lookup` when needed. Races show a third pattern: their classification is an embedded **array** of sub-documents, which the standings pipeline unwinds.
 
-### NoSQL Functionality 4: Schema Validation
-MongoDB is schema-flexible by default, but a collection can enforce a schema. The `laps` collection is created with a `$jsonSchema` validator (`validationLevel: "strict"`, `validationAction: "error"`). The validator requires `driverId` (ObjectId), `lapNumber` (int ≥ 1), `lapTime` (number ≥ 0) and `telemetry` (an object that itself requires `speed`, `rpm`, `throttle` and `brake`, each with ranges). The button *"Try inserting an invalid lap"* attempts `insertOne({ circuit: "Monza", lapNumber: "three" })`. MongoDB rejects it with `MongoServerError: Document failed validation` (code `121`, `DocumentValidationFailure`). The dashboard shows the full `errInfo`, which explains that `driverId`, `lapTime` and `telemetry` are missing and that `lapNumber` has the wrong type, alongside a readable summary and the validator itself.
+**User 1: All laps for a driver.** On a driver's page, pick a race to run `db.laps.find({ driverId, round }).sort({ round: 1, lapNumber: 1 })`. It's served by the compound index. The page plots every lap coloured by tyre, marks pit laps, and lists each lap's telemetry.
 
-### NoSQL Functionality 5: Embedded Documents & Referencing
-This section displays one random lap document as raw JSON, with two modelling techniques highlighted. The green **`telemetry`** object is an **embedded sub-document**: it belongs to exactly one lap, so it is stored inside the lap and comes back in the same read, with no join. The purple **`driverId`** is a **reference**: it holds the `_id` of a document in the `drivers` collection, and that referenced driver is shown alongside it. A driver has many laps (one-to-many), so storing the driver once and referencing it avoids duplicating driver data in every lap. The trade-off is that reading the driver needs a second query or a `$lookup`. Embedding suits data that is always read together and owned by its parent. Referencing suits shared entities.
+**User 2: Head to head.** Pick two drivers. `$match` keeps both drivers' racing laps (no lap 1, no pit laps), a first `$group` averages lap time per driver *per race*, a second `$group` rolls those up with a `$push`ed per-race breakdown, and `$lookup` adds the driver. A second pipeline on `races` uses `$filter` on the embedded results to find who finished ahead each weekend. Comparing race by race matters because a Monza lap (1:21) and a Monaco lap (1:13) can't be averaged together fairly.
 
-### User Functionality 1: All laps for a driver
-A dropdown lists every driver from the `drivers` collection. Selecting one runs `db.laps.find({ driverId: ObjectId(...) }).sort({ circuit: 1, lapNumber: 1 })` and shows all of that driver's laps, with lap times, top speed, RPM, and throttle/brake bars, plus their personal best. `driverId` is the leading field of the compound index, so MongoDB answers this query with an index scan. This is the typical "one-to-many via reference" lookup.
+**User 3: Fastest lap leaderboard.** On a race page: `$match` the round, `$sort` every lap by time, then `$group` with `$first: "$$ROOT"` keeps each driver's whole fastest lap document (not just the time, as `$min` would), so the table can show the lap number, tyre and top speed too.
 
-### User Functionality 2: Head-to-head average lap time
-Two dropdowns pick Driver A and Driver B, and *Compare* runs an aggregation. `$match` keeps only the two drivers' laps (`$in`). A first `$group` averages lap time per driver *per circuit*. A second `$group` rolls those up into a weighted overall average per driver, with a per-circuit breakdown (`$push`). Then `$lookup` adds the driver details. The result is shown as two side-by-side cards with each driver's average and who is faster by how much, plus a like-for-like per-circuit table. The per-circuit table matters because Silverstone laps are about 7 seconds longer than Monza laps, so the overall average depends on which circuits a driver has laps at.
+**User 4: Laps above a speed threshold.** The speed trap slider runs `db.laps.find({ "telemetry.speed": { $gt: N } }).sort({ "telemetry.speed": -1 })`, season-wide on the home page and per race on each race page. Dot notation filters on a field inside the embedded sub-document.
 
-### User Functionality 3: Fastest lap leaderboard
-The button *"Show fastest lap per driver"* sorts every lap by `lapTime` ascending, then uses `$group` with `$first: "$$ROOT"` to keep each driver's single fastest **whole lap document**. Unlike Functionality 2's `$min`, which returns only the time, this keeps the circuit, lap number and telemetry of that lap. After a `$lookup` for driver names and a final `$sort`, it shows a race-style leaderboard (P1, P2, P3) with the gap to the leader drawn as a bar. Inserting a faster lap in the CRUD section updates the leaderboard immediately.
-
-### User Functionality 4: Laps above a speed threshold
-Enter a speed (default 340 km/h) to find every lap whose top speed exceeded it: `db.laps.find({ "telemetry.speed": { $gt: N } }).sort({ "telemetry.speed": -1 })`. This shows **dot notation**, which lets a query filter directly on a field inside an embedded sub-document, together with a comparison operator (`$gt`). With the seed data, 340 returns all 4 Monza laps, 350 returns the fastest 2, and 300 returns all 8 laps.
-
-### User Functionality 5: Search laps by circuit
-The search box runs a **full-text search** using the `circuit` text index: `db.laps.find({ $text: { $search: "<query>" } })`, sorted by `{ $meta: "textScore" }` relevance. The results table shows the score. Text search is case-insensitive, matches whole words with English stemming, and treats several words as OR. For example, `monza` returns the 4 Monza laps and `monza silverstone` returns all 8. `$text` requires a text index and fails without one, so this section depends on the index created in Functionality 3.
+**User 5: Search.** The search box runs a `$text` search on the text index over `race`, `circuit` and `country`, groups the matching laps by race and sorts by `textScore`. *monza* finds the Italian GP, *italy* finds Imola and Monza, *monza silverstone* finds both. Text search is case-insensitive and uses English stemming. Drivers are matched by name on the page itself.
 
 ---
 
-## 3. What was tested and verified
+## 4. Where the data comes from
 
-Everything below was run for real in a Linux sandbox before delivery. The results were checked against a real MongoDB 7 (`mongo:7` image), not mocks.
+All of it is real and free to reuse:
 
-**Startup and data**
-- `docker compose up` started `motorsport-mongo`, which passed its health check, then `motorsport-app`. App logs confirmed: *Created "laps" collection with $jsonSchema validator → Ensured indexes → Inserted 3 drivers → Inserted 8 laps → running at http://localhost:3000*.
-- Checked directly in `mongosh` inside the container: 3 drivers and 8 laps; indexes `_id_`, `driverId_1_lapNumber_1`, `circuit_text`; the validator's `required` list is `[driverId, lapNumber, lapTime, telemetry]`; `db.laps.insertOne({circuit:"Monza"})` was rejected with code 121; `$text` search for "monza" returned 4.
-- **Persistence and idempotent startup:** after inserting a lap and running `docker compose down` then `up`, the lap was still there (9 laps), drivers were **not** re-seeded (still 3), and the validator was re-applied with `collMod`.
-- **Option B path** (MongoDB in Docker, `npm start` on the host) was tested and passed the same browser test suite.
-- With MongoDB unreachable, the server retries with a clear "Is MongoDB running?" hint instead of crashing.
+- **Race results, points, calendar, circuits and drivers:** [F1DB](https://github.com/f1db/f1db) (CC BY 4.0).
+- **Every lap and its telemetry:** the [TracingInsights 2025 archive](https://github.com/TracingInsights/2025) (Apache-2.0), which is built from the official F1 live-timing feed via [FastF1](https://github.com/theOehrly/Fast-F1). For each lap the raw car data (several hundred samples) is summarised into top speed, peak RPM, throttle, braking and DRS figures.
+- **Circuit maps:** the car's own X/Y position trace on each race's fastest lap, so every map is exactly the line the car drove.
 
-**Automated API tests: `npm test` (12/12 passing).** The suite starts the real server against a throwaway `motorsport_test` database and checks:
-seed contents · CRUD insert/update/delete, a validator rejection (121) and an unknown-driver rejection · aggregation values (e.g. Verstappen avg = 83.580, fastest = 80.987) and sort order · all three indexes plus `explain()` using `driverId_1_lapNumber_1` · the invalid insert returning code 121 with `missingProperties = [driverId, lapTime, telemetry]` and nothing stored · embedded telemetry keys and `driverId === drivers._id` · per-driver laps (Norris = 3) · head-to-head averages · leaderboard order (VER 80.987, LEC 81.203, NOR 81.588) · speed threshold (>350 → 2 laps, >0 → 8, non-numeric → 400) · text search (monza 4, Silverstone 4, "monza silverstone" 8, monaco 0) · reset re-seeding.
+The ready-made file `data/season-2025.json.gz` (about 1 MB) is in the repo, so you don't need to download anything. To rebuild it yourself (Python 3.9+ and `pip install pyyaml`; it downloads about 4 GB of telemetry and takes 15-45 minutes):
 
-**Browser end-to-end test (Playwright + Chromium, 37 checks, all passing)** against the Docker stack, clicking through the real UI:
-- The header shows "MongoDB connected"; all ten "NoSQL Functionality N" / "User Functionality N" labels are present.
-- N1: the table shows the 8 seeded laps; inserting a lap via the form adds a 9th row; submitting with blank fields shows MongoDB's "Document failed validation" naming `lapTime`; Edit → Update changes the time; Delete removes the row, and the already-open leaderboard refreshes automatically.
-- N2: all 3 drivers are shown, and the fastest-lap value reflects the lap just edited.
-- N3: all 3 indexes are shown, and the explain plan shows IXSCAN.
-- N4: code 121 and the list of missing fields are shown.
-- N5: telemetry is highlighted as embedded, `driverId` and `drivers._id` are highlighted as the reference, and ObjectIds are rendered.
-- U1: Verstappen → 3 laps. U2: verdict plus Monza/Silverstone breakdown. U3: the newly inserted 1:20.444 lap takes P1. U4: >350 km/h → 3 laps (including the inserted one). U5: "silverstone" → 4 laps.
-- *Reset demo data* restores 8 laps; no JavaScript console errors; no horizontal scrolling on a 390 px-wide phone screen in dark mode.
+```bash
+npm run data:build
+```
 
-**Two notes on how the sandbox differed from your laptop** (neither affects you):
-1. Docker Hub rate-limited the sandbox (HTTP 429), so the official `mongo:7` and `node:22-alpine` images were pulled from Google's Docker Hub mirror (`mirror.gcr.io`, the same images) and tagged locally.
-2. The sandbox routes HTTPS through an inspecting proxy, so the `npm ci` step inside the Docker build needed that proxy's CA certificate. The app image was built with a sandbox-only copy of this `Dockerfile` that added the certificate, then started with `docker compose up`. On a normal laptop the plain `Dockerfile` in this repo builds as-is.
+### Hero photo
+
+The home page hero is designed around a podium photo. Put a free-licensed photo at `web/public/img/podium.jpg` (Wikimedia Commons has real F1 podium champagne photos you can reuse: search [Formula 1 podium champagne](https://commons.wikimedia.org/w/index.php?search=Formula+1+podium+champagne&title=Special:MediaSearch&type=image)), then fill in the author, licence and link in `web/src/content.js`. The credit line appears on the photo and in the footer. Until a photo is there, the hero shows the Abu Dhabi circuit instead.
+
+---
+
+## 5. Tests
+
+`npm test` (12 tests) starts the real server against a throwaway `motorsport_test` database, loads the full season and checks: the season loaded (24 races, 21 drivers, 26,657 laps) · CRUD insert / update / delete plus a validator rejection (121) and an unknown-driver rejection · standings (Norris 423, Verstappen 421, Piastri 410) and sort order · indexes, and that `explain()` uses the compound index and examines only the matching documents while a forced scan examines all of them · the invalid insert's missing fields · embedded telemetry and both references · a driver's laps for the season and for one race · head to head · the Monza fastest-lap leaderboard · the speed threshold · text search (monza, italy, monza silverstone, no match) · reset.
 
 ---
 
@@ -206,14 +247,24 @@ seed contents · CRUD insert/update/delete, a validator rejection (121) and an u
 ```
 motorsport-viz/
 ├── docker-compose.yml   # mongo:7 (with healthcheck + volume) and the app
-├── Dockerfile           # node:22-alpine image for the Express app
-├── package.json         # npm start / npm test / helper scripts
-├── server.js            # Express API: one endpoint group per functionality
-├── db.js                # connection + retry, $jsonSchema validator, indexes, seed data
-├── public/
-│   ├── index.html       # single-page dashboard (10 labelled sections)
-│   ├── style.css        # styling, light + dark mode, responsive
-│   └── app.js           # frontend logic (plain JS, fetch API)
+├── Dockerfile           # builds the website, then runs the Express server
+├── package.json         # npm start / dev / test / data:build
+├── server.js            # Express API (one endpoint group per functionality) + serves the website
+├── db.js                # connection + retry, $jsonSchema validator, indexes, loads the season
+├── data/
+│   └── season-2025.json.gz   # the 2025 season (results, circuits, 26,657 laps with telemetry)
+├── scripts/
+│   └── build_season.py  # rebuilds the season file from F1DB + TracingInsights
+├── vite.config.mjs      # builds web/ into dist/
+├── web/
+│   ├── index.html
+│   ├── public/          # favicon, img/ (hero photo goes here)
+│   └── src/
+│       ├── App.jsx      # routes, smooth scrolling, page transitions
+│       ├── pages/       # Home, Race, Driver, Compare, Lab
+│       ├── components/  # TrackMap, TitleFight, Calendar, RaceTrace, Leaderboard, SearchPalette, ...
+│       ├── lib/         # API client, router, formatting, circuit geometry
+│       └── styles.css
 └── test/
     └── api.test.js      # end-to-end API tests (node:test)
 ```
@@ -222,14 +273,17 @@ motorsport-viz/
 
 | Method & path | Used by |
 |---|---|
-| `GET /api/health`, `GET /api/drivers`, `POST /api/reset` | header / dropdowns / reset button |
-| `GET /api/laps`, `POST /api/laps`, `PUT /api/laps/:id`, `DELETE /api/laps/:id` | NoSQL 1 (CRUD) |
-| `GET /api/nosql/aggregation` | NoSQL 2 |
+| `GET /api/health`, `GET /api/drivers`, `GET /api/races`, `GET /api/races/:round`, `POST /api/reset` | every page / Data lab reset |
+| `GET /api/races/:round/laps` | race story chart |
+| `GET /api/laps?round=&driverId=&page=&limit=`, `POST /api/laps`, `PUT /api/laps/:id`, `DELETE /api/laps/:id` | NoSQL 1 (CRUD) |
+| `GET /api/nosql/aggregation`, `GET /api/season/progression`, `GET /api/season/constructors` | NoSQL 2 (standings, title chart, constructors) |
 | `GET /api/nosql/indexes` | NoSQL 3 |
 | `POST /api/nosql/invalid-insert` | NoSQL 4 |
 | `GET /api/nosql/embedded` | NoSQL 5 |
-| `GET /api/user/driver-laps/:driverId` | User 1 |
+| `GET /api/user/driver-laps/:driverId?round=`, `GET /api/drivers/:id/season` | User 1, driver page |
 | `GET /api/user/compare?a=&b=` | User 2 |
-| `GET /api/user/leaderboard` | User 3 |
-| `GET /api/user/speed?min=` | User 4 |
+| `GET /api/user/leaderboard?round=` | User 3 |
+| `GET /api/user/speed?min=&round=` | User 4 |
 | `GET /api/user/search?q=` | User 5 |
+
+*Unofficial fan project. Not associated with Formula 1 or the FIA. F1 and related marks are trademarks of Formula One Licensing B.V.*
