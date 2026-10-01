@@ -12,7 +12,7 @@ export default function Home() {
     <>
       <Hero />
       {ready && (
-        <>
+        <div className="after-stage">
           <TitleFight />
           <Calendar />
           <Standings />
@@ -25,7 +25,7 @@ export default function Home() {
               <Link to="/compare" className="btn btn-primary">Compare drivers</Link>
             </div>
           </section>
-        </>
+        </div>
       )}
     </>
   );
