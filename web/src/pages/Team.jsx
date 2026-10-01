@@ -3,10 +3,9 @@ import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
 import { Link } from '../lib/router.jsx';
 import { ordinal } from '../lib/format.js';
-import { teamKey, teamPath } from '../lib/teams.js';
-import { teamStyle } from '../lib/teamStyle.js';
+import { teamInfo, teamKey, teamPath } from '../lib/teams.js';
 import Band from '../components/Band.jsx';
-import Car3D from '../components/Car3D.jsx';
+import CarShowcase from '../components/CarShowcase.jsx';
 import Helmet from '../components/Helmet.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import Query from '../components/Query.jsx';
@@ -44,14 +43,14 @@ export default function Team({ teamKey: key }) {
 
   const lead = summary.drivers.map((d) => driverById.get(d.driverId)).find(Boolean);
   const color = lead?.teamColor || standings.find((s) => s.team === team._id)?.teamColor || '#888888';
-  const style = teamStyle(key);
+  const info = teamInfo(team._id, color);
   const words = team._id.split(' ');
   const maxPts = Math.max(1, ...rounds.map((r) => r.points));
 
   return (
     <article className="page band-page team-page" style={{ '--team': color }}>
       <Band className="team-band">
-        <p className="band-meta">Constructor · {ordinal(idx + 1)} in 2025</p>
+        <p className="band-meta">Constructor · {ordinal(idx + 1)} in 2025{info.base && ` · ${info.base}`}{info.engine && ` · ${info.engine} power unit`}</p>
         <h1 className="display-xl team-title">
           {words.length > 1 ? <><span className="driver-first">{words.slice(0, -1).join(' ')}</span><br />{words.at(-1)}</> : team._id}
         </h1>
@@ -62,7 +61,7 @@ export default function Team({ teamKey: key }) {
           <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '—'}</dd></div>
           <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '—'}</dd></div>
         </dl>
-        <Car3D body={color} accent={style.accent} trim={style.trim} label={`${team._id} car, drawn in 3D`} />
+        <CarShowcase teamKey={key} name={team._id} info={info} />
         <span className="band-team" aria-hidden="true" />
       </Band>
 
