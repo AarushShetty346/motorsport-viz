@@ -819,6 +819,15 @@ pre.json.tall { max-height: 460px; }
 .portrait.lens-on:not(.lens-full)::after { opacity: 1; }
 .portrait-hint { position: absolute; left: 0; bottom: 12px; display: flex; flex-direction: column; gap: 2px; font: 500 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; background: var(--flag); padding: 4px 6px; }
 .portrait-credit { text-transform: none; letter-spacing: 0; color: var(--ink-2); }
+.portrait-layer img.portrait-helmet-photo {
+  position: absolute; left: var(--hx); top: var(--hy); width: calc(var(--hw) * 1.12); height: auto; aspect-ratio: 1;
+  transform: translate(-50%, -54%); object-fit: cover; border-radius: 50%;
+  filter: none; mix-blend-mode: normal; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+.helmet-switch { position: absolute; top: 12px; right: 0; z-index: 2; display: flex; border: 1.5px solid var(--flag-ink); background: var(--flag); cursor: default; }
+.helmet-switch button { padding: 5px 10px; font: 600 11px var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--flag-ink); background: transparent; border: 0; cursor: pointer; }
+.helmet-switch button[aria-pressed='true'] { background: var(--flag-ink); color: var(--flag); }
+.helmet-switch button:disabled { opacity: 0.4; cursor: not-allowed; }
 @media (max-width: 1000px) {
   .driver-hero { grid-template-columns: minmax(0, 1fr); }
   .driver-hero-copy .driver-stats { grid-template-columns: repeat(3, auto); }

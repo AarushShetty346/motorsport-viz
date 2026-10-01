@@ -245,6 +245,8 @@ npm run photos:fetch
 
 It writes `web/public/img/drivers/credits.json` with each photo's author, licence and source link, and the credit is shown under the photo. The `head` box in that file (`x`, `y`, `w` as percentages of the photo) is where the helmet appears on hover; nudge it if a helmet sits off someone's face. Drivers without a photo get a silhouette, and the helmets are drawn by the site in team colours, so they need no licence.
 
+The same command also looks on Commons for a reusable photo of each driver's real helmet and saves it to `web/public/img/drivers/helmets/`. A **Drawn / Real** switch on the driver portrait flips between the drawn helmet and that photo (with its credit); the choice is remembered across driver pages, and **Real** stays greyed out for drivers with no helmet photo yet.
+
 ---
 
 ## 5. Tests
