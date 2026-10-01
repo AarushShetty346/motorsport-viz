@@ -5,3 +5,4 @@ npm-debug.log
 test
 scripts
 *.md
+.env

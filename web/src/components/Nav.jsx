@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useRouter } from '../lib/router.jsx';
 import { useSeason } from '../lib/season.jsx';
+import Account from './Account.jsx';
 
 const LINKS = [
   { to: '/', label: 'Season', match: (p) => p === '/' },
@@ -46,6 +47,7 @@ export default function Nav({ onSearch }) {
             className={`db-dot ${healthError ? 'bad' : health ? 'ok' : ''}`}
             title={healthError ? 'MongoDB unreachable' : health ? `MongoDB connected · ${health.db} · ${health.counts.laps.toLocaleString('en-GB')} laps` : 'Connecting to MongoDB'}
           />
+          <Account />
           <button type="button" className="menu-btn" aria-expanded={menu} aria-label="Menu" onClick={() => setMenu((m) => !m)}>
             <span /><span />
           </button>

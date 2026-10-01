@@ -12,7 +12,7 @@ FROM node:22-alpine
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
-COPY db.js server.js ./
+COPY auth.js db.js server.js ./
 COPY data ./data
 COPY --from=web /app/dist ./dist
 ENV PORT=3000

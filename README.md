@@ -109,6 +109,40 @@ db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 - **The server keeps printing "MongoDB not reachable yet":** MongoDB isn't running. Start it (see above). The server retries for about 2.5 minutes before giving up.
 - **The page says the web app hasn't been built:** you ran `node server.js` directly. Run `npm start` (or `npm run build` once) instead.
 
+### Sign in with Google (optional)
+
+The site has a **Sign in** button (top right) that lets people log in with their Google / Gmail account. Everything works without signing in; signing in just shows your name and photo in the corner. The button only appears once you've given the app a Google "client ID" and "client secret". Getting them is free and takes about five minutes:
+
+1. Go to **https://console.cloud.google.com** and sign in with your Google account.
+2. At the top, click the project picker, then **New project**. Call it `Lap by Lap` and click **Create**. Make sure the new project is selected.
+3. In the left menu open **APIs & Services → OAuth consent screen** (newer consoles call it **Google Auth Platform → Branding**). Click **Get started**, fill in:
+   - **App name:** `Lap by Lap`
+   - **User support email:** your Gmail address
+   - **Audience:** *External*
+   - **Contact email:** your Gmail address
+
+   then click **Create**.
+4. Open **Audience** (or **Test users** on older consoles) and click **Add users**. Add every Gmail address that should be able to sign in while the app is in "Testing" mode (yours, plus anyone you'll demo with).
+5. Open **Clients** (or **APIs & Services → Credentials → Create credentials → OAuth client ID**) and click **Create client**:
+   - **Application type:** *Web application*
+   - **Name:** `Lap by Lap local`
+   - **Authorised JavaScript origins:** `http://localhost:3000`
+   - **Authorised redirect URIs:** `http://localhost:3000/api/auth/google/callback`
+
+   Click **Create**. Google shows a **Client ID** and a **Client secret**. Copy both.
+6. In the project folder, copy the example settings file and paste your two values into it:
+   ```bash
+   cp .env.example .env
+   ```
+   (Windows: `copy .env.example .env`.) Open `.env` in any text editor and replace `your-client-id...` and `your-client-secret` with the values from step 5.
+7. Restart the app (`Ctrl+C`, then `docker compose up --build`, or `npm start`). The terminal now prints `Google sign-in is on`, and a **Sign in** button appears in the top bar.
+
+Things to know:
+
+- `.env` holds a secret, so it is in `.gitignore` and never gets committed. Each laptop that runs the app needs its own `.env`.
+- If you open the app at a different address (another port, or a hosted URL), set `PUBLIC_URL` in `.env` to that address and add `<that address>/api/auth/google/callback` as another redirect URI in step 5. Google's error **"redirect_uri_mismatch"** means these two don't match.
+- Signed-in people are stored in MongoDB too: a `users` collection (one document per Google account) and a `sessions` collection with a **TTL index** that makes MongoDB delete each session automatically after 30 days. Try `db.users.find()` in `npm run shell`.
+
 ---
 
 ## 2. The website
@@ -145,7 +179,7 @@ Every feature has a **MongoDB query** drop-down that shows the exact query it ra
 
 ### Data model
 
-Three collections in the `motorsport` database.
+Three collections in the `motorsport` database hold the season (plus `users` and `sessions` for [Sign in with Google](#sign-in-with-google-optional)).
 
 **`drivers`** (21 documents)
 
@@ -248,8 +282,10 @@ The home page hero is designed around a podium photo. Put a free-licensed photo 
 motorsport-viz/
 ├── docker-compose.yml   # mongo:7 (with healthcheck + volume) and the app
 ├── Dockerfile           # builds the website, then runs the Express server
+├── .env.example         # Google sign-in settings (copy to .env)
 ├── package.json         # npm start / dev / test / data:build
 ├── server.js            # Express API (one endpoint group per functionality) + serves the website
+├── auth.js              # Sign in with Google (OAuth) + users/sessions collections
 ├── db.js                # connection + retry, $jsonSchema validator, indexes, loads the season
 ├── data/
 │   └── season-2025.json.gz   # the 2025 season (results, circuits, 26,657 laps with telemetry)
@@ -285,5 +321,6 @@ motorsport-viz/
 | `GET /api/user/leaderboard?round=` | User 3 |
 | `GET /api/user/speed?min=&round=` | User 4 |
 | `GET /api/user/search?q=` | User 5 |
+| `GET /api/auth/me`, `GET /api/auth/google`, `GET /api/auth/google/callback`, `POST /api/auth/logout` | Sign in with Google |
 
 *Unofficial fan project. Not associated with Formula 1 or the FIA. F1 and related marks are trademarks of Formula One Licensing B.V.*
