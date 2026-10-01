@@ -82,7 +82,7 @@ for (const d of season.drivers) {
     const summary = await get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`);
     const original = summary.originalimage?.source;
     if (!original) throw new Error('article has no lead image');
-    const fileName = decodeURIComponent(original.split('/').pop());
+    const fileName = decodeURIComponent(original.split('?')[0].split('/').pop());
 
     const info = await get(
       'https://commons.wikimedia.org/w/api.php?action=query&format=json&prop=imageinfo' +
