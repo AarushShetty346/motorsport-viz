@@ -43,7 +43,7 @@ export default function Account() {
         {picture ? <img src={picture} alt="" referrerPolicy="no-referrer" /> : <span>{name.slice(0, 1).toUpperCase()}</span>}
       </button>
       {open && (
-        <div className="account-menu" role="menu">
+        <div className="account-menu tone-dark" role="menu">
           <p className="account-name">{name}</p>
           <p className="account-email">{email}</p>
           <button type="button" role="menuitem" onClick={signOut}>Sign out</button>

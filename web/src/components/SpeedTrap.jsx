@@ -7,7 +7,7 @@ import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
 
 // Laps whose top speed beat a threshold: a dot-notation query on the embedded telemetry.
-export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap', compact = false }) {
+export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap', num, compact = false }) {
   const { driverById, raceByRound } = useSeason();
   const [min, setMin] = useState(defaultMin);
   const [debounced, setDebounced] = useState(defaultMin);
@@ -21,7 +21,7 @@ export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap
     <div className="speed-trap">
       <div className="speed-head">
         <div>
-          <p className="eyebrow">{title}</p>
+          <p className="eyebrow">{num && <span className="num">{num}</span>}{title}</p>
           <p className="speed-count">
             <span className="display-md mono">{data ? fmtNum(data.total) : '—'}</span>
             <span className="muted">laps faster than <strong className="ink">{min} km/h</strong>{round ? ' in this race' : ' all season'}</span>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from 'motion/react';
 import { HERO_PHOTO } from '../content.js';
 import { useSeason } from '../lib/season.jsx';
@@ -42,25 +42,8 @@ export default function Hero() {
     tiltX.set((e.clientY / innerHeight - 0.5) * -10);
   };
 
-  // The nav switches to dark ink while it sits over the yellow stage.
-  useEffect(() => {
-    const root = document.documentElement;
-    const update = () => {
-      const r = ref.current?.getBoundingClientRect();
-      root.dataset.navTone = r && r.bottom > 64 ? 'light' : '';
-    };
-    update();
-    addEventListener('scroll', update, { passive: true });
-    addEventListener('resize', update);
-    return () => {
-      removeEventListener('scroll', update);
-      removeEventListener('resize', update);
-      delete root.dataset.navTone;
-    };
-  }, []);
-
   return (
-    <section className="stage" ref={ref} onPointerMove={onPointerMove}>
+    <section className="stage tone-light" ref={ref} onPointerMove={onPointerMove}>
       <div className="stage-sticky">
         <div className="stage-top container">
           <p className="stage-label">2025 Formula 1 World Championship</p>
