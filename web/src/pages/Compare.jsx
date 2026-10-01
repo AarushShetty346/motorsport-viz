@@ -5,6 +5,7 @@ import { useRouter } from '../lib/router.jsx';
 import { fmtLap } from '../lib/format.js';
 import DriverName from '../components/DriverName.jsx';
 import Query from '../components/Query.jsx';
+import Band from '../components/Band.jsx';
 
 export default function Compare() {
   const { standings, driverByKey, drivers, ready } = useSeason();
@@ -48,18 +49,18 @@ export default function Compare() {
   const maxDelta = Math.max(0.2, ...perRace.map((r) => Math.min(3, Math.abs(r.delta))));
 
   return (
-    <article className="page compare-page container">
-      <header className="section-head">
-        <p className="eyebrow">Head to head</p>
-        <h1 className="display-lg">Who was quicker?</h1>
+    <article className="page band-page compare-page">
+      <Band className="compare-band">
+        <p className="band-meta">Head to head · 2025 season</p>
+        <h1 className="display-xl">Who was<br />quicker?</h1>
         <p className="lede">Racing laps only: no opening lap and no pit laps. Averages are compared race by race so every gap is like for like.</p>
-      </header>
-
-      <div className="h2h-pickers">
-        {picker('a', aKey)}
-        <button type="button" className="btn btn-ghost swap" onClick={swap} aria-label="Swap drivers">⇄</button>
-        {picker('b', bKey)}
-      </div>
+        <div className="h2h-pickers">
+          {picker('a', aKey)}
+          <button type="button" className="btn btn-ghost swap" onClick={swap} aria-label="Swap drivers">⇄</button>
+          {picker('b', bKey)}
+        </div>
+      </Band>
+      <div className="container compare-body">
 
       {same && <p className="msg msg-err">Pick two different drivers.</p>}
       {error && <p className="msg msg-err">{error.message}</p>}
@@ -115,6 +116,7 @@ export default function Compare() {
           <Query text={data.query} />
         </>
       )}
+      </div>
     </article>
   );
 }

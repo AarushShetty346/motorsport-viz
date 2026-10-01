@@ -7,6 +7,7 @@ import DriverName from '../components/DriverName.jsx';
 import JsonView from '../components/JsonView.jsx';
 import Query from '../components/Query.jsx';
 import { ValidationError } from '../components/labValidation.jsx';
+import Band from '../components/Band.jsx';
 
 const SECTIONS = [
   { id: 'crud', n: '01', title: 'Lap editor', tag: 'CRUD' },
@@ -29,15 +30,15 @@ export default function Lab() {
   }, []);
 
   return (
-    <article className="page lab-page">
-      <header className="container lab-hero">
-        <p className="eyebrow">Data lab</p>
-        <h1 className="display-lg">Under the hood</h1>
+    <article className="page band-page lab-page">
+      <Band className="lab-band">
+        <p className="band-meta">Data lab · live MongoDB</p>
+        <h1 className="display-xl">Under<br />the hood</h1>
         <p className="lede">
           Everything on this site is a live MongoDB query. Here you can edit laps, watch the pipelines run, see the indexes at work and
           try to break the schema. {health && <>The <code>{health.db}</code> database holds {fmtNum(health.counts.laps)} laps, {health.counts.races} races and {health.counts.drivers} drivers.</>}
         </p>
-      </header>
+      </Band>
       <div className="container lab-layout">
         <nav className="lab-nav" aria-label="Data lab sections">
           {SECTIONS.map((s) => (

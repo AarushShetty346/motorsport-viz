@@ -17,9 +17,9 @@ export default function Home() {
           <Calendar />
           <Standings />
           <section className="section container split">
-            <SpeedTrap />
-            <div className="cta-card">
-              <p className="eyebrow">Head to head</p>
+            <SpeedTrap num="04" />
+            <div className="cta-card tone-light">
+              <p className="eyebrow"><span className="num">05</span>Head to head</p>
               <h2 className="display-md">Who was really quicker?</h2>
               <p className="lede">Pick any two drivers. MongoDB averages their racing laps race by race, so the comparison is always like for like.</p>
               <Link to="/compare" className="btn btn-primary">Compare drivers</Link>

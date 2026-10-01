@@ -6,6 +6,7 @@ import { fmtLap, fmtNum, ordinal, COMPOUND } from '../lib/format.js';
 import LapChart from '../components/LapChart.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
+import Band from '../components/Band.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
@@ -29,12 +30,13 @@ export default function Driver({ driverKey }) {
   const race = raceByRound.get(round);
 
   return (
-    <article className="page driver-page" style={{ '--team': driver.teamColor }}>
-      <header className="driver-hero container">
+    <article className="page band-page driver-page" style={{ '--team': driver.teamColor }}>
+      <Band className="driver-band">
         <span className="driver-number" aria-hidden="true">{driver.number}</span>
+        <div className="driver-hero">
         <div className="driver-hero-copy">
-          <p className="eyebrow"><Flag code={driver.countryCode} /> {driver.nationality} · {driver.team}</p>
-          <h1 className="display-xl">{driver.firstName}<br /><span className="accent-team">{driver.lastName}</span></h1>
+          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · {driver.team} · No. {driver.number}</p>
+          <h1 className="display-xl"><span className="driver-first">{driver.firstName}</span><br />{driver.lastName}</h1>
           <div className="driver-actions">
             <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare with…</Link>
           </div>
@@ -48,7 +50,9 @@ export default function Driver({ driverKey }) {
             <div><dt>Average finish</dt><dd className="display-md mono">{st.avgFinish ?? '—'}</dd></div>
           </dl>
         )}
-      </header>
+        </div>
+        <span className="band-team" aria-hidden="true" />
+      </Band>
 
       <section className="container section-tight">
         <h2 className="h-small">Season at a glance</h2>
@@ -87,7 +91,7 @@ export default function Driver({ driverKey }) {
       <section className="container section">
         <div className="section-head row">
           <div>
-            <p className="eyebrow">Lap explorer</p>
+            <p className="eyebrow"><span className="num">01</span>Lap explorer</p>
             <h2 className="display-md">{race ? race.name : 'Pick a race'}</h2>
           </div>
           <label className="select">

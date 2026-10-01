@@ -1,11 +1,14 @@
 import { Link } from '../lib/router.jsx';
+import Band from '../components/Band.jsx';
 
 export default function NotFound() {
   return (
-    <section className="page narrow center-block">
-      <p className="eyebrow">Off track</p>
-      <h1 className="display-md">This page ran wide</h1>
-      <p className="lede"><Link to="/" className="text-link">Back to the season</Link></p>
-    </section>
+    <article className="page band-page">
+      <Band className="notfound-band">
+        <p className="band-meta">404 · Off track</p>
+        <h1 className="display-xl">This page<br />ran wide.</h1>
+        <p className="lede"><Link to="/" className="btn btn-primary">Back to the season</Link></p>
+      </Band>
+    </article>
   );
 }
