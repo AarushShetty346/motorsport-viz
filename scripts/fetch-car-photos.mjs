@@ -66,7 +66,7 @@ async function findPhoto([article, search]) {
     const summary = await get(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(article)}`);
     const lead = summary.originalimage?.source;
     if (lead) {
-      const found = await fileInfo(decodeURIComponent(lead.split('/').pop()));
+      const found = await fileInfo(decodeURIComponent(lead.split('?')[0].split('/').pop()));
       if (found) return found;
     }
   } catch {
