@@ -247,6 +247,24 @@ It writes `web/public/img/drivers/credits.json` with each photo's author, licenc
 
 The same command also looks on Commons for a reusable photo of each driver's real helmet and saves it to `web/public/img/drivers/helmets/`. A **Drawn / Real** switch on the driver portrait flips between the drawn helmet and that photo (with its credit); the choice is remembered across driver pages, and **Real** stays greyed out for drivers with no helmet photo yet.
 
+### Car photos and models
+
+Each team page has an **Animated / Real car** switch. *Animated* is the 3D car the site draws in the team's colours. *Real* shows a photo or a 3D model of that team's actual 2025 car, loaded from `web/public/img/cars/`.
+
+To add real car photos:
+
+1. Run `npm run cars:fetch`. It downloads only freely licensed photos from Wikimedia Commons (CC BY, CC BY-SA, CC0 or public domain) to `web/public/img/cars/<team>.jpg`.
+2. It also writes each photo's author, licence and source link to `web/public/img/cars/credits.json`. The team page shows that credit under the photo.
+3. Open each photo and check that it really shows that team's 2025 car before you commit it.
+
+To use a 3D model instead of a photo:
+
+1. Put a `.glb` file of the car in `web/public/img/cars/`.
+2. In `credits.json`, add these to that team's entry: `"model"` (the file name), `"modelAuthor"`, `"modelLicense"` and `"modelSourceUrl"`.
+3. If the car faces the wrong way, also add `"modelRotate": 180`.
+
+Until a team has a photo or a model, the real view shows a silhouette.
+
 ---
 
 ## 5. Tests

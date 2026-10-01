@@ -13,6 +13,7 @@
     "test": "node --test test/api.test.js",
     "data:build": "python3 scripts/build_season.py",
     "photos:fetch": "node scripts/fetch-driver-photos.mjs",
+    "cars:fetch": "node scripts/fetch-car-photos.mjs",
     "docker": "docker compose up --build",
     "db:up": "docker compose up -d mongo",
     "db:down": "docker compose down",
