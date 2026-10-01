@@ -1,16 +1,14 @@
-import { lazy, Suspense, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
 import { Link } from '../lib/router.jsx';
 import { ordinal } from '../lib/format.js';
 import { teamInfo, teamKey, teamPath } from '../lib/teams.js';
 import Band from '../components/Band.jsx';
+import CarShowcase from '../components/CarShowcase.jsx';
 import Helmet from '../components/Helmet.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import Query from '../components/Query.jsx';
-
-// three.js only downloads when someone opens a team page.
-const Car3D = lazy(() => import('../components/Car3D.jsx'));
 
 export default function Team({ teamKey: key }) {
   const { driverById, standings, ready } = useSeason();
@@ -63,9 +61,7 @@ export default function Team({ teamKey: key }) {
           <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '—'}</dd></div>
           <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '—'}</dd></div>
         </dl>
-        <Suspense fallback={<div className="car3d" />}>
-          <Car3D livery={info.livery} car={info.car} label={`${team._id} ${info.car || 'car'}, drawn in 3D`} />
-        </Suspense>
+        <CarShowcase teamKey={key} name={team._id} info={info} />
         <span className="band-team" aria-hidden="true" />
       </Band>
 

@@ -235,6 +235,38 @@ function buildCar(livery) {
   return car;
 }
 
+// Loads a real car model (.glb or .gltf) and sizes it to match the drawn car: longest
+// side along x, wheels on the ground, centred. `rotate` (degrees) turns it to face right.
+async function loadModel({ url, rotate = 0 }) {
+  const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+  const gltf = await new GLTFLoader().loadAsync(url);
+  const obj = gltf.scene;
+  let box = new THREE.Box3().setFromObject(obj);
+  let size = box.getSize(new THREE.Vector3());
+  const inner = new THREE.Group();
+  inner.add(obj);
+  inner.rotation.y = (size.z > size.x ? Math.PI / 2 : 0) + THREE.MathUtils.degToRad(rotate);
+  inner.updateMatrixWorld(true);
+  box = new THREE.Box3().setFromObject(inner);
+  size = box.getSize(new THREE.Vector3());
+  const outer = new THREE.Group();
+  outer.add(inner);
+  outer.scale.setScalar(CAR_LENGTH / Math.max(size.x, 0.001));
+  const center = box.getCenter(new THREE.Vector3());
+  inner.position.set(-center.x, -box.min.y, -center.z);
+  return outer;
+}
+
+function disposeTree(root) {
+  root.traverse((o) => {
+    o.geometry?.dispose();
+    for (const m of [].concat(o.material || [])) {
+      for (const v of Object.values(m)) if (v?.isTexture) v.dispose();
+      m.dispose();
+    }
+  });
+}
+
 // Soft contact shadow drawn once on a canvas.
 function shadowPlane() {
   const c = document.createElement('canvas');
@@ -253,7 +285,7 @@ function shadowPlane() {
   return m;
 }
 
-export default function Car3D({ livery, car, label }) {
+export default function Car3D({ livery, car, label, model = null }) {
   const wrap = useRef(null);
 
   useEffect(() => {
@@ -279,8 +311,19 @@ export default function Car3D({ livery, car, label }) {
     const pitchGroup = new THREE.Group();
     const yawGroup = new THREE.Group();
     pitchGroup.add(yawGroup);
-    yawGroup.add(buildCar(livery));
+    const holder = new THREE.Group();
+    yawGroup.add(holder);
     yawGroup.add(shadowPlane());
+    let gone = false;
+    // A real model file, if the team has one, replaces the drawn car; if it fails to load, the drawn car stays.
+    if (model) {
+      loadModel(model).then(
+        (obj) => { if (gone) return disposeTree(obj); holder.add(obj); draw(); },
+        (err) => { console.warn(`Couldn't load ${model.url}, showing the drawn car instead:`, err.message); if (!gone) { holder.add(buildCar(livery)); draw(); } },
+      );
+    } else {
+      holder.add(buildCar(livery));
+    }
     pitchGroup.position.y = -0.45;
     scene.add(pitchGroup);
 
@@ -402,20 +445,15 @@ export default function Car3D({ livery, car, label }) {
       io.disconnect();
       host.removeEventListener('keydown', onKey);
       host.removeEventListener('keyup', onKeyUp);
-      scene.traverse((o) => {
-        o.geometry?.dispose();
-        if (o.material) {
-          o.material.map?.dispose();
-          o.material.dispose();
-        }
-      });
+      gone = true;
+      disposeTree(scene);
       env.dispose();
       room.dispose?.();
       pmrem.dispose();
       renderer.dispose();
       canvas.remove();
     };
-  }, [livery.body, livery.accent, livery.stripe]);
+  }, [livery.body, livery.accent, livery.stripe, model?.url, model?.rotate]);
 
   return (
     <div
