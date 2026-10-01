@@ -160,19 +160,19 @@ code { font-size: 0.88em; background: var(--surface-2); padding: 0.1em 0.35em; b
 .nav.on-light:not(.nav-open) { background: transparent; backdrop-filter: none; -webkit-backdrop-filter: none; border-bottom-color: transparent; }
 .nav.on-light.nav-solid:not(.nav-open) { background: rgba(242, 208, 30, 0.88); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom-color: var(--line); }
 .nav-inner { max-width: 1320px; margin: 0 auto; height: 100%; padding: 0 var(--gutter); display: flex; align-items: center; gap: 32px; }
-.brand { display: flex; align-items: center; gap: 10px; font: 800 17px/1 var(--sans); letter-spacing: -0.04em; }
+.brand { white-space: nowrap; display: flex; align-items: center; gap: 10px; font: 800 17px/1 var(--sans); letter-spacing: -0.04em; }
 .brand-mark { width: 24px; height: 24px; }
 .brand-mark path { fill: var(--accent); }
 .brand-mark .brand-line { fill: none; stroke: var(--ink); stroke-width: 2.5; stroke-linecap: round; }
 .nav-links { display: flex; gap: 2px; }
-.nav-links a { position: relative; padding: 8px 12px; font-size: 14px; font-weight: 550; color: var(--ink-2); transition: color 150ms var(--ease-out); }
+.nav-links a { position: relative; white-space: nowrap; padding: 8px 12px; font-size: 14px; font-weight: 550; color: var(--ink-2); transition: color 150ms var(--ease-out); }
 .nav-links a::after { content: ''; position: absolute; left: 12px; right: 12px; bottom: 2px; height: 2px; background: var(--accent); transform: scaleX(0); transform-origin: left; transition: transform 220ms var(--ease-out); }
 .nav-links a:hover { color: var(--ink); }
 .nav-links a.active { color: var(--ink); }
 .nav-links a.active::after { transform: scaleX(1); }
 .nav-tools { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .search-trigger {
-  display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 8px 0 12px;
+  display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 8px 0 12px; white-space: nowrap;
   background: var(--surface); border: 1px solid var(--line-2); border-radius: 2px;
   color: var(--ink-2); font-size: 13px; cursor: pointer;
   transition: border-color 150ms var(--ease-out);
@@ -189,7 +189,7 @@ kbd { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line-2); border
 .nav-open .menu-btn span:first-child { transform: translateY(4px) rotate(45deg); }
 .nav-open .menu-btn span:last-child { transform: translateY(-4px) rotate(-45deg); }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
   .menu-btn { display: flex; }
   .search-trigger span, .search-trigger kbd { display: none; }
   .search-trigger { width: 38px; padding: 0; justify-content: center; }
