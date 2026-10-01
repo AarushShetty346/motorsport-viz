@@ -263,6 +263,28 @@ app.get('/api/season/constructors', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
 });
 
+// One team's season, round by round: both cars' race and sprint results and the points they scored.
+app.get('/api/teams/:team/season', async (req, res) => {
+  const team = String(req.params.team);
+  const pipeline = [
+    ...seasonEntries,
+    { $match: { 'entries.team': team } },
+    {
+      $group: {
+        _id: '$round',
+        name: { $first: '$name' },
+        points: { $sum: '$entries.points' },
+        entries: { $push: { driverId: '$entries.driverId', kind: '$entries.kind', position: '$entries.position', positionText: '$entries.positionText', points: '$entries.points' } },
+      },
+    },
+    { $sort: { _id: 1 } },
+    { $project: { _id: 0, round: '$_id', name: 1, points: 1, entries: 1 } },
+  ];
+  const results = await races().aggregate(pipeline).toArray();
+  if (!results.length) return res.status(404).json({ error: 'Team not found' });
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results });
+});
+
 // -------------------------------------------- NoSQL Functionality 3: Indexing
 
 function planSummary(plan) {

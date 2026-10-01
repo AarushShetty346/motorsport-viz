@@ -3,6 +3,7 @@ import { useApi } from '../lib/useApi.js';
 import { Link } from '../lib/router.jsx';
 import Flag from './Flag.jsx';
 import Query from './Query.jsx';
+import { teamPath } from '../lib/teams.js';
 
 export default function Standings() {
   const { standings, standingsQuery, driverById } = useSeason();
@@ -42,13 +43,13 @@ export default function Standings() {
             );
           })}
         </ol>
-        <aside className="constructors">
+        <aside className="constructors" id="teams">
           <h3 className="h-small">Constructors</h3>
           <ol>
             {constructors.data?.results.map((c, i) => (
               <li key={c._id}>
                 <span className="pos mono">{i + 1}</span>
-                <span className="c-name">{c._id}</span>
+                <Link to={teamPath(c._id)} className="c-name">{c._id}</Link>
                 <span className="c-bar"><span style={{ transform: `scaleX(${c.points / cLeader})`, background: teamColor(c._id) }} /></span>
                 <span className="mono">{c.points}</span>
               </li>
