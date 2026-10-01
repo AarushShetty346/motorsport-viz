@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
-import { fmtLap, fmtNum } from '../lib/format.js';
+import { fmtLap, fmtGap, fmtNum } from '../lib/format.js';
 import DriverName from '../components/DriverName.jsx';
 import JsonView from '../components/JsonView.jsx';
 import Query from '../components/Query.jsx';
@@ -10,11 +10,16 @@ import { ValidationError } from '../components/labValidation.jsx';
 import Band from '../components/Band.jsx';
 
 const SECTIONS = [
-  { id: 'crud', n: '01', title: 'Lap editor', tag: 'CRUD' },
-  { id: 'aggregation', n: '02', title: 'Standings pipeline', tag: 'Aggregation' },
-  { id: 'indexes', n: '03', title: 'Indexes', tag: 'Indexing' },
-  { id: 'validation', n: '04', title: 'Schema validation', tag: '$jsonSchema' },
-  { id: 'model', n: '05', title: 'Document model', tag: 'Embedding & references' },
+  { id: 'crud', n: '01', title: 'CRUD operations', tag: 'NoSQL Functionality 1' },
+  { id: 'aggregation', n: '02', title: 'Aggregation pipeline', tag: 'NoSQL Functionality 2' },
+  { id: 'indexes', n: '03', title: 'Indexing', tag: 'NoSQL Functionality 3' },
+  { id: 'validation', n: '04', title: 'Schema validation', tag: 'NoSQL Functionality 4' },
+  { id: 'model', n: '05', title: 'Embedded documents and referencing', tag: 'NoSQL Functionality 5' },
+  { id: 'driver-laps', n: '06', title: 'All laps for a driver', tag: 'User Functionality 1' },
+  { id: 'head-to-head', n: '07', title: 'Head-to-head comparison', tag: 'User Functionality 2' },
+  { id: 'fastest', n: '08', title: 'Fastest lap leaderboard', tag: 'User Functionality 3' },
+  { id: 'speed', n: '09', title: 'Laps above a speed threshold', tag: 'User Functionality 4' },
+  { id: 'search', n: '10', title: 'Search by circuit', tag: 'User Functionality 5' },
 ];
 
 export default function Lab() {
@@ -35,8 +40,8 @@ export default function Lab() {
         <p className="band-meta">Data lab · live MongoDB</p>
         <h1 className="display-xl">Under<br />the hood</h1>
         <p className="lede">
-          Everything on this site is a live MongoDB query. Here you can edit laps, watch the pipelines run, see the indexes at work and
-          try to break the schema. {health && <>The <code>{health.db}</code> database holds {fmtNum(health.counts.laps)} laps, {health.counts.races} races and {health.counts.drivers} drivers.</>}
+          Everything on this site is a live MongoDB query. This page shows the five MongoDB features and the five user-defined features
+          built on top of them, each with the exact query it runs. {health && <>The <code>{health.db}</code> database holds {fmtNum(health.counts.laps)} laps, {health.counts.races} races and {health.counts.drivers} drivers.</>}
         </p>
       </Band>
       <div className="container lab-layout">
@@ -50,10 +55,15 @@ export default function Lab() {
         </nav>
         <div className="lab-sections">
           <LabSection s={SECTIONS[0]} intro="Create, read, update and delete lap documents. Leave a required field blank to watch MongoDB's validator reject the write."><LapEditor /></LabSection>
-          <LabSection s={SECTIONS[1]} intro="The championship table is computed inside MongoDB: $unwind every race and sprint result, $group by driver to $sum points and $avg / $min finishing positions, $lookup the driver, $sort."><Aggregation /></LabSection>
-          <LabSection s={SECTIONS[2]} intro="db.laps.getIndexes(), plus explain() on the same query with and without the compound index."><Indexes /></LabSection>
+          <LabSection s={SECTIONS[1]} intro="$group by driverId with $avg (average lap), $min (fastest lap) and $sum (lap count), $lookup the drivers collection for names, then $sort by average. The MongoDB equivalent of SQL's GROUP BY with AVG(), MIN() and a JOIN."><Aggregation /></LabSection>
+          <LabSection s={SECTIONS[2]} intro="db.laps.getIndexes() lists three indexes: the default _id index, a compound index on { driverId, lapNumber } and a text index on circuit. explain() then shows MongoDB using the compound index (IXSCAN) instead of scanning the whole collection (COLLSCAN)."><Indexes /></LabSection>
           <LabSection s={SECTIONS[3]} intro='The laps collection has a $jsonSchema validator. This inserts { circuit: "Monza", lapNumber: "three" } and shows what MongoDB says.'><Validation /></LabSection>
-          <LabSection s={SECTIONS[4]} intro="One random lap as stored. The telemetry object is embedded in the lap; driverId and raceId are references to other collections."><DocModel /></LabSection>
+          <LabSection s={SECTIONS[4]} intro="One lap document as raw JSON. The telemetry object (speed, rpm, throttle, brake) is embedded because it belongs only to that lap; driverId is a reference to the drivers collection because one driver has many laps."><DocModel /></LabSection>
+          <LabSection s={SECTIONS[5]} intro="Choose a driver and it runs find({ driverId }), sorted by circuit and lap number. This query uses the compound index."><DriverLaps /></LabSection>
+          <LabSection s={SECTIONS[6]} intro="Pick two drivers: $match keeps only their laps and $group calculates average lap times overall and per circuit. The per-circuit table keeps it fair, since a Silverstone lap is about 7 seconds longer than a Monza lap."><HeadToHead /></LabSection>
+          <LabSection s={SECTIONS[7]} intro="$sort puts every lap in order of lap time, then $group with $first keeps each driver's fastest whole lap, including its circuit, lap number and top speed."><FastestLaps /></LabSection>
+          <LabSection s={SECTIONS[8]} intro='Enter a speed and it runs find({ "telemetry.speed": { $gt: N } }). Dot notation queries a field inside the embedded telemetry document directly, with no join.'><SpeedThreshold /></LabSection>
+          <LabSection s={SECTIONS[9]} intro='Full-text search with $text: { $search: "..." } on the circuit text index, sorted by relevance score. It ignores case, and several words (e.g. "monza silverstone") match laps at either circuit.'><CircuitSearch /></LabSection>
         </div>
       </div>
     </article>
@@ -241,37 +251,44 @@ function LapEditor() {
 
 // ------------------------------------------------------------- 02 Aggregation
 
-const STAGES = ['$project', '$unwind', '$group', '$lookup', '$unwind', '$project', '$sort'];
+const STAGES = ['$group', '$lookup', '$unwind', '$project', '$sort'];
 
 function Aggregation() {
-  const { standings, standingsQuery, driverById } = useSeason();
-  const top = standings.slice(0, 10);
+  const { driverById } = useSeason();
+  const [run, setRun] = useState(0);
+  const { data, error } = useApi(run ? `/api/nosql/aggregation?run=${run}` : null);
+  const best = data?.results[0]?.avgLapTime || 0;
+  const maxGap = Math.max(0.001, ...(data?.results || []).map((r) => r.avgLapTime - best));
   return (
     <div className="lab-card">
+      <button type="button" className="btn btn-primary" onClick={() => setRun((r) => r + 1)}>Show avg + fastest lap per driver</button>
       <ol className="stages" aria-label="Pipeline stages">
         {STAGES.map((s, i) => <li key={i} className="mono">{s}</li>)}
       </ol>
-      <div className="table-wrap">
-        <table className="data-table">
-          <thead><tr><th className="num">#</th><th>Driver</th><th className="num">Points ($sum)</th><th className="num">Wins</th><th className="num">Podiums</th><th className="num">Avg finish ($avg)</th><th className="num">Best ($min)</th><th className="num">Starts</th></tr></thead>
-          <tbody>
-            {top.map((s, i) => (
-              <tr key={s.driverId}>
-                <td className="num pos mono">{i + 1}</td>
-                <td><DriverName driver={driverById.get(s.driverId)} /></td>
-                <td className="num mono strong">{s.points}</td>
-                <td className="num mono">{s.wins}</td>
-                <td className="num mono">{s.podiums}</td>
-                <td className="num mono">{s.avgFinish}</td>
-                <td className="num mono">{s.bestFinish}</td>
-                <td className="num mono">{s.starts}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="muted small">Top 10 of {standings.length}. The full table is on the season page.</p>
-      <Query text={standingsQuery} />
+      {error && <p className="msg msg-err">{error.message}</p>}
+      {data && (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th className="num">#</th><th>Driver</th><th className="num">Average lap ($avg)</th><th className="num">Fastest lap ($min)</th><th className="num">Laps ($sum)</th><th className="gap-col">Gap to best average</th></tr></thead>
+            <tbody>
+              {data.results.map((r, i) => (
+                <tr key={r.driverId}>
+                  <td className="num pos mono">{i + 1}</td>
+                  <td><DriverName driver={driverById.get(r.driverId)} /></td>
+                  <td className="num mono strong">{fmtLap(r.avgLapTime)}</td>
+                  <td className="num mono">{fmtLap(r.fastestLap)}</td>
+                  <td className="num mono">{fmtNum(r.laps)}</td>
+                  <td className="gap-col">
+                    <span className="gap-bar"><span style={{ transform: `scaleX(${(r.avgLapTime - best) / maxGap})` }} /></span>
+                    <span className="mono small">{fmtGap(r.avgLapTime - best)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Query text={data?.query} />
     </div>
   );
 }
@@ -301,7 +318,7 @@ function Indexes() {
   const { data, error } = useApi(run ? `/api/nosql/indexes?run=${run}` : null);
   return (
     <div className="lab-card">
-      <button type="button" className="btn btn-primary" onClick={() => setRun((r) => r + 1)}>Run db.laps.getIndexes() and explain()</button>
+      <button type="button" className="btn btn-primary" onClick={() => setRun((r) => r + 1)}>Run db.laps.getIndexes()</button>
       {error && <p className="msg msg-err">{error.message}</p>}
       {data && (
         <>
@@ -413,6 +430,241 @@ function DocModel() {
           </p>
         </div>
       )}
+      <Query text={data?.query} />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- 06 All laps for a driver
+
+function DriverLaps() {
+  const { drivers } = useSeason();
+  const [driverId, setDriverId] = useState('');
+  const { data, error } = useApi(driverId ? `/api/user/driver-laps/${driverId}` : null);
+  const best = data?.results.reduce((m, l) => (l.lapTime < m ? l.lapTime : m), Infinity);
+  return (
+    <div className="lab-card">
+      <div className="table-toolbar" style={{ marginTop: 0 }}>
+        <label className="select">Driver{' '}
+          <select value={driverId} onChange={(e) => setDriverId(e.target.value)}>
+            <option value="">— choose a driver —</option>
+            {drivers.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
+          </select>
+        </label>
+        {data && <span className="muted small">{fmtNum(data.results.length)} laps · personal best {fmtLap(best)}</span>}
+      </div>
+      {error && <p className="msg msg-err">{error.message}</p>}
+      {data && (
+        <div className="table-wrap" style={{ maxHeight: 480, overflowY: 'auto' }}>
+          <table className="data-table">
+            <thead><tr><th>Circuit</th><th className="num">Lap</th><th className="num">Time</th><th className="num">Top speed</th><th className="num">RPM</th><th className="num">Throttle</th><th className="num">Brake</th></tr></thead>
+            <tbody>
+              {data.results.map((l) => (
+                <tr key={l._id} className={l.lapTime === best ? 'best' : ''}>
+                  <td className="small">{l.circuit ?? '—'}</td>
+                  <td className="num mono">{l.lapNumber}</td>
+                  <td className="num mono strong">{fmtLap(l.lapTime)}</td>
+                  <td className="num mono">{fmtNum(l.telemetry?.speed, 1)}</td>
+                  <td className="num mono">{fmtNum(l.telemetry?.rpm)}</td>
+                  <td className="num mono">{fmtNum(l.telemetry?.throttle, 1)}%</td>
+                  <td className="num mono">{fmtNum(l.telemetry?.brake, 1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Query text={data?.query} />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- 07 Head-to-head
+
+function HeadToHead() {
+  const { drivers, standings } = useSeason();
+  const [pick, setPick] = useState({ a: '', b: '' });
+  const [run, setRun] = useState(null);
+  const a = pick.a || standings[0]?.driverId || '';
+  const b = pick.b || standings[1]?.driverId || '';
+  const { data, error } = useApi(run ? `/api/user/compare?a=${run.a}&b=${run.b}` : null);
+  const [ra, rb] = data?.results || [];
+  const perCircuit = ra && rb
+    ? (ra.stats?.perRace || []).map((r) => ({ ...r, b: (rb.stats?.perRace || []).find((x) => x.round === r.round) })).filter((r) => r.b)
+    : [];
+  const avgA = ra?.stats?.avgLapTime, avgB = rb?.stats?.avgLapTime;
+  const faster = avgA && avgB ? (avgA <= avgB ? ra : rb) : null;
+  const card = (side) => (
+    <div className="h2h-card" style={{ '--team': side.driver.teamColor }}>
+      <DriverName driver={side.driver} />
+      <p className="h2h-big mono">{side.stats ? fmtLap(side.stats.avgLapTime) : '—'}</p>
+      <p className="muted small">Average racing lap over {fmtNum(side.stats?.laps ?? 0)} laps</p>
+      {faster === side && <p className="strong">Faster by {Math.abs(avgA - avgB).toFixed(3)}s</p>}
+    </div>
+  );
+  const select = (side, value) => (
+    <label className="select">Driver {side.toUpperCase()}{' '}
+      <select value={value} onChange={(e) => setPick((p) => ({ ...p, [side]: e.target.value }))}>
+        {drivers.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
+      </select>
+    </label>
+  );
+  return (
+    <div className="lab-card">
+      <div className="table-toolbar" style={{ marginTop: 0 }}>
+        {select('a', a)}
+        {select('b', b)}
+        <button type="button" className="btn btn-primary" disabled={!a || !b || a === b} onClick={() => setRun({ a, b })}>Compare</button>
+      </div>
+      {a && a === b && <p className="msg msg-err">Pick two different drivers.</p>}
+      {error && <p className="msg msg-err">{error.message}</p>}
+      {data && (
+        <>
+          <div className="h2h">
+            {card(ra)}
+            <div className="h2h-vs">VS</div>
+            {card(rb)}
+          </div>
+          <div className="table-wrap" style={{ marginTop: 20 }}>
+            <table className="data-table">
+              <thead><tr><th>Circuit</th><th className="num">{ra.driver.code} average</th><th className="num">{rb.driver.code} average</th><th className="num">Gap</th><th>Faster</th></tr></thead>
+              <tbody>
+                {perCircuit.map((r) => (
+                  <tr key={r.round}>
+                    <td className="small">{r.circuit ?? r.race}</td>
+                    <td className="num mono">{fmtLap(r.avgLapTime)}</td>
+                    <td className="num mono">{fmtLap(r.b.avgLapTime)}</td>
+                    <td className="num mono">{Math.abs(r.avgLapTime - r.b.avgLapTime).toFixed(3)}s</td>
+                    <td className="strong">{r.avgLapTime <= r.b.avgLapTime ? ra.driver.code : rb.driver.code}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!perCircuit.length && <p className="muted">These two never raced at the same circuit.</p>}
+        </>
+      )}
+      <Query text={data?.query} />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- 08 Fastest lap leaderboard
+
+function FastestLaps() {
+  const { driverById } = useSeason();
+  const [run, setRun] = useState(0);
+  const { data, error } = useApi(run ? `/api/user/leaderboard?run=${run}` : null);
+  const leader = data?.results[0]?.lapTime || 0;
+  const maxGap = Math.max(0.001, ...(data?.results || []).map((r) => r.lapTime - leader));
+  return (
+    <div className="lab-card">
+      <button type="button" className="btn btn-primary" onClick={() => setRun((r) => r + 1)}>Show fastest lap per driver</button>
+      {error && <p className="msg msg-err">{error.message}</p>}
+      {data && (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th className="num">Pos</th><th>Driver</th><th className="num">Fastest lap</th><th>Circuit</th><th className="num">Lap</th><th className="num">Top speed</th><th className="gap-col">Gap to leader</th></tr></thead>
+            <tbody>
+              {data.results.map((r, i) => (
+                <tr key={r.driverId}>
+                  <td className="num pos mono">P{i + 1}</td>
+                  <td><DriverName driver={driverById.get(r.driverId)} /></td>
+                  <td className="num mono strong">{fmtLap(r.lapTime)}</td>
+                  <td className="small">{r.circuit}</td>
+                  <td className="num mono">{r.lapNumber}</td>
+                  <td className="num mono">{fmtNum(r.topSpeed, 1)}</td>
+                  <td className="gap-col">
+                    <span className="gap-bar"><span style={{ transform: `scaleX(${(r.lapTime - leader) / maxGap})` }} /></span>
+                    <span className="mono small">{fmtGap(r.lapTime - leader)}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Query text={data?.query} />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- 09 Speed threshold
+
+function SpeedThreshold() {
+  const { driverById } = useSeason();
+  const [min, setMin] = useState('340');
+  const [run, setRun] = useState(null);
+  const { data, error } = useApi(run !== null ? `/api/user/speed?min=${encodeURIComponent(run)}&limit=50` : null);
+  return (
+    <div className="lab-card">
+      <form className="table-toolbar" style={{ marginTop: 0 }} onSubmit={(e) => { e.preventDefault(); setRun(min); }}>
+        <label className="lap-form" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, padding: 0 }}>
+          Top speed greater than <input type="number" min="0" step="1" value={min} onChange={(e) => setMin(e.target.value)} style={{ width: 96 }} /> km/h
+        </label>
+        <button type="submit" className="btn btn-primary">Find laps</button>
+        {data && <span className="muted small">{fmtNum(data.total)} laps{data.total > data.results.length ? ` · fastest ${data.results.length} shown` : ''}</span>}
+      </form>
+      {error && <p className="msg msg-err">{error.message}</p>}
+      {data && (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Driver</th><th>Circuit</th><th className="num">Lap</th><th className="num">Time</th><th className="num">telemetry.speed</th></tr></thead>
+            <tbody>
+              {data.results.map((l) => (
+                <tr key={l._id}>
+                  <td><DriverName driver={driverById.get(l.driverId)} short /></td>
+                  <td className="small">{l.circuit}</td>
+                  <td className="num mono">{l.lapNumber}</td>
+                  <td className="num mono">{fmtLap(l.lapTime)}</td>
+                  <td className="num mono strong">{fmtNum(l.telemetry.speed, 1)} km/h</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <Query text={data?.query} />
+    </div>
+  );
+}
+
+// ------------------------------------------------------------- 10 Search by circuit
+
+function CircuitSearch() {
+  const [q, setQ] = useState('Monza');
+  const [run, setRun] = useState(null);
+  const { data, error } = useApi(run ? `/api/user/search?q=${encodeURIComponent(run)}` : null);
+  return (
+    <div className="lab-card">
+      <form className="table-toolbar" style={{ marginTop: 0 }} onSubmit={(e) => { e.preventDefault(); setRun(q.trim() || ' '); }}>
+        <label className="lap-form" style={{ display: 'flex', alignItems: 'center', gap: 8, margin: 0, padding: 0 }}>
+          Circuit <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="e.g. Monza" style={{ width: 220 }} />
+        </label>
+        <button type="submit" className="btn btn-primary">Search</button>
+        {data && <span className="muted small">{fmtNum(data.results.reduce((n, r) => n + r.laps, 0))} matching laps</span>}
+      </form>
+      {error && <p className="msg msg-err">{error.message}</p>}
+      {data && (
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead><tr><th>Circuit</th><th>Race</th><th className="num">Laps matched</th><th className="num">Fastest lap</th><th className="num">Top speed</th><th className="num">Score (textScore)</th></tr></thead>
+            <tbody>
+              {data.results.map((r) => (
+                <tr key={r.round}>
+                  <td className="strong">{r.circuit}</td>
+                  <td className="small">{r.race}</td>
+                  <td className="num mono">{fmtNum(r.laps)}</td>
+                  <td className="num mono">{fmtLap(r.fastestLap)}</td>
+                  <td className="num mono">{fmtNum(r.topSpeed, 1)}</td>
+                  <td className="num mono">{r.score}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data && !data.results.length && <p className="muted">No laps at a circuit matching “{run}”.</p>}
       <Query text={data?.query} />
     </div>
   );

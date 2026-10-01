@@ -7,7 +7,7 @@ const SeasonContext = createContext(null);
 export function SeasonProvider({ children }) {
   const drivers = useApi('/api/drivers');
   const races = useApi('/api/races');
-  const standings = useApi('/api/nosql/aggregation');
+  const standings = useApi('/api/season/standings');
   const health = useApi('/api/health');
 
   const value = useMemo(() => {
