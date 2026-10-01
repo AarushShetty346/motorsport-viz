@@ -214,9 +214,27 @@ app.delete('/api/laps/:id', async (req, res) => {
 });
 
 // ------------------------------- NoSQL Functionality 2: Aggregation Pipeline
-// Championship standings, computed inside MongoDB from the embedded race + sprint results.
+// Average lap, fastest lap and lap count per driver, joined to the drivers collection.
+// The SQL equivalent is GROUP BY driverId with AVG(), MIN() and a JOIN.
 
 app.get('/api/nosql/aggregation', async (req, res) => {
+  const pipeline = [
+    { $group: { _id: '$driverId', avgLapTime: { $avg: '$lapTime' }, fastestLap: { $min: '$lapTime' }, laps: { $sum: 1 } } },
+    { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
+    { $unwind: '$driver' },
+    {
+      $project: {
+        _id: 0, driverId: '$_id', code: '$driver.code', name: '$driver.name', team: '$driver.team', number: '$driver.number',
+        avgLapTime: { $round: ['$avgLapTime', 3] }, fastestLap: 1, laps: 1,
+      },
+    },
+    { $sort: { avgLapTime: 1 } },
+  ];
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', results: await laps().aggregate(pipeline).toArray() });
+});
+
+// Championship standings, computed inside MongoDB from the embedded race + sprint results.
+app.get('/api/season/standings', async (req, res) => {
   const pipeline = [
     ...seasonEntries,
     {
@@ -305,12 +323,12 @@ app.get('/api/nosql/indexes', async (req, res) => {
   const sample = await laps().findOne({ round: 16 }) || await laps().findOne({});
   let explain = null;
   if (sample) {
-    const filter = { driverId: sample.driverId, round: sample.round };
+    const filter = { driverId: sample.driverId, lapNumber: sample.lapNumber };
     const [withIndex, withoutIndex] = await Promise.all([
       laps().find(filter).explain('executionStats'),
       laps().find(filter).hint({ $natural: 1 }).explain('executionStats'),
     ]);
-    const q = `db.laps.find({ driverId: ObjectId("${sample.driverId}"), round: ${sample.round} })`;
+    const q = `db.laps.find({ driverId: ObjectId("${sample.driverId}"), lapNumber: ${sample.lapNumber} })`;
     explain = {
       query: `${q}.explain("executionStats")`,
       collscanQuery: `${q}.hint({ $natural: 1 }).explain("executionStats")`,
@@ -372,8 +390,8 @@ app.get('/api/user/driver-laps/:driverId', async (req, res) => {
   const filter = { driverId };
   const round = intParam(req.query.round);
   if (round) filter.round = round;
-  const results = await laps().find(filter).sort({ round: 1, lapNumber: 1 }).toArray();
-  res.json({ query: `db.laps.find({ driverId: ObjectId("${driverId}")${round ? `, round: ${round}` : ''} }).sort({ round: 1, lapNumber: 1 })`, driver, results });
+  const results = await laps().find(filter).sort({ circuit: 1, lapNumber: 1 }).toArray();
+  res.json({ query: `db.laps.find({ driverId: ObjectId("${driverId}")${round ? `, round: ${round}` : ''} }).sort({ circuit: 1, lapNumber: 1 })`, driver, results });
 });
 
 // A driver's classification in every race and sprint of the season.
@@ -393,9 +411,9 @@ app.get('/api/user/compare', async (req, res) => {
   // Racing laps only: no pit in/out laps and no opening lap.
   const pipeline = [
     { $match: { driverId: { $in: [a, b] }, pitIn: { $ne: true }, pitOut: { $ne: true }, lapNumber: { $gt: 1 } } },
-    { $group: { _id: { driverId: '$driverId', round: '$round', race: '$race' }, avgLapTime: { $avg: '$lapTime' }, laps: { $sum: 1 } } },
+    { $group: { _id: { driverId: '$driverId', round: '$round', race: '$race', circuit: '$circuit' }, avgLapTime: { $avg: '$lapTime' }, laps: { $sum: 1 } } },
     { $sort: { '_id.round': 1 } },
-    { $group: { _id: '$_id.driverId', perRace: { $push: { round: '$_id.round', race: '$_id.race', avgLapTime: { $round: ['$avgLapTime', 3] }, laps: '$laps' } }, totalTime: { $sum: { $multiply: ['$avgLapTime', '$laps'] } }, laps: { $sum: '$laps' } } },
+    { $group: { _id: '$_id.driverId', perRace: { $push: { round: '$_id.round', race: '$_id.race', circuit: '$_id.circuit', avgLapTime: { $round: ['$avgLapTime', 3] }, laps: '$laps' } }, totalTime: { $sum: { $multiply: ['$avgLapTime', '$laps'] } }, laps: { $sum: '$laps' } } },
     { $project: { avgLapTime: { $round: [{ $divide: ['$totalTime', '$laps'] }, 3] }, laps: 1, perRace: 1 } },
     { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
     { $unwind: '$driver' },
@@ -423,13 +441,13 @@ app.get('/api/user/compare', async (req, res) => {
   });
 });
 
-// ------------------------- User Functionality 3: fastest lap per driver in a race
+// ------------------ User Functionality 3: fastest lap per driver (all laps, or one race)
 
 app.get('/api/user/leaderboard', async (req, res) => {
   const round = intParam(req.query.round);
-  if (!round) return res.status(400).json({ error: 'Pick a race (round 1-24)' });
+  if (req.query.round !== undefined && !round) return res.status(400).json({ error: 'Pick a race (round 1-24)' });
   const pipeline = [
-    { $match: { round, deleted: { $ne: true } } },
+    { $match: round ? { round, deleted: { $ne: true } } : { deleted: { $ne: true } } },
     { $sort: { lapTime: 1 } },
     { $group: { _id: '$driverId', fastestLap: { $first: '$$ROOT' } } },
     { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
@@ -454,8 +472,9 @@ app.get('/api/user/speed', async (req, res) => {
   const round = intParam(req.query.round);
   if (round) filter.round = round;
   const limit = Math.min(Math.max(intParam(req.query.limit) || 50, 1), 500);
-  const pipeline = [{ $match: filter }, { $sort: { 'telemetry.speed': -1 } }, { $limit: limit }, ...lookupDriver];
-  const [results, total] = await Promise.all([laps().aggregate(pipeline).toArray(), laps().countDocuments(filter)]);
+  const [results, total] = await Promise.all([laps().find(filter).sort({ 'telemetry.speed': -1 }).limit(limit).toArray(), laps().countDocuments(filter)]);
+  const byId = new Map((await drivers().find({ _id: { $in: results.map((l) => l.driverId) } }).toArray()).map((d) => [String(d._id), d]));
+  for (const l of results) l.driver = byId.get(String(l.driverId));
   res.json({
     query: `db.laps.find({ "telemetry.speed": { $gt: ${min} }${round ? `, round: ${round}` : ''} }).sort({ "telemetry.speed": -1 }).limit(${limit})`,
     total,
@@ -463,11 +482,11 @@ app.get('/api/user/speed', async (req, res) => {
   });
 });
 
-// ------------------- User Functionality 5: text search on race, circuit and country
+// ----------------------------- User Functionality 5: text search on circuit
 
 app.get('/api/user/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
-  if (!q) return res.status(400).json({ error: 'Enter a circuit, race or country to search for' });
+  if (!q) return res.status(400).json({ error: 'Enter a circuit to search for' });
   const pipeline = [
     { $match: { $text: { $search: q } } },
     { $group: { _id: '$round', race: { $first: '$race' }, circuit: { $first: '$circuit' }, country: { $first: '$country' }, score: { $max: { $meta: 'textScore' } }, laps: { $sum: 1 }, fastestLap: { $min: '$lapTime' }, topSpeed: { $max: '$telemetry.speed' } } },

@@ -15,7 +15,7 @@ const lapsValidator = {
   $jsonSchema: {
     bsonType: 'object',
     title: 'Lap document validation',
-    required: ['driverId', 'raceId', 'round', 'lapNumber', 'lapTime', 'telemetry'],
+    required: ['driverId', 'lapNumber', 'lapTime', 'telemetry'],
     properties: {
       driverId: {
         bsonType: 'objectId',
@@ -23,13 +23,13 @@ const lapsValidator = {
       },
       raceId: {
         bsonType: 'objectId',
-        description: 'must be an ObjectId referencing races._id (required)',
+        description: 'must be an ObjectId referencing races._id if present',
       },
       round: {
         bsonType: ['int', 'long'],
         minimum: 1,
         maximum: 24,
-        description: 'championship round, an integer from 1 to 24 (required)',
+        description: 'championship round, an integer from 1 to 24 if present',
       },
       lapNumber: {
         bsonType: ['int', 'long'],
@@ -125,14 +125,11 @@ async function setupCollections() {
   }
 
   const laps = db.collection('laps');
-  // Older versions of this app had a { driverId, lapNumber } index and a circuit-only text index.
-  for (const old of ['driverId_1_lapNumber_1', 'circuit_text']) await laps.dropIndex(old).catch(() => {});
-  await laps.createIndex({ driverId: 1, round: 1, lapNumber: 1 }, { name: 'driverId_1_round_1_lapNumber_1' });
-  await laps.createIndex({ round: 1, lapTime: 1 }, { name: 'round_1_lapTime_1' });
-  await laps.createIndex(
-    { race: 'text', circuit: 'text', country: 'text' },
-    { name: 'race_circuit_country_text', weights: { circuit: 3, race: 2, country: 1 } }
-  );
+  // Three indexes on laps: the default _id index, a compound index and a text index.
+  // Drop the ones an earlier version of the app created.
+  for (const old of ['driverId_1_round_1_lapNumber_1', 'round_1_lapTime_1', 'race_circuit_country_text']) await laps.dropIndex(old).catch(() => {});
+  await laps.createIndex({ driverId: 1, lapNumber: 1 }, { name: 'driverId_1_lapNumber_1' });
+  await laps.createIndex({ circuit: 'text' }, { name: 'circuit_text' });
   await db.collection('races').createIndex({ round: 1 }, { name: 'round_1', unique: true });
   await db.collection('drivers').createIndex({ key: 1 }, { name: 'key_1', unique: true });
   console.log('[db] Ensured indexes on laps, races and drivers');

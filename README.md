@@ -120,8 +120,8 @@ db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 | **Driver** (`/driver/lando-norris`) | Championship stats, a portrait where hovering over the head puts the driver's helmet on, the season at a glance (result in every round), and a lap explorer: every lap of any race with its tyre, pit stops and telemetry. |
 | **Team** (`/team/mclaren`) | A 3D model of the team's car in its colours that you can drag around (it settles back to the side view when you let go), the team's drivers, and its points round by round. |
 | **Head to head** (`/compare`) | Two drivers compared race by race on average racing-lap pace, plus who finished ahead each weekend. |
-| **Data lab** (`/lab`) | The database side: a lap editor (CRUD), the standings pipeline, indexes with `explain()`, schema validation and the document model. |
-| **Search** (press `/` or ⌘K) | Full-text search for a circuit, race or country (e.g. *monza*, *italy*, *marina bay*), plus drivers by name. |
+| **Data lab** (`/lab`) | All 10 functionalities in one place, numbered 01 to 10 and labelled *NoSQL Functionality 1–5* and *User Functionality 1–5*, each with the exact query it runs. |
+| **Search** (press `/` or ⌘K) | Full-text search for a circuit (e.g. *monza*, *marina bay*), plus drivers by name. |
 
 Every feature has a **MongoDB query** drop-down that shows the exact query it ran, which is useful while presenting.
 
@@ -129,16 +129,16 @@ Every feature has a **MongoDB query** drop-down that shows the exact query it ra
 
 | # | Functionality | Where on the site | MongoDB feature shown |
 |---|---|---|---|
-| NoSQL 1 | CRUD operations | Data lab → Lap editor | `insertOne`, `aggregate` + `$lookup` (read), `replaceOne`, `deleteOne` |
-| NoSQL 2 | Aggregation pipeline | Season → standings; Data lab → Standings pipeline | `$unwind`, `$group` (`$sum`, `$avg`, `$min`), `$lookup`, `$sort` |
-| NoSQL 3 | Indexing | Data lab → Indexes | `getIndexes()`, compound + text index, `explain("executionStats")` vs a forced `COLLSCAN` |
-| NoSQL 4 | Schema validation | Data lab → Schema validation (and any bad write in the lap editor) | `$jsonSchema` validator, error code 121 |
-| NoSQL 5 | Embedded documents & referencing | Data lab → Document model | embedded `telemetry`, embedded race `results`, `driverId` / `raceId` references |
-| User 1 | All laps for a driver | Driver page → Lap explorer | `find({ driverId, round })` on the compound index |
-| User 2 | Head-to-head average lap time | Head to head | two-stage `$group` + `$lookup`, plus `$filter` on embedded results |
-| User 3 | Fastest lap leaderboard | Race page → Fastest laps | `$sort` + `$group` with `$first: "$$ROOT"` |
-| User 4 | Laps above a speed threshold | Season and race pages → Speed trap | dot notation `{ "telemetry.speed": { $gt: N } }` |
-| User 5 | Search by circuit | Search box (`/`) | `$text` search on the text index + `textScore` |
+| NoSQL 1 | CRUD operations | Data lab → 01 | `insertOne`, `aggregate` + `$lookup` (read), `replaceOne`, `deleteOne` |
+| NoSQL 2 | Aggregation pipeline | Data lab → 02 (*Show avg + fastest lap per driver*) | `$group` with `$avg`, `$min`, `$sum`, then `$lookup`, `$sort` |
+| NoSQL 3 | Indexing | Data lab → 03 | `getIndexes()` (`_id`, compound `{ driverId, lapNumber }`, text on `circuit`), `explain()` IXSCAN vs COLLSCAN |
+| NoSQL 4 | Schema validation | Data lab → 04 (*Try inserting an invalid lap*) | `$jsonSchema` validator, error code 121 |
+| NoSQL 5 | Embedded documents & referencing | Data lab → 05 | embedded `telemetry`, `driverId` reference to `drivers` |
+| User 1 | All laps for a driver | Data lab → 06 (also the lap explorer on each driver page) | `find({ driverId })` sorted by circuit and lap number, on the compound index |
+| User 2 | Head-to-head comparison | Data lab → 07 (also the Head to head page) | `$match` + `$group` (overall and per circuit) + `$lookup` |
+| User 3 | Fastest lap leaderboard | Data lab → 08 (also per race on each race page) | `$sort` + `$group` with `$first: "$$ROOT"` |
+| User 4 | Laps above a speed threshold | Data lab → 09 (also the speed trap on the season and race pages) | dot notation `find({ "telemetry.speed": { $gt: N } })` |
+| User 5 | Search by circuit | Data lab → 10 (also the search box, `/`) | `$text: { $search }` on the circuit text index, sorted by `textScore` |
 
 ---
 
@@ -167,7 +167,7 @@ Three collections in the `motorsport` database.
   corners: [ { number: 1, x: ..., y: ... }, ... ] }
 ```
 
-**`laps`** (26,657 documents), validated by `$jsonSchema`. Required: `driverId`, `raceId`, `round`, `lapNumber`, `lapTime`, `telemetry`.
+**`laps`** (26,657 documents), validated by `$jsonSchema`. Required: `driverId`, `lapNumber`, `lapTime`, `telemetry` (with types and ranges checked; `raceId` and `round` are type-checked when present).
 
 ```js
 {
@@ -191,29 +191,29 @@ Three collections in the `motorsport` database.
 }
 ```
 
-**Indexes on `laps`:** `_id` (default), `{ driverId: 1, round: 1, lapNumber: 1 }` (compound: one driver's laps, optionally in one race), `{ round: 1, lapTime: 1 }` (a race's laps, fastest first) and a text index on `race`, `circuit` and `country` (weighted 2 / 3 / 1). `races.round` and `drivers.key` have unique indexes.
+**Indexes on `laps`:** three, exactly as `db.laps.getIndexes()` lists them: `_id` (default), `{ driverId: 1, lapNumber: 1 }` (compound) and `{ circuit: "text" }` (text). `races.round` and `drivers.key` have unique indexes.
 
 ### The 10 functionalities in detail
 
 **NoSQL 1: CRUD.** The Data lab's lap editor builds a lap document (including the embedded `telemetry` object) and stores it with `insertOne()`. The table below it reads laps with an aggregation that filters by race and driver, pages with `$skip`/`$limit`, and `$lookup`s each lap's driver. *Edit* loads a row into the form and saving calls `replaceOne({ _id })`; *Delete* calls `deleteOne({ _id })`. The app doesn't validate fields itself, so leaving a required field blank lets you see MongoDB's validator reject the write. MongoDB has no foreign keys, so the app checks that the chosen driver exists and fills in `raceId` from the chosen round. After any write, every page re-reads MongoDB, so standings, charts and leaderboards update straight away.
 
-**NoSQL 2: Aggregation pipeline.** The championship standings are computed inside MongoDB from the results embedded in each race. `$project` merges each race's `results` and `sprint` arrays, `$unwind` turns them into one document per result, `$group` by `driverId` computes `$sum` of points, wins and podiums, `$avg` finishing position and `$min` (best) finish, `$lookup` joins the driver, and `$sort` orders by points. The result matches the official 2025 table (Norris 423, Verstappen 421, Piastri 410). The same idea powers the constructors table and the points-by-round chart.
+**NoSQL 2: Aggregation pipeline.** The *Show avg + fastest lap per driver* button runs a pipeline inside MongoDB. `$group` groups laps by `driverId` and computes `$avg: "$lapTime"` (average lap), `$min: "$lapTime"` (fastest lap) and `$sum: 1` (lap count). `$lookup` joins the `drivers` collection to get each driver's name, `$unwind` flattens it, `$project` rounds the output and `$sort` orders drivers by average. It's the MongoDB equivalent of SQL's `GROUP BY` with `AVG()`, `MIN()` and a `JOIN`. The table shows each driver's gap to the best average as a bar. (A season average depends on which circuits a driver raced at, which is why User Functionality 2 also compares circuit by circuit.) The championship standings on the season page use the same stages on the race results embedded in each race document.
 
-**NoSQL 3: Indexing.** Shows `db.laps.getIndexes()` with a card per index, then runs the same query, `find({ driverId, round })`, twice with `explain("executionStats")`: once normally (MongoDB picks an `IXSCAN` on `driverId_1_round_1_lapNumber_1` and reads only the ~50 matching documents) and once forced to a full collection scan with `hint({ $natural: 1 })` (it reads all 26,657). The bars make the difference obvious.
+**NoSQL 3: Indexing.** Shows `db.laps.getIndexes()` with a card per index, then runs the same query, `find({ driverId, lapNumber })`, twice with `explain("executionStats")`: once normally (MongoDB picks an `IXSCAN` on `driverId_1_lapNumber_1` and reads only the ~24 matching documents) and once forced to a full collection scan with `hint({ $natural: 1 })` (it reads all 26,657). The bars make the difference obvious.
 
-**NoSQL 4: Schema validation.** The `laps` collection has a `$jsonSchema` validator (`validationLevel: "strict"`, `validationAction: "error"`). The button tries `insertOne({ circuit: "Monza", lapNumber: "three" })`. MongoDB rejects it with `Document failed validation` (code `121`), and the page shows the full `errInfo` (missing `driverId`, `raceId`, `round`, `lapTime`, `telemetry`, and `lapNumber` has the wrong type) next to a readable summary and the validator itself.
+**NoSQL 4: Schema validation.** The `laps` collection has a `$jsonSchema` validator (`validationLevel: "strict"`, `validationAction: "error"`). The button tries `insertOne({ circuit: "Monza", lapNumber: "three" })`. MongoDB rejects it with `Document failed validation` (code `121`), and the page shows the full `errInfo` (code `121`, `DocumentValidationFailure`: missing `driverId`, `lapTime` and `telemetry`, and `lapNumber` has the wrong type) next to a readable summary and the validator itself.
 
 **NoSQL 5: Embedded documents & referencing.** Shows a random lap as raw JSON next to the documents it references. `telemetry` and `sectors` are **embedded**: they belong to exactly one lap and come back in the same read. `driverId` and `raceId` are **references**: a driver is stored once and referenced by over a thousand laps (one-to-many), joined with `$lookup` when needed. Races show a third pattern: their classification is an embedded **array** of sub-documents, which the standings pipeline unwinds.
 
-**User 1: All laps for a driver.** On a driver's page, pick a race to run `db.laps.find({ driverId, round }).sort({ round: 1, lapNumber: 1 })`. It's served by the compound index. The page plots every lap coloured by tyre, marks pit laps, and lists each lap's telemetry.
+**User 1: All laps for a driver.** Choose a driver from the dropdown and it runs `db.laps.find({ driverId }).sort({ circuit: 1, lapNumber: 1 })`, listing every lap with its telemetry and highlighting the personal best. `driverId` is the leading field of the compound index, so MongoDB answers it with an index scan. Each driver's page has the same query for one race (`find({ driverId, round })`), with every lap plotted by tyre.
 
-**User 2: Head to head.** Pick two drivers. `$match` keeps both drivers' racing laps (no lap 1, no pit laps), a first `$group` averages lap time per driver *per race*, a second `$group` rolls those up with a `$push`ed per-race breakdown, and `$lookup` adds the driver. A second pipeline on `races` uses `$filter` on the embedded results to find who finished ahead each weekend. Comparing race by race matters because a Monza lap (1:21) and a Monaco lap (1:13) can't be averaged together fairly.
+**User 2: Head to head.** Pick two drivers. `$match` keeps both drivers' racing laps (no lap 1, no pit laps), a first `$group` averages lap time per driver *per circuit*, a second `$group` rolls those up into an overall average with a `$push`ed per-circuit breakdown, and `$lookup` adds the driver. The result is two side-by-side cards with who's faster and by how much, plus a per-circuit table. The per-circuit table makes it fair, because a Silverstone lap is about 7 seconds longer than a Monza lap. The Head to head page also uses `$filter` on the races' embedded results to show who finished ahead each weekend.
 
-**User 3: Fastest lap leaderboard.** On a race page: `$match` the round, `$sort` every lap by time, then `$group` with `$first: "$$ROOT"` keeps each driver's whole fastest lap document (not just the time, as `$min` would), so the table can show the lap number, tyre and top speed too.
+**User 3: Fastest lap leaderboard.** *Show fastest lap per driver* `$sort`s every lap by time, then `$group` with `$first: "$$ROOT"` keeps each driver's whole fastest lap document (not just the time, as `$min` would), including its circuit, lap number and top speed. The result is a P1, P2, P3… table with each driver's gap to the leader. Each race page shows the same leaderboard for that race only.
 
-**User 4: Laps above a speed threshold.** The speed trap slider runs `db.laps.find({ "telemetry.speed": { $gt: N } }).sort({ "telemetry.speed": -1 })`, season-wide on the home page and per race on each race page. Dot notation filters on a field inside the embedded sub-document.
+**User 4: Laps above a speed threshold.** Enter a speed (default 340 km/h) and *Find laps* runs `db.laps.find({ "telemetry.speed": { $gt: N } }).sort({ "telemetry.speed": -1 })`. The speed trap sliders on the season and race pages run the same query. Dot notation filters on a field inside the embedded sub-document.
 
-**User 5: Search.** The search box runs a `$text` search on the text index over `race`, `circuit` and `country`, groups the matching laps by race and sorts by `textScore`. *monza* finds the Italian GP, *italy* finds Imola and Monza, *monza silverstone* finds both. Text search is case-insensitive and uses English stemming. Drivers are matched by name on the page itself.
+**User 5: Search by circuit.** The search box runs a full-text search, `$text: { $search: "..." }`, which uses the text index on `circuit`, and sorts results by relevance (`textScore`). *monza* finds the Monza laps, *MONZA* finds the same (it ignores case), and *monza silverstone* matches laps at either circuit. Drivers are matched by name on the page itself.
 
 ---
 
@@ -269,7 +269,7 @@ Until a team has a photo or a model, the real view shows a silhouette.
 
 ## 5. Tests
 
-`npm test` (12 tests) starts the real server against a throwaway `motorsport_test` database, loads the full season and checks: the season loaded (24 races, 21 drivers, 26,657 laps) · CRUD insert / update / delete plus a validator rejection (121) and an unknown-driver rejection · standings (Norris 423, Verstappen 421, Piastri 410) and sort order · indexes, and that `explain()` uses the compound index and examines only the matching documents while a forced scan examines all of them · the invalid insert's missing fields · embedded telemetry and both references · a driver's laps for the season and for one race · head to head · the Monza fastest-lap leaderboard · the speed threshold · text search (monza, italy, monza silverstone, no match) · reset.
+`npm test` (14 tests) starts the real server against a throwaway `motorsport_test` database, loads the full season and checks: the season loaded (24 races, 21 drivers, 26,657 laps) · CRUD insert / update / delete plus a validator rejection (121) and an unknown-driver rejection · the avg + fastest lap pipeline and its sort order · standings (Norris 423, Verstappen 421, Piastri 410) · exactly three indexes, and that `explain()` uses the compound index and examines only the matching documents while a forced scan examines all of them · the invalid insert's missing fields · embedded telemetry and both references · a driver's laps for the season and for one race · head to head · the fastest-lap leaderboard, season-wide and for Monza · the speed threshold · text search (monza, MONZA, monza silverstone, no match) · reset.
 
 ---
 
