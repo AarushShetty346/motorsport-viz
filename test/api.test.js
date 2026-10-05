@@ -85,7 +85,7 @@ test('NoSQL 1: CRUD — paginated read, insert, update, delete', async () => {
   assert.equal(created.body.document.circuit, 'Monza', 'raceId, race and circuit are filled in from the round');
   const id = created.body.insertedId;
 
-  const updated = await api(`/api/laps/${id}`, { method: 'PUT', body: { ...lap, lapTime: 80.4 } });
+  const updated = await api(`/api/laps/${id}`, { method: 'PUT', body: { lapTime: 80.4 } });
   assert.equal(updated.body.modifiedCount, 1);
   const mine = await api(`/api/laps?round=16&driverId=${lap.driverId}&limit=200`);
   assert.equal(mine.body.results.find((l) => l._id === id).lapTime, 80.4);
@@ -138,16 +138,51 @@ test('NoSQL 3: indexes — _id, compound, text; explain uses IXSCAN and reads fa
   assert.equal(body.explain.collscan.totalDocsExamined, totalLaps);
 });
 
-test('NoSQL 4: schema validation rejects an invalid lap with code 121', async () => {
-  const { status, body } = await api('/api/nosql/invalid-insert', { method: 'POST' });
-  assert.equal(status, 200);
+test('NoSQL 4: schema validation rejects an invalid steward lap with code 121', async () => {
+  const { status, body } = await api('/api/laps', { method: 'POST', body: { round: 16, lapNumber: 'three' } });
+  assert.equal(status, 400);
   assert.equal(body.mongoError.code, 121);
   assert.equal(body.mongoError.errmsg, 'Document failed validation');
   const required = body.mongoError.errInfo.details.schemaRulesNotSatisfied.find((r) => r.operatorName === 'required');
-  assert.deepEqual(required.missingProperties.sort(), ['driverId', 'lapTime', 'telemetry']);
+  assert.deepEqual(required.missingProperties.sort(), ['driverId', 'lapTime']);
   const wrongType = body.mongoError.errInfo.details.schemaRulesNotSatisfied.find((r) => r.operatorName === 'properties');
-  assert.equal(wrongType.propertiesNotSatisfied[0].propertyName, 'lapNumber');
+  assert.ok(wrongType.propertiesNotSatisfied.some((p) => p.propertyName === 'telemetry'), 'empty telemetry is missing speed, rpm, throttle, brake');
+  assert.ok(wrongType.propertiesNotSatisfied.some((p) => p.propertyName === 'lapNumber'));
   assert.equal((await api('/api/health')).body.counts.laps, totalLaps, 'invalid lap was not stored');
+});
+
+test('steward mode: added laps stay out of stats, real laps hide instead of delete, penalty is one transaction', async () => {
+  // A steward lap faster than anything real must not top the leaderboard.
+  const fake = { driverId: driversByCode.HAM._id, round: 16, lapNumber: 61, lapTime: 60.0, position: 1, telemetry: { speed: 399, rpm: 12000, throttle: 80, brake: 10 } };
+  const created = await api('/api/laps', { method: 'POST', body: fake });
+  assert.equal(created.body.document.source, 'steward');
+  const board = await api('/api/user/leaderboard?round=16');
+  assert.ok(board.body.results.every((r) => r.lapTime > 60));
+  assert.ok((await api('/api/user/speed?min=398')).body.total === 0);
+  const table = await api(`/api/laps?round=16&driverId=${fake.driverId}&limit=200`);
+  assert.ok(table.body.results.some((l) => l._id === created.body.insertedId), 'steward laps still appear in the lap table');
+
+  // Real laps: DELETE is refused, hide/restore with $set works.
+  const real = (await api('/api/laps?round=16&limit=1')).body.results[0];
+  assert.equal((await api(`/api/laps/${real._id}`, { method: 'DELETE' })).status, 403);
+  await api(`/api/laps/${real._id}/hidden`, { method: 'PATCH', body: { hidden: true } });
+  assert.ok(!(await api(`/api/races/16/laps`)).body.results.some((l) => l._id === real._id));
+  assert.ok((await api('/api/laps?round=16&limit=200&steward=1')).body.results.some((l) => l._id === real._id && l.deleted));
+  const restored = await api('/api/races/16/restore', { method: 'POST' });
+  assert.ok(restored.body.modifiedCount >= 1);
+
+  // Penalty: lap time and the race result change together.
+  const health = (await api('/api/health')).body;
+  if (health.transactions) {
+    const pen = await api(`/api/laps/${real._id}/penalty`, { method: 'POST', body: { seconds: 5 } });
+    assert.equal(pen.status, 200);
+    const after = (await api(`/api/laps/${real._id}`)).body.lap;
+    assert.ok(Math.abs(after.lapTime - (real.lapTime + 5)) < 1e-9);
+    assert.equal(after.stewardEdited, true);
+    const race = (await api('/api/races/16')).body;
+    assert.equal(race.results.find((r) => r.driverId === real.driverId).penaltySeconds, 5);
+  }
+  assert.equal((await api(`/api/laps/${created.body.insertedId}`, { method: 'DELETE' })).body.deletedCount, 1);
 });
 
 test('NoSQL 5: embedded telemetry + driverId / raceId references', async () => {

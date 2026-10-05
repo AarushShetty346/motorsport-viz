@@ -84,6 +84,17 @@ const seasonEntries = [
 
 // Laps hidden by a steward ($set: { deleted: true }) never show up outside Steward mode.
 const LIVE = { deleted: { $ne: true } };
+// Real race data only: steward-added laps are left out of every leaderboard, chart and statistic.
+const REAL = { ...LIVE, source: { $ne: 'steward' } };
+
+let transactions;
+async function supportsTransactions() {
+  if (transactions === undefined) {
+    const hello = await getDb().admin().command({ hello: 1 });
+    transactions = !!hello.setName;
+  }
+  return transactions;
+}
 
 // Condenses explain('executionStats') output (find or aggregate, classic or SBE)
 // into what the "Under the hood" panels show.
@@ -129,7 +140,7 @@ const onlyRace = (expr) => ({ $cond: [{ $eq: ['$entries.kind', 'race'] }, expr, 
 app.get('/api/health', async (req, res) => {
   await getDb().command({ ping: 1 });
   const [d, r, l] = await Promise.all([drivers().estimatedDocumentCount(), races().estimatedDocumentCount(), laps().estimatedDocumentCount()]);
-  res.json({ ok: true, db: getDb().databaseName, counts: { drivers: d, races: r, laps: l } });
+  res.json({ ok: true, db: getDb().databaseName, transactions: await supportsTransactions(), counts: { drivers: d, races: r, laps: l } });
 });
 
 app.get('/api/drivers', async (req, res) => {
@@ -149,7 +160,7 @@ app.get('/api/races/:round', async (req, res) => {
 // Every lap of one race, trimmed to what the race charts need.
 app.get('/api/races/:round/laps', async (req, res) => {
   const round = intParam(req.params.round);
-  const filter = { round, ...LIVE };
+  const filter = { round, ...REAL };
   const [results, explain] = await Promise.all([
     laps()
       .find(filter, { projection: { driverId: 1, lapNumber: 1, lapTime: 1, position: 1, pitIn: 1, pitOut: 1, compound: 1, 'telemetry.speed': 1 } })
@@ -157,7 +168,7 @@ app.get('/api/races/:round/laps', async (req, res) => {
       .toArray(),
     explainFind(laps(), filter, { lapNumber: 1 }),
   ]);
-  res.json({ query: `db.laps.find({ round: ${round}, deleted: { $ne: true } }).sort({ lapNumber: 1 })`, explain, results });
+  res.json({ query: `db.laps.find({ round: ${round}, deleted: { $ne: true }, source: { $ne: "steward" } }).sort({ lapNumber: 1 })`, explain, results });
 });
 
 app.post('/api/reset', async (req, res) => {
@@ -166,10 +177,12 @@ app.post('/api/reset', async (req, res) => {
 });
 
 // ------------------------------------------- NoSQL Functionality 1: CRUD
+// Steward mode on the Race page. Laps a steward adds carry source: "steward";
+// real laps a steward changes get stewardEdited: true.
 
-// READ (filtered + paginated: the collection holds a whole season)
+// READ (filtered + paginated). steward=1 also returns hidden laps, so they can be restored.
 app.get('/api/laps', async (req, res) => {
-  const filter = { ...LIVE };
+  const filter = req.query.steward === '1' ? {} : { ...LIVE };
   const round = intParam(req.query.round);
   if (round) filter.round = round;
   const driverId = toObjectId(req.query.driverId);
@@ -183,12 +196,37 @@ app.get('/api/laps', async (req, res) => {
     { $limit: limit },
     ...lookupDriver,
   ];
-  const [results, total] = await Promise.all([laps().aggregate(pipeline).toArray(), laps().countDocuments(filter)]);
-  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', total, page, limit, results });
+  const [results, total, explain] = await Promise.all([
+    laps().aggregate(pipeline).toArray(),
+    laps().countDocuments(filter),
+    explainAggregate(laps(), pipeline),
+  ]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, total, page, limit, results });
 });
 
-async function lapFromBody(body) {
+// One lap with everything it references, for the lap detail drawer.
+app.get('/api/laps/:id', async (req, res) => {
+  const _id = toObjectId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
+  const lap = await laps().findOne({ _id });
+  if (!lap) return res.status(404).json({ error: 'Lap not found' });
+  res.json({ query: `db.laps.findOne({ _id: ObjectId("${_id}") })`, lap });
+});
+
+// The fields a steward can type in. Blank fields are left out so MongoDB's
+// validator (not the app) decides what is allowed.
+function lapFields(body) {
   const t = body.telemetry || {};
+  return stripUndefined({
+    lapNumber: num(body.lapNumber),
+    lapTime: num(body.lapTime),
+    position: num(body.position),
+    compound: body.compound || undefined,
+    telemetry: { speed: num(t.speed), rpm: num(t.rpm), throttle: num(t.throttle), brake: num(t.brake) },
+  });
+}
+
+async function lapFromBody(body) {
   const round = num(body.round);
   const race = Number.isInteger(round) ? await races().findOne({ round }, { projection: { name: 1, circuit: 1, country: 1 } }) : null;
   return stripUndefined({
@@ -198,28 +236,27 @@ async function lapFromBody(body) {
     race: race?.name,
     circuit: race?.circuit,
     country: race?.country,
-    lapNumber: num(body.lapNumber),
-    lapTime: num(body.lapTime),
-    position: num(body.position),
-    telemetry: {
-      speed: num(t.speed),
-      rpm: num(t.rpm),
-      throttle: num(t.throttle),
-      brake: num(t.brake),
-    },
+    ...lapFields(body),
+    source: 'steward',
+    deleted: false,
   });
 }
 
 // MongoDB has no foreign keys, so referential integrity of driverId is an app-level check.
 async function assertDriverExists(doc, res) {
   if (doc.driverId instanceof ObjectId && !(await drivers().findOne({ _id: doc.driverId }))) {
-    res.status(400).json({ error: 'driverId does not reference an existing driver (MongoDB has no foreign keys — this is checked by the app).' });
+    res.status(400).json({ error: 'driverId does not reference an existing driver (MongoDB has no foreign keys, so the app checks this).' });
     return false;
   }
   return true;
 }
 
-// CREATE
+function writeError(err, res) {
+  if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
+  throw err;
+}
+
+// CREATE: always a steward lap
 app.post('/api/laps', async (req, res) => {
   const doc = await lapFromBody(req.body || {});
   if (!(await assertDriverExists(doc, res))) return;
@@ -227,34 +264,110 @@ app.post('/api/laps', async (req, res) => {
     const result = await laps().insertOne(doc);
     res.status(201).json({ query: 'db.laps.insertOne(' + shell(doc) + ')', insertedId: result.insertedId, document: doc });
   } catch (err) {
-    if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
-    throw err;
+    writeError(err, res);
   }
 });
 
-// UPDATE
+// UPDATE with $set. Editing a real lap marks it stewardEdited.
 app.put('/api/laps/:id', async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
-  const doc = await lapFromBody(req.body || {});
-  if (!(await assertDriverExists(doc, res))) return;
+  const lap = await laps().findOne({ _id }, { projection: { source: 1 } });
+  if (!lap) return res.status(404).json({ error: 'Lap not found' });
+  const fields = lapFields(req.body || {});
+  const set = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (k === 'telemetry') for (const [tk, tv] of Object.entries(v)) set[`telemetry.${tk}`] = tv;
+    else set[k] = v;
+  }
+  if (lap.source !== 'steward') set.stewardEdited = true;
+  const update = { $set: set };
   try {
-    const result = await laps().replaceOne({ _id }, doc);
-    if (result.matchedCount === 0) return res.status(404).json({ error: 'Lap not found' });
-    res.json({ query: `db.laps.replaceOne({ _id: ObjectId("${_id}") }, ${shell(doc)})`, modifiedCount: result.modifiedCount });
+    const result = await laps().updateOne({ _id }, update);
+    res.json({ query: `db.laps.updateOne({ _id: ObjectId("${_id}") }, ${shell(update)})`, modifiedCount: result.modifiedCount });
   } catch (err) {
-    if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
-    throw err;
+    writeError(err, res);
   }
 });
 
-// DELETE
+// DELETE: only laps a steward added. Real laps are hidden instead (soft delete, below).
 app.delete('/api/laps/:id', async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
-  const result = await laps().deleteOne({ _id });
-  if (result.deletedCount === 0) return res.status(404).json({ error: 'Lap not found' });
-  res.json({ query: `db.laps.deleteOne({ _id: ObjectId("${_id}") })`, deletedCount: result.deletedCount });
+  const filter = { _id, source: 'steward' };
+  const result = await laps().deleteOne(filter);
+  if (result.deletedCount === 0) {
+    const exists = await laps().countDocuments({ _id });
+    return exists
+      ? res.status(403).json({ error: 'Real race laps cannot be deleted. Hide the lap instead.' })
+      : res.status(404).json({ error: 'Lap not found' });
+  }
+  res.json({ query: `db.laps.deleteOne({ _id: ObjectId("${_id}"), source: "steward" })`, deletedCount: result.deletedCount });
+});
+
+// ------------------------------- NoSQL Functionality 6: update operators
+
+// Hide / restore one lap: the soft-delete path for real laps.
+app.patch('/api/laps/:id/hidden', async (req, res) => {
+  const _id = toObjectId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
+  const hidden = req.body?.hidden === true;
+  const update = { $set: { deleted: hidden, stewardEdited: true } };
+  const result = await laps().updateOne({ _id }, update);
+  if (result.matchedCount === 0) return res.status(404).json({ error: 'Lap not found' });
+  res.json({ query: `db.laps.updateOne({ _id: ObjectId("${_id}") }, ${shell(update)})`, modifiedCount: result.modifiedCount });
+});
+
+// Restore every hidden lap of a race in one updateMany.
+app.post('/api/races/:round/restore', async (req, res) => {
+  const round = intParam(req.params.round);
+  const filter = { round, deleted: true };
+  const update = { $set: { deleted: false, stewardEdited: true } };
+  const result = await laps().updateMany(filter, update);
+  res.json({ query: `db.laps.updateMany(${shell(filter)}, ${shell(update)})`, matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
+});
+
+// --------------------------------- NoSQL Functionality 10: transactions
+// A time penalty changes the lap ($inc lapTime) and the driver's entry in the
+// race's embedded results, in one multi-document transaction: both or neither.
+
+app.post('/api/laps/:id/penalty', async (req, res) => {
+  const _id = toObjectId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
+  const seconds = Number(req.body?.seconds) || 5;
+  if (!(await supportsTransactions())) {
+    return res.status(503).json({ error: 'MongoDB is not running as a replica set, so multi-document transactions are unavailable. Start it with docker compose (see the README).' });
+  }
+  const lap = await laps().findOne({ _id });
+  if (!lap) return res.status(404).json({ error: 'Lap not found' });
+
+  const lapUpdate = { $inc: { lapTime: seconds, penaltySeconds: seconds }, $set: { stewardEdited: true } };
+  const raceUpdate = { $inc: { 'results.$[r].penaltySeconds': seconds }, $set: { 'results.$[r].stewardEdited': true } };
+  const arrayFilters = [{ 'r.driverId': lap.driverId }];
+  const session = client.startSession();
+  try {
+    await session.withTransaction(async () => {
+      await laps().updateOne({ _id }, lapUpdate, { session });
+      const r = await races().updateOne({ _id: lap.raceId }, raceUpdate, { arrayFilters, session });
+      // No classified result for this driver: abort, so the lap is not changed either.
+      if (r.modifiedCount === 0) throw Object.assign(new Error('This driver has no result in this race to apply the penalty to, so the transaction was aborted and the lap is unchanged.'), { status: 409 });
+    });
+  } catch (err) {
+    if (err.status) return res.status(err.status).json({ error: err.message, aborted: true });
+    if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
+    throw err;
+  } finally {
+    await session.endSession();
+  }
+  res.json({
+    query:
+      'const session = db.getMongo().startSession()\n' +
+      'session.withTransaction(() => {\n' +
+      `  db.laps.updateOne({ _id: ObjectId("${_id}") }, ${shell(lapUpdate)})\n` +
+      `  db.races.updateOne({ _id: ObjectId("${lap.raceId}") }, ${shell(raceUpdate)}, { arrayFilters: ${shell(arrayFilters)} })\n` +
+      '})',
+    seconds,
+  });
 });
 
 // ------------------------------- NoSQL Functionality 2: Aggregation Pipeline
@@ -263,7 +376,7 @@ app.delete('/api/laps/:id', async (req, res) => {
 
 app.get('/api/nosql/aggregation', async (req, res) => {
   const pipeline = [
-    { $match: LIVE },
+    { $match: REAL },
     { $group: { _id: '$driverId', avgLapTime: { $avg: '$lapTime' }, fastestLap: { $min: '$lapTime' }, laps: { $sum: 1 } } },
     { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
     { $unwind: '$driver' },
@@ -385,26 +498,6 @@ app.get('/api/nosql/indexes', async (req, res) => {
   res.json({ query: 'db.laps.getIndexes()', results: indexes, explain });
 });
 
-// ------------------------------------ NoSQL Functionality 4: Schema Validation
-
-app.post('/api/nosql/invalid-insert', async (req, res) => {
-  // Deliberately missing driverId, raceId, round, lapTime and telemetry; lapNumber has the wrong type.
-  const invalidLap = { circuit: 'Monza', lapNumber: 'three' };
-  try {
-    await laps().insertOne({ ...invalidLap });
-    res.status(500).json({ error: 'Unexpected: MongoDB accepted an invalid document. Is the validator installed?' });
-  } catch (err) {
-    if (err.code !== 121) throw err;
-    const options = await getDb().listCollections({ name: 'laps' }).next();
-    res.json({
-      query: 'db.laps.insertOne(' + JSON.stringify(invalidLap) + ')',
-      attemptedDocument: invalidLap,
-      ...validationErrorPayload(err),
-      validator: options.options.validator,
-    });
-  }
-});
-
 // -------------------- NoSQL Functionality 5: Embedded Documents & Referencing
 
 app.get('/api/nosql/embedded', async (req, res) => {
@@ -458,7 +551,7 @@ app.get('/api/user/compare', async (req, res) => {
   if (!a || !b) return res.status(400).json({ error: 'Pick two drivers' });
   // Racing laps only: no pit in/out laps and no opening lap.
   const pipeline = [
-    { $match: { driverId: { $in: [a, b] }, deleted: { $ne: true }, pitIn: { $ne: true }, pitOut: { $ne: true }, lapNumber: { $gt: 1 } } },
+    { $match: { driverId: { $in: [a, b] }, deleted: { $ne: true }, source: { $ne: 'steward' }, pitIn: { $ne: true }, pitOut: { $ne: true }, lapNumber: { $gt: 1 } } },
     { $group: { _id: { driverId: '$driverId', round: '$round', race: '$race', circuit: '$circuit' }, avgLapTime: { $avg: '$lapTime' }, laps: { $sum: 1 } } },
     { $sort: { '_id.round': 1 } },
     { $group: { _id: '$_id.driverId', perRace: { $push: { round: '$_id.round', race: '$_id.race', circuit: '$_id.circuit', avgLapTime: { $round: ['$avgLapTime', 3] }, laps: '$laps' } }, totalTime: { $sum: { $multiply: ['$avgLapTime', '$laps'] } }, laps: { $sum: '$laps' } } },
@@ -495,7 +588,7 @@ app.get('/api/user/leaderboard', async (req, res) => {
   const round = intParam(req.query.round);
   if (req.query.round !== undefined && !round) return res.status(400).json({ error: 'Pick a race (round 1-24)' });
   const pipeline = [
-    { $match: round ? { round, deleted: { $ne: true } } : { deleted: { $ne: true } } },
+    { $match: round ? { round, ...REAL } : REAL },
     { $sort: { lapTime: 1 } },
     { $group: { _id: '$driverId', fastestLap: { $first: '$$ROOT' } } },
     { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
@@ -517,7 +610,7 @@ app.get('/api/user/leaderboard', async (req, res) => {
 app.get('/api/user/speed', async (req, res) => {
   const min = Number(req.query.min);
   if (req.query.min === undefined || req.query.min === '' || !Number.isFinite(min)) return res.status(400).json({ error: 'Enter a numeric speed threshold' });
-  const filter = { 'telemetry.speed': { $gt: min }, ...LIVE };
+  const filter = { 'telemetry.speed': { $gt: min }, ...REAL };
   const round = intParam(req.query.round);
   if (round) filter.round = round;
   const limit = Math.min(Math.max(intParam(req.query.limit) || 50, 1), 500);
@@ -529,7 +622,7 @@ app.get('/api/user/speed', async (req, res) => {
   const byId = new Map((await drivers().find({ _id: { $in: results.map((l) => l.driverId) } }).toArray()).map((d) => [String(d._id), d]));
   for (const l of results) l.driver = byId.get(String(l.driverId));
   res.json({
-    query: `db.laps.find({ "telemetry.speed": { $gt: ${min} }${round ? `, round: ${round}` : ''}, deleted: { $ne: true } }).sort({ "telemetry.speed": -1 }).limit(${limit})`,
+    query: `db.laps.find({ "telemetry.speed": { $gt: ${min} }${round ? `, round: ${round}` : ''}, deleted: { $ne: true }, source: { $ne: "steward" } }).sort({ "telemetry.speed": -1 }).limit(${limit})`,
     explain,
     total,
     results,
@@ -542,7 +635,7 @@ app.get('/api/user/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Enter a circuit to search for' });
   const pipeline = [
-    { $match: { $text: { $search: q }, deleted: { $ne: true } } },
+    { $match: { $text: { $search: q }, deleted: { $ne: true }, source: { $ne: 'steward' } } },
     { $group: { _id: '$round', race: { $first: '$race' }, circuit: { $first: '$circuit' }, country: { $first: '$country' }, score: { $max: { $meta: 'textScore' } }, laps: { $sum: 1 }, fastestLap: { $min: '$lapTime' }, topSpeed: { $max: '$telemetry.speed' } } },
     { $project: { _id: 0, round: '$_id', race: 1, circuit: 1, country: 1, laps: 1, fastestLap: 1, topSpeed: 1, score: { $round: ['$score', 2] } } },
     { $sort: { score: -1, round: 1 } },

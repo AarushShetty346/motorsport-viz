@@ -11,6 +11,7 @@ import DriverPortrait from '../components/DriverPortrait.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import { useDriverPhotos } from '../lib/photos.js';
 import { teamPath } from '../lib/teams.js';
+import { lapTags, lapRowClass } from '../lib/steward.js';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
@@ -31,7 +32,7 @@ export default function Driver({ driverKey }) {
   const idx = standings.findIndex((s) => s.driverId === driver._id);
   const st = standings[idx];
   const lapRows = laps.data?.results || [];
-  const best = lapRows.filter((l) => !l.deleted).reduce((a, b) => (!a || b.lapTime < a.lapTime ? b : a), null);
+  const best = lapRows.filter((l) => !l.deleted && l.source !== 'steward').reduce((a, b) => (!a || b.lapTime < a.lapTime ? b : a), null);
   const race = raceByRound.get(round);
 
   return (
@@ -130,8 +131,8 @@ export default function Driver({ driverKey }) {
                   <thead><tr><th className="num">Lap</th><th className="num">Pos</th><th className="num">Time</th><th>Tyre</th><th className="num">Top speed</th><th className="num">Peak RPM</th><th>Throttle</th><th>Braking</th><th>DRS</th></tr></thead>
                   <tbody>
                     {lapRows.map((l) => (
-                      <tr key={l._id} className={best && l._id === best._id ? 'best' : ''}>
-                        <td className="num mono">{l.lapNumber}{(l.pitIn || l.pitOut) && <span className="pit-tag">PIT</span>}</td>
+                      <tr key={l._id} className={`${best && l._id === best._id ? 'best' : ''} ${lapRowClass(l)}`}>
+                        <td className="num mono">{l.lapNumber}{(l.pitIn || l.pitOut) && <span className="pit-tag">PIT</span>}{lapTags(l).map((t) => <span key={t} className={`lap-tag ${t}`}>({t})</span>)}</td>
                         <td className="num mono">{l.position ?? '—'}</td>
                         <td className="num mono strong">{fmtLap(l.lapTime)}</td>
                         <td>{l.compound && <span className="tyre" style={{ '--tyre': COMPOUND[l.compound]?.color }}>{COMPOUND[l.compound]?.label}</span>}</td>

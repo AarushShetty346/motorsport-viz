@@ -10,6 +10,7 @@ import DriverName from '../components/DriverName.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import RaceLaps from '../components/RaceLaps.jsx';
 
 export default function Race({ round }) {
   const { raceByRound, driverById, ready } = useSeason();
@@ -81,7 +82,7 @@ export default function Race({ round }) {
                         {r.grid ?? 'PL'}
                         {gained ? <span className={`delta ${gained > 0 ? 'up' : 'down'}`}>{gained > 0 ? '▲' : '▼'}{Math.abs(gained)}</span> : null}
                       </td>
-                      <td className="num mono small">{r.position === 1 ? r.time : r.gap || r.retired || (r.laps ? `${r.laps} laps` : '')}</td>
+                      <td className="num mono small">{r.position === 1 ? r.time : r.gap || r.retired || (r.laps ? `${r.laps} laps` : '')}{r.penaltySeconds ? <span className="pen-tag" title="Time penalty added in Steward mode (edited)">+{r.penaltySeconds}s (edited)</span> : null}</td>
                       <td className="num mono">{r.points || ''}</td>
                     </tr>
                   );
@@ -100,6 +101,14 @@ export default function Race({ round }) {
           <div className="spacer" />
           <SpeedTrap round={race.round} defaultMin={Math.round((race.track?.speed ? Math.max(...race.track.speed) : 330) + 4)} title="Speed trap" compact />
         </div>
+      </section>
+
+      <section className="container section" id="laps">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">04</span>Every lap</p>
+          <h2 className="display-md">Lap by lap</h2>
+        </div>
+        <RaceLaps race={race} />
       </section>
 
       <nav className="container race-nav" aria-label="Other races">

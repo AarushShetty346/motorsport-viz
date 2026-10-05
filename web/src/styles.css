@@ -875,3 +875,28 @@ pre.json.tall { max-height: 460px; }
 .query summary .plan-stage { margin-left: auto; font-size: 11px; }
 .explain-mini { padding: 0 16px 12px; color: var(--ink-2); }
 .explain-mini p { margin: 6px 0 0; }
+
+/* Feature labels: one small grey caption per feature, the same everywhere */
+.feature-label { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--muted); letter-spacing: 0.01em; opacity: 0.85; }
+
+/* Steward mode on the Race page lap table */
+.steward-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+.steward-toggle input { accent-color: var(--accent); }
+.steward-bar { margin: 12px 0 16px; padding: 12px 14px; border: 1px dashed var(--steward); border-radius: var(--radius); }
+.steward-bar p { margin: 0 0 10px; }
+.steward-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lap-table tr.clickable { cursor: pointer; }
+.lap-table tr.clickable:hover td { background: var(--surface-2); }
+.lap-table .row-actions { white-space: nowrap; }
+tr.row-added td { background: var(--steward-bg); }
+tr.row-added td:first-child { box-shadow: inset 3px 0 0 var(--steward); }
+tr.row-edited td:first-child { box-shadow: inset 3px 0 0 var(--edited); }
+tr.row-hidden td { opacity: 0.45; }
+tr.row-hidden td.row-actions { opacity: 1; }
+.lap-tag { margin-left: 6px; font: 500 10px var(--mono); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.lap-tag.added { color: var(--steward); background: var(--steward-bg); }
+.lap-tag.edited { color: var(--edited); background: var(--edited-bg); }
+.lap-tag.hidden { color: var(--muted); background: var(--surface-3); }
+.pen-tag { margin-left: 6px; font: 500 10px var(--mono); color: var(--edited); }
+.form-error { grid-column: 1 / -1; }
+:root { --steward: #b48cff; --steward-bg: rgba(180, 140, 255, 0.1); --edited: #ff9f43; --edited-bg: rgba(255, 159, 67, 0.12); }
