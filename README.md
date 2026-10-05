@@ -201,7 +201,9 @@ Three collections in the `motorsport` database.
   raceId: ObjectId("..."),     // reference -> races._id
   round: 16, race: "Italian Grand Prix", circuit: "Monza", country: "Italy",
   lapNumber: 53, lapTime: 80.901, position: 2,
-  compound: "HARD", stint: 2, tyreLife: 29, pitIn: false, pitOut: false, deleted: false,
+  compound: "HARD", stint: 2, tyreLife: 29, pitIn: false, pitOut: false,
+  deleted: false,              // true only when a steward hides the lap
+  timeDeleted: false,          // true when the FIA struck off the lap time for track limits (still a real lap)
   sectors: { s1: 26.6, s2: 27.1, s3: 27.2 },   // embedded
   telemetry: { speed: 336.0, avgSpeed: 257.8, rpm: 11912, throttle: 81.3, brake: 10.9, drs: 21.4, gear: 8, speedTrap: 331 }
   // Steward mode only: source: "steward", stewardEdited: true, penaltySeconds: 5
