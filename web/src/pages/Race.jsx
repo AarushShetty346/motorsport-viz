@@ -58,7 +58,7 @@ export default function Race({ round }) {
           <h2 className="display-md">Every position change</h2>
         </div>
         {laps.data ? <RaceTrace laps={laps.data.results} results={race.results} /> : <div className="skeleton" style={{ height: 480 }} />}
-        <Query text={laps.data?.query} />
+        <Query text={laps.data?.query} explain={laps.data?.explain} />
       </section>
 
       <section className="container section two-col">

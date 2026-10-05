@@ -870,3 +870,8 @@ pre.json.tall { max-height: 460px; }
   .team-bar-col { height: 140px; }
 }
 @media (prefers-reduced-motion: reduce) { .portrait { transition: none; } }
+
+/* explain() summary inside the "Under the hood" panels */
+.query summary .plan-stage { margin-left: auto; font-size: 11px; }
+.explain-mini { padding: 0 16px 12px; color: var(--ink-2); }
+.explain-mini p { margin: 6px 0 0; }

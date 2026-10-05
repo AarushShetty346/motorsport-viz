@@ -38,7 +38,7 @@ export default function Leaderboard({ round }) {
           </tbody>
         </table>
       </div>
-      <Query text={data.query} />
+      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }

@@ -125,10 +125,12 @@ async function setupCollections() {
   }
 
   const laps = db.collection('laps');
-  // Three indexes on laps: the default _id index, a compound index and a text index.
+  // Indexes on laps: the default _id index, two compound indexes and a text index.
   // Drop the ones an earlier version of the app created.
   for (const old of ['driverId_1_round_1_lapNumber_1', 'round_1_lapTime_1', 'race_circuit_country_text']) await laps.dropIndex(old).catch(() => {});
   await laps.createIndex({ driverId: 1, lapNumber: 1 }, { name: 'driverId_1_lapNumber_1' });
+  // Serves the Race page: every lap of one round, in lap order.
+  await laps.createIndex({ round: 1, lapNumber: 1 }, { name: 'round_1_lapNumber_1' });
   await laps.createIndex({ circuit: 'text' }, { name: 'circuit_text' });
   await db.collection('races').createIndex({ round: 1 }, { name: 'round_1', unique: true });
   await db.collection('drivers').createIndex({ key: 1 }, { name: 'key_1', unique: true });

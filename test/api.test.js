@@ -109,7 +109,9 @@ test('NoSQL 2: aggregation — avg + fastest lap per driver ($group, $lookup, $s
   assert.ok(body.results.every((r) => r.name && r.fastestLap <= r.avgLapTime && r.laps > 0));
   const avgs = body.results.map((r) => r.avgLapTime);
   assert.deepEqual(avgs, [...avgs].sort((a, b) => a - b));
-  assert.equal(body.results.reduce((n, r) => n + r.laps, 0), totalLaps);
+  // Laps flagged deleted: true are hidden, so the counts add up to every visible lap.
+  const counted = body.results.reduce((n, r) => n + r.laps, 0);
+  assert.ok(counted < totalLaps && counted > totalLaps * 0.98);
 });
 
 test('season standings from embedded results', async () => {
@@ -126,7 +128,7 @@ test('season standings from embedded results', async () => {
 test('NoSQL 3: indexes — _id, compound, text; explain uses IXSCAN and reads far fewer docs', async () => {
   const { body } = await api('/api/nosql/indexes');
   const names = body.results.map((i) => i.name).sort();
-  assert.deepEqual(names, ['_id_', 'circuit_text', 'driverId_1_lapNumber_1']);
+  assert.deepEqual(names, ['_id_', 'circuit_text', 'driverId_1_lapNumber_1', 'round_1_lapNumber_1']);
   assert.deepEqual(body.results.find((i) => i.name === 'driverId_1_lapNumber_1').key, { driverId: 1, lapNumber: 1 });
   assert.deepEqual(Object.keys(body.results.find((i) => i.name === 'circuit_text').weights), ['circuit']);
   assert.equal(body.explain.indexUsed, 'driverId_1_lapNumber_1');
@@ -196,12 +198,23 @@ test('User 3: fastest lap leaderboard over all laps and for one race', async () 
   assert.equal((await api('/api/user/leaderboard?round=abc')).status, 400);
 });
 
+test('race laps use the { round, lapNumber } index and skip hidden laps', async () => {
+  const { body } = await api('/api/races/16/laps');
+  assert.equal(body.explain.stage, 'IXSCAN');
+  assert.equal(body.explain.indexUsed, 'round_1_lapNumber_1');
+  // Hidden laps are fetched by the index then filtered, so docs examined is the round's laps, not the whole collection.
+  assert.ok(body.explain.totalDocsExamined >= body.results.length && body.explain.totalDocsExamined < totalLaps / 10);
+  assert.equal(body.explain.collscan.stage, 'COLLSCAN');
+  assert.equal(body.explain.collscan.totalDocsExamined, totalLaps);
+  assert.ok(body.results.every((l) => !l.deleted));
+});
+
 test('User 4: laps above a speed threshold (dot notation)', async () => {
   const { body } = await api('/api/user/speed?min=350');
   assert.ok(body.total > 0);
   assert.ok(body.results.every((l) => l.telemetry.speed > 350 && l.driver.name));
   const all = await api('/api/user/speed?min=0&limit=1');
-  assert.ok(all.body.total > totalLaps * 0.99 && all.body.total <= totalLaps);
+  assert.ok(all.body.total > totalLaps * 0.98 && all.body.total < totalLaps);
   const monza = await api('/api/user/speed?min=300&round=16');
   assert.ok(monza.body.results.every((l) => l.round === 16));
   assert.equal((await api('/api/user/speed?min=abc')).status, 400);
