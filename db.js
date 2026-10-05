@@ -60,7 +60,11 @@ const lapsValidator = {
       },
       deleted: {
         bsonType: 'bool',
-        description: 'true when the lap is hidden (soft delete)',
+        description: 'true when a steward has hidden the lap (soft delete)',
+      },
+      timeDeleted: {
+        bsonType: 'bool',
+        description: 'true when the FIA struck off the lap time (track limits); the lap still counts',
       },
       penaltySeconds: {
         bsonType: 'number',
@@ -153,6 +157,8 @@ async function setupCollections() {
   // Serves the Race page: every lap of one round, in lap order.
   await laps.createIndex({ round: 1, lapNumber: 1 }, { name: 'round_1_lapNumber_1' });
   await laps.createIndex({ circuit: 'text' }, { name: 'circuit_text' });
+  // Databases seeded before timeDeleted existed: move the FIA flag out of "deleted".
+  await laps.updateMany({ deleted: true, timeDeleted: { $exists: false }, stewardEdited: { $ne: true } }, { $set: { deleted: false, timeDeleted: true } });
   await db.collection('races').createIndex({ round: 1 }, { name: 'round_1', unique: true });
   // GeoJSON point for every circuit (migrates races seeded before it existed), with a 2dsphere index for $geoNear.
   await db.collection('races').updateMany({ location: { $exists: false }, lat: { $type: 'number' } }, [
@@ -191,7 +197,7 @@ async function seedIfEmpty() {
   const raceByRound = new Map(raceDocs.map((r) => [r.round, r]));
   await races.insertMany(raceDocs);
 
-  const lapDocs = data.laps.map(({ driver, round, sectors, speedTrap, ...lap }) => {
+  const lapDocs = data.laps.map(({ driver, round, sectors, speedTrap, deleted, ...lap }) => {
     const race = raceByRound.get(round);
     return {
       driverId: driverIdByKey.get(driver),
@@ -203,6 +209,9 @@ async function seedIfEmpty() {
       ...lap,
       sectors: { s1: sectors[0], s2: sectors[1], s3: sectors[2] },
       telemetry: { ...lap.telemetry, speedTrap },
+      // The source data's "deleted" is the FIA striking off a lap time; deleted here means hidden by a steward.
+      timeDeleted: !!deleted,
+      deleted: false,
     };
   });
   for (let i = 0; i < lapDocs.length; i += 5000) await laps.insertMany(lapDocs.slice(i, i + 5000), { ordered: false });

@@ -253,7 +253,7 @@ test('User 4: laps above a speed threshold (dot notation)', async () => {
   assert.ok(body.total > 0);
   assert.ok(body.results.every((l) => l.telemetry.speed > 350 && l.driver.name));
   const all = await api('/api/user/speed?min=0&limit=1');
-  assert.ok(all.body.total > totalLaps * 0.98 && all.body.total < totalLaps);
+  assert.ok(all.body.total > totalLaps * 0.98 && all.body.total <= totalLaps);
   const monza = await api('/api/user/speed?min=300&round=16');
   assert.ok(monza.body.results.every((l) => l.round === 16));
   assert.equal((await api('/api/user/speed?min=abc')).status, 400);
