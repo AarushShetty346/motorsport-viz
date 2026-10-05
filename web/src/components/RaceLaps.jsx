@@ -7,12 +7,13 @@ import { useSteward, setSteward, lapTags, lapRowClass } from '../lib/steward.js'
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
+import { openLap } from './LapDrawer.jsx';
 import { ValidationError } from './labValidation.jsx';
 
 const EMPTY = { id: '', driverId: '', lapNumber: '', lapTime: '', position: '', compound: '', speed: '', rpm: '', throttle: '', brake: '' };
 
 // Every lap of one race. Steward mode adds, edits, penalises, hides and deletes laps.
-export default function RaceLaps({ race, onOpenLap }) {
+export default function RaceLaps({ race }) {
   const { drivers, driverById, health } = useSeason();
   const steward = useSteward();
   const [driverId, setDriverId] = useState('');
@@ -82,7 +83,7 @@ export default function RaceLaps({ race, onOpenLap }) {
             {drivers.map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}
           </select>
         </label>
-        <span className="muted small">{data ? `${fmtNum(data.total)} laps` : ''}</span>
+        <span className="muted small">{data ? `${fmtNum(data.total)} laps · click a lap to see its document` : ''}</span>
         <label className="steward-toggle">
           <input type="checkbox" checked={steward} onChange={(e) => setSteward(e.target.checked)} />
           <span>Steward mode</span>
@@ -145,7 +146,7 @@ export default function RaceLaps({ race, onOpenLap }) {
             {data?.results.map((l) => {
               const added = l.source === 'steward';
               return (
-                <tr key={l._id} className={`clickable ${lapRowClass(l)}`} onClick={() => onOpenLap?.(l._id)}>
+                <tr key={l._id} className={`clickable ${lapRowClass(l)}`} onClick={() => openLap(l._id)}>
                   <td className="num mono">{l.lapNumber}</td>
                   <td><DriverName driver={driverById.get(l.driverId)} short sub={lapTags(l).map((t) => `(${t})`).join(' ') || undefined} /></td>
                   <td className="num mono">{l.position ?? '—'}</td>

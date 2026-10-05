@@ -5,6 +5,7 @@ import { fmtLap, fmtNum } from '../lib/format.js';
 import { Link } from '../lib/router.jsx';
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
+import { openLap } from './LapDrawer.jsx';
 
 // Laps whose top speed beat a threshold: a dot-notation query on the embedded telemetry.
 export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap', num, compact = false }) {
@@ -38,7 +39,7 @@ export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap
         {data?.results.map((l, i) => {
           const race = raceByRound.get(l.round);
           return (
-            <li key={l._id}>
+            <li key={l._id} className="clickable" onClick={(e) => !e.target.closest('a') && openLap(l._id)}>
               <span className="pos mono">{i + 1}</span>
               <DriverName driver={driverById.get(l.driverId)} short={compact} sub={round ? `Lap ${l.lapNumber}` : undefined} />
               {!round && <Link className="speed-race" to={`/race/${l.round}`}>{race?.shortName} · lap {l.lapNumber}</Link>}
