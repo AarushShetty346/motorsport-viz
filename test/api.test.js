@@ -102,18 +102,12 @@ test('NoSQL 1: CRUD — paginated read, insert, update, delete', async () => {
   assert.equal((await api('/api/health')).body.counts.laps, totalLaps);
 });
 
-test('NoSQL 2: aggregation — avg + fastest lap per driver ($group, $lookup, $sort)', async () => {
-  const { body } = await api('/api/nosql/aggregation');
-  assert.match(body.query, /\$group[\s\S]*\$avg[\s\S]*\$min[\s\S]*\$sum[\s\S]*\$lookup[\s\S]*\$sort/);
-  assert.ok(body.results.length >= 20);
-  assert.ok(body.results.every((r) => r.name && r.fastestLap <= r.avgLapTime && r.laps > 0));
-  const avgs = body.results.map((r) => r.avgLapTime);
-  assert.deepEqual(avgs, [...avgs].sort((a, b) => a - b));
-  // Laps flagged deleted: true are hidden, so the counts add up to every visible lap.
-  const counted = body.results.reduce((n, r) => n + r.laps, 0);
-  assert.ok(counted < totalLaps && counted > totalLaps * 0.98);
+test('NoSQL 2: aggregation — driver season stats ($group, $lookup)', async () => {
+  const { body } = await api(`/api/drivers/${driversByCode.NOR._id}/stats`);
+  assert.ok(body.query.includes('$group') && body.query.includes('$lookup'));
+  assert.equal(body.result.name, 'Lando Norris');
+  assert.ok(body.result.fastestLap <= body.result.avgLapTime && body.result.laps > 1000 && body.result.races === 24);
 });
-
 test('season standings from embedded results', async () => {
   const { body } = await api('/api/season/standings');
   const top3 = body.results.slice(0, 3).map((r) => [r.code, r.points]);
@@ -125,19 +119,13 @@ test('season standings from embedded results', async () => {
   assert.ok(nor.wins > 0 && nor.podiums >= nor.wins && nor.bestFinish === 1 && nor.avgFinish > 1);
 });
 
-test('NoSQL 3: indexes — _id, compound, text; explain uses IXSCAN and reads far fewer docs', async () => {
-  const { body } = await api('/api/nosql/indexes');
-  const names = body.results.map((i) => i.name).sort();
-  assert.deepEqual(names, ['_id_', 'circuit_text', 'driverId_1_lapNumber_1', 'round_1_lapNumber_1']);
-  assert.deepEqual(body.results.find((i) => i.name === 'driverId_1_lapNumber_1').key, { driverId: 1, lapNumber: 1 });
-  assert.deepEqual(Object.keys(body.results.find((i) => i.name === 'circuit_text').weights), ['circuit']);
-  assert.equal(body.explain.indexUsed, 'driverId_1_lapNumber_1');
-  assert.match(JSON.stringify(body.explain.winningPlan), /IXSCAN/);
-  assert.match(JSON.stringify(body.explain.collscan.winningPlan), /COLLSCAN/);
-  assert.equal(body.explain.totalDocsExamined, body.explain.nReturned);
-  assert.equal(body.explain.collscan.totalDocsExamined, totalLaps);
+test('NoSQL 3: indexes — explain shows IXSCAN on the compound indexes', async () => {
+  const { body } = await api(`/api/user/driver-laps/${driversByCode.NOR._id}?round=16`);
+  assert.equal(body.explain.stage, 'IXSCAN');
+  assert.match(body.explain.indexUsed, /_lapNumber_1$/);
+  assert.equal(body.explain.collscan.stage, 'COLLSCAN');
+  assert.equal((await api('/api/user/leaderboard?round=abc')).status, 400);
 });
-
 test('NoSQL 4: schema validation rejects an invalid steward lap with code 121', async () => {
   const { status, body } = await api('/api/laps', { method: 'POST', body: { round: 16, lapNumber: 'three' } });
   assert.equal(status, 400);
@@ -185,14 +173,30 @@ test('steward mode: added laps stay out of stats, real laps hide instead of dele
   assert.equal((await api(`/api/laps/${created.body.insertedId}`, { method: 'DELETE' })).body.deletedCount, 1);
 });
 
-test('NoSQL 5: embedded telemetry + driverId / raceId references', async () => {
-  const { body } = await api('/api/nosql/embedded');
+test('NoSQL 5: a lap document embeds telemetry and references its driver and race', async () => {
+  const first = (await api('/api/laps?round=16&limit=1')).body.results[0];
+  const { body } = await api(`/api/laps/${first._id}`);
   for (const k of ['speed', 'rpm', 'throttle', 'brake']) assert.equal(typeof body.lap.telemetry[k], 'number');
-  assert.equal(body.lap.driverId, body.referencedDriver._id);
-  assert.equal(body.lap.raceId, body.referencedRace._id);
-  assert.equal(body.referencedRace.results.length, 3);
+  assert.equal(body.lap.driverId, first.driverId);
+  assert.equal((await api(`/api/races/16`)).body._id, body.lap.raceId);
 });
 
+test('NoSQL 7-9 and User 6-10: race analytics, driver and team features, geospatial', async () => {
+  const numbers = (await api('/api/races/16/numbers')).body;
+  assert.ok(numbers.query.includes('$facet') && numbers.query.includes('$bucket'));
+  assert.ok(numbers.histogram.length > 3 && numbers.compounds.length > 1 && numbers.summary.laps > 800);
+  const gaps = (await api('/api/races/16/gaps')).body;
+  assert.ok(gaps.query.includes('$setWindowFields'));
+  assert.ok(gaps.results.every((d) => d.gaps.every((g) => g.gap >= 0)));
+  assert.ok((await api('/api/races/16/stints')).body.results.length >= 18);
+  assert.ok((await api('/api/races/16/pitstops')).body.results.every((r) => r.stops > 0));
+  assert.ok((await api('/api/movers?round=16')).body.results.length > 10);
+  const th = (await api(`/api/drivers/${driversByCode.NOR._id}/theoretical?round=16`)).body.result;
+  assert.ok(th.theoretical <= th.fastest);
+  assert.ok((await api('/api/teams/McLaren/degradation')).body.results.length > 10);
+  const near = (await api('/api/races/16/nearby')).body.results;
+  assert.equal(near[0].circuit, 'Enzo e Dino Ferrari');
+});
 test('User 1: laps for one driver (whole season and one race)', async () => {
   const all = await api(`/api/user/driver-laps/${driversByCode.NOR._id}`);
   assert.ok(all.body.results.length > 1000);

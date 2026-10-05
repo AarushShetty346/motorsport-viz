@@ -1,7 +1,7 @@
 import { prefersReducedMotion } from './motion.js';
 
 // Section heads, cards and panels slide up into place the first time they scroll into view.
-const SELECTOR = '.section-head, .reveal, .lab-card, .h2h-card, .podium-step, .kpis > div, .cta-card, .speed-trap, .delta-chart, .team-driver, .helmet-card';
+const SELECTOR = '.section-head, .reveal, .lab-card, .h2h-card, .podium-step, .kpis > div, .cta-card, .speed-trap, .delta-chart, .team-driver';
 
 export function startReveals(root) {
   if (!root || prefersReducedMotion() || typeof IntersectionObserver !== 'function') return () => {};

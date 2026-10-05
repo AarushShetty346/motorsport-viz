@@ -12,7 +12,6 @@ import Home from './pages/Home.jsx';
 import Race from './pages/Race.jsx';
 import Driver from './pages/Driver.jsx';
 import Compare from './pages/Compare.jsx';
-import Lab from './pages/Lab.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Team from './pages/Team.jsx';
 import { startReveals } from './lib/reveal.js';
@@ -26,9 +25,6 @@ function route(path) {
   if ((m = path.match(/^\/driver\/([a-z0-9-]+)\/?$/))) return { key: 'driver-' + m[1], el: <Driver driverKey={m[1]} /> };
   if ((m = path.match(/^\/team\/([a-z0-9-]+)\/?$/))) return { key: 'team-' + m[1], el: <Team teamKey={m[1]} /> };
   if (path.startsWith('/compare')) return { key: 'compare', el: <Compare /> };
-  if (path.startsWith('/lab')) return { key: 'lab', el: <Lab /> };
-  if (path.startsWith('/mongodb')) return { key: 'lab-nosql', el: <Lab group="nosql" /> };
-  if (path.startsWith('/my-features')) return { key: 'lab-user', el: <Lab group="user" /> };
   return { key: '404', el: <NotFound /> };
 }
 

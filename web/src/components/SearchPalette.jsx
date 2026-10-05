@@ -7,6 +7,7 @@ import { fmtLap, fmtNum } from '../lib/format.js';
 import { EASE_OUT } from '../lib/motion.js';
 import Flag from './Flag.jsx';
 import Query from './Query.jsx';
+import FeatureLabel from './FeatureLabel.jsx';
 
 // Search: MongoDB full-text search ($text on the laps text index) finds
 // Grands Prix by circuit; drivers are matched by name in the page.
@@ -131,7 +132,7 @@ export default function SearchPalette({ open, onClose }) {
                 ))}
               </ul>
             </div>
-            {res.query && <div className="palette-foot"><Query text={res.query} explain={res.explain} /></div>}
+            <div className="palette-foot"><FeatureLabel name="Search by circuit: $text index" type="user" />{res.query && <Query text={res.query} explain={res.explain} />}</div>
           </motion.div>
         </motion.div>
       )}

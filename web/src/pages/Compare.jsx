@@ -6,6 +6,7 @@ import { fmtLap } from '../lib/format.js';
 import DriverName from '../components/DriverName.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import FeatureLabel from '../components/FeatureLabel.jsx';
 
 export default function Compare() {
   const { standings, driverByKey, drivers, ready } = useSeason();
@@ -113,6 +114,7 @@ export default function Compare() {
               </div>
             </section>
           )}
+          <FeatureLabel name="Head-to-head comparison" type="user" />
           <Query text={data.query} />
         </>
       )}

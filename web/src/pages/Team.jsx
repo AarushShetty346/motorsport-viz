@@ -6,7 +6,6 @@ import { ordinal } from '../lib/format.js';
 import { teamInfo, teamKey, teamPath } from '../lib/teams.js';
 import Band from '../components/Band.jsx';
 import CarShowcase from '../components/CarShowcase.jsx';
-import Helmet from '../components/Helmet.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import Query from '../components/Query.jsx';
 import { TyreDegradation } from '../components/DriverTeamStats.jsx';
@@ -83,7 +82,6 @@ export default function Team({ teamKey: key }) {
             if (!drv) return null;
             return (
               <Link key={d.driverId} to={`/driver/${drv.key}`} className="team-driver" style={{ '--team': drv.teamColor }}>
-                <Helmet driver={drv} className="team-driver-helmet" />
                 <span className="team-driver-name">{drv.firstName}<br /><strong>{drv.lastName}</strong></span>
                 <span className="team-driver-stats mono">{d.points} pts · {d.starts} {d.starts === 1 ? 'start' : 'starts'}{d.best ? ` · best P${d.best}` : ''}</span>
               </Link>

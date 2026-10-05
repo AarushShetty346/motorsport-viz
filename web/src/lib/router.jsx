@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
-// Minimal History-API router: /, /race/16, /driver/lando-norris, /compare, /lab.
+// Minimal History-API router: /, /race/16, /driver/lando-norris, /compare.
 const RouterContext = createContext({ path: '/', query: new URLSearchParams(), navigate: () => {} });
 
 export function RouterProvider({ children }) {

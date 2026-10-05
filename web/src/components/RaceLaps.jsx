@@ -90,6 +90,7 @@ export default function RaceLaps({ race }) {
         </label>
       </div>
 
+      <FeatureLabel name="CRUD: insertOne, find, updateOne, deleteOne (turn on Steward mode)" />
       {steward && (
         <div className="steward-bar">
           <p className="small">Steward mode: changes here are not real race data. Added laps are tagged <span className="lap-tag added">added</span>, changed real laps <span className="lap-tag edited">edited</span>. Neither counts towards leaderboards or stats.</p>
@@ -98,7 +99,6 @@ export default function RaceLaps({ race }) {
             <button type="button" className="btn btn-ghost btn-sm" onClick={restoreAll} disabled={busy}>Restore all hidden laps</button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={reset} disabled={busy}>Reset demo data</button>
           </div>
-          <FeatureLabel name="CRUD: insertOne, find, updateOne, deleteOne" />
           <FeatureLabel name="Update operators: $inc, $set, updateMany" />
           <FeatureLabel name={`Transactions: lap + race result in one session${health && !health.transactions ? ' (unavailable: not a replica set)' : ''}`} />
         </div>

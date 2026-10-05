@@ -19,9 +19,6 @@ export default function Footer() {
           <Link to="/#standings">Drivers</Link>
           <Link to="/team/mclaren">Teams</Link>
           <Link to="/compare">Head to head</Link>
-          <Link to="/mongodb">MongoDB features</Link>
-          <Link to="/my-features">My features</Link>
-          <Link to="/lab">Data lab</Link>
         </div>
         <div className="footer-credits muted">
           <p>

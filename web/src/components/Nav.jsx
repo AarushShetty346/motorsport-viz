@@ -8,9 +8,6 @@ const LINKS = [
   { to: '/#standings', label: 'Drivers', match: (p) => p.startsWith('/driver') },
   { to: '/team/mclaren', label: 'Teams', match: (p) => p.startsWith('/team') },
   { to: '/compare', label: 'Head to head', match: (p) => p.startsWith('/compare') },
-  { to: '/mongodb', label: 'MongoDB features', match: (p) => p.startsWith('/mongodb') },
-  { to: '/my-features', label: 'My features', match: (p) => p.startsWith('/my-features') },
-  { to: '/lab', label: 'Data lab', match: (p) => p.startsWith('/lab') },
 ];
 
 export default function Nav({ onSearch }) {

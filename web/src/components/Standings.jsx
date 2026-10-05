@@ -3,6 +3,7 @@ import { useApi } from '../lib/useApi.js';
 import { Link } from '../lib/router.jsx';
 import Flag from './Flag.jsx';
 import Query from './Query.jsx';
+import FeatureLabel from './FeatureLabel.jsx';
 import { teamPath } from '../lib/teams.js';
 
 export default function Standings() {
@@ -58,6 +59,7 @@ export default function Standings() {
           <Query text={constructors.data?.query} label="Constructors pipeline" />
         </aside>
       </div>
+      <FeatureLabel name="Aggregation: $unwind + $group + $lookup" />
       <Query text={standingsQuery} label="Standings pipeline ($unwind → $group → $lookup → $sort)" />
     </section>
   );
