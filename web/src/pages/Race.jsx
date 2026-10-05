@@ -11,6 +11,7 @@ import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
 import RaceLaps from '../components/RaceLaps.jsx';
+import { NearbyCircuits } from '../components/CircuitMap.jsx';
 import { RaceNumbers, GapChart, TyreStrategy, PitStops, Movers } from '../components/RaceAnalytics.jsx';
 
 export default function Race({ round }) {
@@ -115,6 +116,8 @@ export default function Race({ round }) {
             <h2 className="display-md">One lap, flat out</h2>
           </div>
           <Leaderboard round={race.round} />
+          <div className="spacer" />
+          <NearbyCircuits round={race.round} />
           <div className="spacer" />
           <SpeedTrap round={race.round} defaultMin={Math.round((race.track?.speed ? Math.max(...race.track.speed) : 330) + 4)} title="Speed trap" compact />
         </div>

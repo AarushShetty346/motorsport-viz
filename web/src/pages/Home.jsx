@@ -9,6 +9,7 @@ import ScrollWords from '../components/ScrollWords.jsx';
 import Marquee from '../components/Marquee.jsx';
 import HelmetGrid from '../components/HelmetGrid.jsx';
 import { fmtNum } from '../lib/format.js';
+import { CircuitMap } from '../components/CircuitMap.jsx';
 
 export default function Home() {
   const { ready, standings, health } = useSeason();
@@ -26,6 +27,7 @@ export default function Home() {
           )}
           <TitleFight />
           <Calendar />
+          <CircuitMap />
           {p1 && <Marquee items={['2025 World Champion', p1.name, `${p1.points} points`, `${p1.wins} wins`, 'Lap by Lap']} />}
           <Standings />
           <HelmetGrid num="04" />

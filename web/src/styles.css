@@ -927,3 +927,11 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .stint .mono { font-size: 10px; color: #0b0b0c; }
 .movers-list { list-style: none; padding: 0; margin: 8px 0 0; display: flex; flex-direction: column; gap: 6px; }
 .movers-list li { display: flex; justify-content: space-between; align-items: center; }
+
+/* Circuit map */
+.map-grid { stroke: var(--line); stroke-width: 1; }
+.map-grid.equator { stroke: var(--line-2); }
+.map-route { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.6; }
+.map-pin { cursor: pointer; }
+.map-pin circle { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+.nearby .movers-list a { display: inline-flex; gap: 6px; align-items: center; }
