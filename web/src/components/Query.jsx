@@ -9,7 +9,7 @@ export default function Query({ text, explain, label = 'Under the hood' }) {
       <summary>
         <span className="query-icon" aria-hidden="true">{'{ }'}</span>
         {label}
-        {explain && <span className={`plan-stage ${explain.stage === 'COLLSCAN' ? '' : 'ix'}`}>{explain.stage}</span>}
+        {explain && <span className={`plan-stage ${explain.stage === 'COLLSCAN' || explain.stage === 'UNKNOWN' ? '' : 'ix'}`}>{explain.stage}</span>}
       </summary>
       <pre>{text}</pre>
       {explain && <ExplainStats explain={explain} />}

@@ -37,7 +37,7 @@ export function TheoreticalBest({ driver, round }) {
         <div><span className="kpi-label">Theoretical</span><span className="kpi mono">{fmtLap(r.theoretical)}</span><span className="muted small">actual best {fmtLap(r.fastest)} · {r.difference.toFixed(3)} s left on the table</span></div>
       </div>
       <FeatureLabel name="Theoretical best lap" type="user" />
-      <Query text={data.query} />
+      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }
@@ -78,7 +78,7 @@ export function TyreDegradation({ team, color }) {
         <span className="muted">Each lap as a % of that race's fastest lap, so higher on the chart is quicker. Dry tyres, no pit laps or safety car laps. Fuel burning off makes cars quicker as a stint goes on, which hides some of the wear.</span>
       </figcaption>
       <FeatureLabel name="Tyre degradation" type="user" />
-      <Query text={data.query} />
+      <Query text={data.query} explain={data.explain} />
     </figure>
   );
 }

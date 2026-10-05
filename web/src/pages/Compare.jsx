@@ -115,7 +115,7 @@ export default function Compare() {
             </section>
           )}
           <FeatureLabel name="Head-to-head comparison" type="user" />
-          <Query text={data.query} />
+          <Query text={data.query} explain={data.explain} />
         </>
       )}
       </div>
