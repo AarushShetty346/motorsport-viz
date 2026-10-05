@@ -33,7 +33,7 @@ export default function SearchPalette({ open, onClose }) {
     setRes((r) => ({ ...r, loading: true }));
     const t = setTimeout(() => {
       api(`/api/user/search?q=${encodeURIComponent(term)}`).then(
-        (d) => setRes({ results: d.results, query: d.query, error: null, loading: false }),
+        (d) => setRes({ results: d.results, query: d.query, explain: d.explain, error: null, loading: false }),
         (e) => setRes({ results: [], query: '', error: e, loading: false })
       );
     }, 160);
@@ -131,7 +131,7 @@ export default function SearchPalette({ open, onClose }) {
                 ))}
               </ul>
             </div>
-            {res.query && <div className="palette-foot"><Query text={res.query} /></div>}
+            {res.query && <div className="palette-foot"><Query text={res.query} explain={res.explain} /></div>}
           </motion.div>
         </motion.div>
       )}

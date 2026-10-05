@@ -82,6 +82,46 @@ const seasonEntries = [
   { $unwind: '$entries' },
 ];
 
+// Laps hidden by a steward ($set: { deleted: true }) never show up outside Steward mode.
+const LIVE = { deleted: { $ne: true } };
+
+// Condenses explain('executionStats') output (find or aggregate, classic or SBE)
+// into what the "Under the hood" panels show.
+function summarizeExplain(plan) {
+  const cursor = plan.stages?.[0]?.$cursor;
+  const stats = plan.executionStats || cursor?.executionStats || {};
+  const planner = plan.queryPlanner || cursor?.queryPlanner || {};
+  const winning = planner.winningPlan?.queryPlan || planner.winningPlan || {};
+  const text = JSON.stringify(winning);
+  const stage = text.includes('"IXSCAN"') ? 'IXSCAN' : text.includes('"TEXT') ? 'TEXT' : text.includes('"COLLSCAN"') ? 'COLLSCAN' : winning.stage || 'UNKNOWN';
+  return {
+    stage,
+    indexUsed: text.match(/"indexName":"([^"]+)"/)?.[1] || null,
+    nReturned: stats.nReturned,
+    totalKeysExamined: stats.totalKeysExamined,
+    totalDocsExamined: stats.totalDocsExamined,
+    executionTimeMillis: stats.executionTimeMillis,
+  };
+}
+
+// explain() for a find, plus the same query forced to a collection scan, so the
+// panel can show what the index saves.
+async function explainFind(collection, filter, sort) {
+  const run = (hint) => {
+    let c = collection.find(filter);
+    if (sort) c = c.sort(sort);
+    if (hint) c = c.hint(hint);
+    return c.explain('executionStats');
+  };
+  const [withIndex, collscan, total] = await Promise.all([run(), run({ $natural: 1 }), collection.estimatedDocumentCount()]);
+  return { ...summarizeExplain(withIndex), collscan: summarizeExplain(collscan), totalDocs: total };
+}
+
+async function explainAggregate(collection, pipeline) {
+  const [plan, total] = await Promise.all([collection.aggregate(pipeline).explain('executionStats'), collection.estimatedDocumentCount()]);
+  return { ...summarizeExplain(plan), totalDocs: total };
+}
+
 const onlyRace = (expr) => ({ $cond: [{ $eq: ['$entries.kind', 'race'] }, expr, null] });
 
 // ---------------------------------------------------------------- general
@@ -109,11 +149,15 @@ app.get('/api/races/:round', async (req, res) => {
 // Every lap of one race, trimmed to what the race charts need.
 app.get('/api/races/:round/laps', async (req, res) => {
   const round = intParam(req.params.round);
-  const results = await laps()
-    .find({ round }, { projection: { driverId: 1, lapNumber: 1, lapTime: 1, position: 1, pitIn: 1, pitOut: 1, compound: 1, 'telemetry.speed': 1 } })
-    .sort({ lapNumber: 1 })
-    .toArray();
-  res.json({ query: `db.laps.find({ round: ${round} }).sort({ lapNumber: 1 })`, results });
+  const filter = { round, ...LIVE };
+  const [results, explain] = await Promise.all([
+    laps()
+      .find(filter, { projection: { driverId: 1, lapNumber: 1, lapTime: 1, position: 1, pitIn: 1, pitOut: 1, compound: 1, 'telemetry.speed': 1 } })
+      .sort({ lapNumber: 1 })
+      .toArray(),
+    explainFind(laps(), filter, { lapNumber: 1 }),
+  ]);
+  res.json({ query: `db.laps.find({ round: ${round}, deleted: { $ne: true } }).sort({ lapNumber: 1 })`, explain, results });
 });
 
 app.post('/api/reset', async (req, res) => {
@@ -125,7 +169,7 @@ app.post('/api/reset', async (req, res) => {
 
 // READ (filtered + paginated: the collection holds a whole season)
 app.get('/api/laps', async (req, res) => {
-  const filter = {};
+  const filter = { ...LIVE };
   const round = intParam(req.query.round);
   if (round) filter.round = round;
   const driverId = toObjectId(req.query.driverId);
@@ -219,6 +263,7 @@ app.delete('/api/laps/:id', async (req, res) => {
 
 app.get('/api/nosql/aggregation', async (req, res) => {
   const pipeline = [
+    { $match: LIVE },
     { $group: { _id: '$driverId', avgLapTime: { $avg: '$lapTime' }, fastestLap: { $min: '$lapTime' }, laps: { $sum: 1 } } },
     { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
     { $unwind: '$driver' },
@@ -320,7 +365,7 @@ function planSummary(plan) {
 
 app.get('/api/nosql/indexes', async (req, res) => {
   const indexes = await laps().indexes(); // same as db.laps.getIndexes()
-  const sample = await laps().findOne({ round: 16 }) || await laps().findOne({});
+  const sample = await laps().findOne({ round: 16, ...LIVE }) || await laps().findOne(LIVE);
   let explain = null;
   if (sample) {
     const filter = { driverId: sample.driverId, lapNumber: sample.lapNumber };
@@ -363,7 +408,7 @@ app.post('/api/nosql/invalid-insert', async (req, res) => {
 // -------------------- NoSQL Functionality 5: Embedded Documents & Referencing
 
 app.get('/api/nosql/embedded', async (req, res) => {
-  const [lap] = await laps().aggregate([{ $sample: { size: 1 } }]).toArray();
+  const [lap] = await laps().aggregate([{ $match: LIVE }, { $sample: { size: 1 } }]).toArray();
   if (!lap) return res.status(404).json({ error: 'No laps in the collection' });
   const [driver, race] = await Promise.all([
     drivers().findOne({ _id: lap.driverId }),
@@ -387,11 +432,14 @@ app.get('/api/user/driver-laps/:driverId', async (req, res) => {
   if (!driverId) return res.status(400).json({ error: 'Invalid driver id' });
   const driver = await drivers().findOne({ _id: driverId });
   if (!driver) return res.status(404).json({ error: 'Driver not found' });
-  const filter = { driverId };
+  const filter = { driverId, ...LIVE };
   const round = intParam(req.query.round);
   if (round) filter.round = round;
-  const results = await laps().find(filter).sort({ circuit: 1, lapNumber: 1 }).toArray();
-  res.json({ query: `db.laps.find({ driverId: ObjectId("${driverId}")${round ? `, round: ${round}` : ''} }).sort({ circuit: 1, lapNumber: 1 })`, driver, results });
+  const [results, explain] = await Promise.all([
+    laps().find(filter).sort({ circuit: 1, lapNumber: 1 }).toArray(),
+    explainFind(laps(), filter, { circuit: 1, lapNumber: 1 }),
+  ]);
+  res.json({ query: `db.laps.find({ driverId: ObjectId("${driverId}")${round ? `, round: ${round}` : ''}, deleted: { $ne: true } }).sort({ circuit: 1, lapNumber: 1 })`, explain, driver, results });
 });
 
 // A driver's classification in every race and sprint of the season.
@@ -410,7 +458,7 @@ app.get('/api/user/compare', async (req, res) => {
   if (!a || !b) return res.status(400).json({ error: 'Pick two drivers' });
   // Racing laps only: no pit in/out laps and no opening lap.
   const pipeline = [
-    { $match: { driverId: { $in: [a, b] }, pitIn: { $ne: true }, pitOut: { $ne: true }, lapNumber: { $gt: 1 } } },
+    { $match: { driverId: { $in: [a, b] }, deleted: { $ne: true }, pitIn: { $ne: true }, pitOut: { $ne: true }, lapNumber: { $gt: 1 } } },
     { $group: { _id: { driverId: '$driverId', round: '$round', race: '$race', circuit: '$circuit' }, avgLapTime: { $avg: '$lapTime' }, laps: { $sum: 1 } } },
     { $sort: { '_id.round': 1 } },
     { $group: { _id: '$_id.driverId', perRace: { $push: { round: '$_id.round', race: '$_id.race', circuit: '$_id.circuit', avgLapTime: { $round: ['$avgLapTime', 3] }, laps: '$laps' } }, totalTime: { $sum: { $multiply: ['$avgLapTime', '$laps'] } }, laps: { $sum: '$laps' } } },
@@ -460,7 +508,8 @@ app.get('/api/user/leaderboard', async (req, res) => {
     },
     { $sort: { lapTime: 1 } },
   ];
-  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', results: await laps().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // ------------------------ User Functionality 4: laps above a speed threshold
@@ -468,15 +517,20 @@ app.get('/api/user/leaderboard', async (req, res) => {
 app.get('/api/user/speed', async (req, res) => {
   const min = Number(req.query.min);
   if (req.query.min === undefined || req.query.min === '' || !Number.isFinite(min)) return res.status(400).json({ error: 'Enter a numeric speed threshold' });
-  const filter = { 'telemetry.speed': { $gt: min } };
+  const filter = { 'telemetry.speed': { $gt: min }, ...LIVE };
   const round = intParam(req.query.round);
   if (round) filter.round = round;
   const limit = Math.min(Math.max(intParam(req.query.limit) || 50, 1), 500);
-  const [results, total] = await Promise.all([laps().find(filter).sort({ 'telemetry.speed': -1 }).limit(limit).toArray(), laps().countDocuments(filter)]);
+  const [results, total, explain] = await Promise.all([
+    laps().find(filter).sort({ 'telemetry.speed': -1 }).limit(limit).toArray(),
+    laps().countDocuments(filter),
+    explainFind(laps(), filter, { 'telemetry.speed': -1 }),
+  ]);
   const byId = new Map((await drivers().find({ _id: { $in: results.map((l) => l.driverId) } }).toArray()).map((d) => [String(d._id), d]));
   for (const l of results) l.driver = byId.get(String(l.driverId));
   res.json({
-    query: `db.laps.find({ "telemetry.speed": { $gt: ${min} }${round ? `, round: ${round}` : ''} }).sort({ "telemetry.speed": -1 }).limit(${limit})`,
+    query: `db.laps.find({ "telemetry.speed": { $gt: ${min} }${round ? `, round: ${round}` : ''}, deleted: { $ne: true } }).sort({ "telemetry.speed": -1 }).limit(${limit})`,
+    explain,
     total,
     results,
   });
@@ -488,15 +542,13 @@ app.get('/api/user/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
   if (!q) return res.status(400).json({ error: 'Enter a circuit to search for' });
   const pipeline = [
-    { $match: { $text: { $search: q } } },
+    { $match: { $text: { $search: q }, deleted: { $ne: true } } },
     { $group: { _id: '$round', race: { $first: '$race' }, circuit: { $first: '$circuit' }, country: { $first: '$country' }, score: { $max: { $meta: 'textScore' } }, laps: { $sum: 1 }, fastestLap: { $min: '$lapTime' }, topSpeed: { $max: '$telemetry.speed' } } },
     { $project: { _id: 0, round: '$_id', race: 1, circuit: 1, country: 1, laps: 1, fastestLap: 1, topSpeed: 1, score: { $round: ['$score', 2] } } },
     { $sort: { score: -1, round: 1 } },
   ];
-  res.json({
-    query: 'db.laps.aggregate(' + shell(pipeline) + ')',
-    results: await laps().aggregate(pipeline).toArray(),
-  });
+  const [results, explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // ---------------------------------------------------------------- web app

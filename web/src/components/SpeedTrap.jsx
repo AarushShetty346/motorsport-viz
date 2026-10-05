@@ -49,7 +49,7 @@ export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap
         })}
       </ol>
       {data && data.total === 0 && <p className="muted">Nobody went that fast. Try a lower threshold.</p>}
-      <Query text={data?.query} />
+      <Query text={data?.query} explain={data?.explain} />
     </div>
   );
 }

@@ -146,7 +146,7 @@ export default function Driver({ driverKey }) {
                 </table>
               </div>
             </details>
-            <Query text={laps.data.query} />
+            <Query text={laps.data.query} explain={laps.data.explain} />
           </>
         )}
       </section>
