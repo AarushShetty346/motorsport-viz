@@ -12,6 +12,7 @@ import ScrollWords from '../components/ScrollWords.jsx';
 import { useDriverPhotos } from '../lib/photos.js';
 import { teamPath } from '../lib/teams.js';
 import { lapTags, lapRowClass } from '../lib/steward.js';
+import { openLap } from '../components/LapDrawer.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
@@ -127,11 +128,11 @@ export default function Driver({ driverKey }) {
             <details className="lap-table-toggle">
               <summary>All {lapRows.length} laps with telemetry</summary>
               <div className="table-wrap" data-lenis-prevent>
-                <table className="data-table">
+                <table className="data-table lap-table">
                   <thead><tr><th className="num">Lap</th><th className="num">Pos</th><th className="num">Time</th><th>Tyre</th><th className="num">Top speed</th><th className="num">Peak RPM</th><th>Throttle</th><th>Braking</th><th>DRS</th></tr></thead>
                   <tbody>
                     {lapRows.map((l) => (
-                      <tr key={l._id} className={`${best && l._id === best._id ? 'best' : ''} ${lapRowClass(l)}`}>
+                      <tr key={l._id} className={`clickable ${best && l._id === best._id ? 'best' : ''} ${lapRowClass(l)}`} onClick={() => openLap(l._id)}>
                         <td className="num mono">{l.lapNumber}{(l.pitIn || l.pitOut) && <span className="pit-tag">PIT</span>}{lapTags(l).map((t) => <span key={t} className={`lap-tag ${t}`}>({t})</span>)}</td>
                         <td className="num mono">{l.position ?? '—'}</td>
                         <td className="num mono strong">{fmtLap(l.lapTime)}</td>

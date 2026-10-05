@@ -7,6 +7,7 @@ import { EASE_OUT, prefersReducedMotion } from './lib/motion.js';
 import Nav from './components/Nav.jsx';
 import SearchPalette from './components/SearchPalette.jsx';
 import Footer from './components/Footer.jsx';
+import LapDrawer from './components/LapDrawer.jsx';
 import Home from './pages/Home.jsx';
 import Race from './pages/Race.jsx';
 import Driver from './pages/Driver.jsx';
@@ -99,6 +100,7 @@ function Shell() {
       </AnimatePresence>
       <Footer />
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <LapDrawer />
     </>
   );
 }
