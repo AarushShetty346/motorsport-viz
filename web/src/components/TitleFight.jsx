@@ -126,7 +126,7 @@ export default function TitleFight() {
               ))}
               <span className="muted"><svg width="22" height="8" aria-hidden="true"><line x1="0" x2="22" y1="4" y2="4" className="line-faint" /></svg>Rest of the grid</span>
             </figcaption>
-            <Query text={data.query} label="Points per driver per round (aggregation on races)" />
+            <Query text={data.query} explain={data.explain} label="Points per driver per round (aggregation on races)" />
           </figure>
         </div>
       </div>

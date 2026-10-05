@@ -101,12 +101,12 @@ async function supportsTransactions() {
 // Condenses explain('executionStats') output (find or aggregate, classic or SBE)
 // into what the "Under the hood" panels show.
 function summarizeExplain(plan) {
-  const cursor = plan.stages?.[0]?.$cursor;
+  const cursor = plan.stages?.[0]?.$cursor || plan.stages?.[0]?.$geoNearCursor;
   const stats = plan.executionStats || cursor?.executionStats || {};
   const planner = plan.queryPlanner || cursor?.queryPlanner || {};
   const winning = planner.winningPlan?.queryPlan || planner.winningPlan || {};
   const text = JSON.stringify(winning);
-  const stage = text.includes('"IXSCAN"') ? 'IXSCAN' : text.includes('"TEXT') ? 'TEXT' : text.includes('"COLLSCAN"') ? 'COLLSCAN' : winning.stage || 'UNKNOWN';
+  const stage = text.includes('"IXSCAN"') ? 'IXSCAN' : text.includes('"TEXT') ? 'TEXT' : text.includes('GEO_NEAR') ? 'GEO_NEAR_2DSPHERE' : text.includes('"COLLSCAN"') ? 'COLLSCAN' : winning.stage || 'UNKNOWN';
   return {
     stage,
     indexUsed: text.match(/"indexName":"([^"]+)"/)?.[1] || null,
@@ -210,9 +210,9 @@ app.get('/api/laps', async (req, res) => {
 app.get('/api/laps/:id', async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
-  const lap = await laps().findOne({ _id });
+  const [lap, explain] = await Promise.all([laps().findOne({ _id }), explainFind(laps(), { _id })]);
   if (!lap) return res.status(404).json({ error: 'Lap not found' });
-  res.json({ query: `db.laps.findOne({ _id: ObjectId("${_id}") })`, lap });
+  res.json({ query: `db.laps.findOne({ _id: ObjectId("${_id}") })`, explain, lap });
 });
 
 // The fields a steward can type in. Blank fields are left out so MongoDB's
@@ -399,7 +399,8 @@ app.get('/api/season/standings', async (req, res) => {
     },
     { $sort: { points: -1, wins: -1, bestFinish: 1 } },
   ];
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // Points scored by every driver in every round (the championship chart).
@@ -409,7 +410,8 @@ app.get('/api/season/progression', async (req, res) => {
     { $group: { _id: { driverId: '$entries.driverId', round: '$round' }, points: { $sum: '$entries.points' } } },
     { $group: { _id: '$_id.driverId', rounds: { $push: { round: '$_id.round', points: '$points' } } } },
   ];
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 app.get('/api/season/constructors', async (req, res) => {
@@ -418,7 +420,8 @@ app.get('/api/season/constructors', async (req, res) => {
     { $group: { _id: '$entries.team', points: { $sum: '$entries.points' }, wins: { $sum: { $cond: [{ $and: [{ $eq: ['$entries.kind', 'race'] }, { $eq: ['$entries.position', 1] }] }, 1, 0] } } } },
     { $sort: { points: -1 } },
   ];
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // One team's season, round by round: both cars' race and sprint results and the points they scored.
@@ -438,9 +441,9 @@ app.get('/api/teams/:team/season', async (req, res) => {
     { $sort: { _id: 1 } },
     { $project: { _id: 0, round: '$_id', name: 1, points: 1, entries: 1 } },
   ];
-  const results = await races().aggregate(pipeline).toArray();
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
   if (!results.length) return res.status(404).json({ error: 'Team not found' });
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results });
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // ------------------------------- User Functionality 1: laps for one driver
@@ -465,7 +468,8 @@ app.get('/api/drivers/:id/season', async (req, res) => {
   const driverId = toObjectId(req.params.id);
   if (!driverId) return res.status(400).json({ error: 'Invalid driver id' });
   const pipeline = [...seasonEntries, { $match: { 'entries.driverId': driverId } }, { $project: { _id: 0, round: 1, name: 1, kind: '$entries.kind', result: '$entries' } }, { $sort: { round: 1 } }];
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // -------------------------- User Functionality 2: compare two drivers' averages
@@ -490,15 +494,17 @@ app.get('/api/user/compare', async (req, res) => {
     { $project: { _id: 0, round: 1, name: 1, a: { position: '$a.position', positionText: '$a.positionText', points: '$a.points' }, b: { position: '$b.position', positionText: '$b.positionText', points: '$b.points' } } },
     { $sort: { round: 1 } },
   ];
-  const [rows, duel, aDriver, bDriver] = await Promise.all([
+  const [rows, duel, aDriver, bDriver, explain] = await Promise.all([
     laps().aggregate(pipeline).toArray(),
     races().aggregate(duelPipeline).toArray(),
     drivers().findOne({ _id: a }),
     drivers().findOne({ _id: b }),
+    explainAggregate(laps(), pipeline),
   ]);
   const pick = (id) => rows.find((r) => r._id.equals(id)) || null;
   res.json({
     query: 'db.laps.aggregate(' + shell(pipeline) + ')',
+    explain,
     results: [
       { driver: aDriver, stats: pick(a) },
       { driver: bDriver, stats: pick(b) },
@@ -705,7 +711,8 @@ app.get('/api/movers', async (req, res) => {
     { $project: { _id: 0, driverId: '$_id', code: '$driver.code', name: '$driver.name', gained: 1, races: 1 } },
     { $sort: { gained: -1, name: 1 } },
   ];
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // ------------- NoSQL Functionality 2 (Driver page): season stats with $group + $lookup
@@ -735,8 +742,8 @@ app.get('/api/drivers/:id/theoretical', async (req, res) => {
     { $project: { _id: 0, s1: 1, s2: 1, s3: 1, fastest: 1, theoretical: { $round: [{ $add: ['$s1', '$s2', '$s3'] }, 3] } } },
     { $set: { difference: { $round: [{ $subtract: ['$fastest', '$theoretical'] }, 3] } } },
   ];
-  const [result] = await laps().aggregate(pipeline).toArray();
-  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', result: result || null });
+  const [[result], explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, result: result || null });
 });
 
 // ------------------------- User Functionality 10: tyre degradation for one team
@@ -755,7 +762,8 @@ app.get('/api/teams/:team/degradation', async (req, res) => {
     { $project: { _id: 0, tyreAge: '$_id', field: { $round: ['$field', 3] }, team: { $round: ['$team', 3] }, teamLaps: 1 } },
     { $sort: { tyreAge: 1 } },
   ];
-  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', results: await laps().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // ------------------------------- NoSQL Functionality 9: geospatial queries
@@ -769,7 +777,8 @@ app.get('/api/races/:round/nearby', async (req, res) => {
     { $limit: 5 },
     { $project: { _id: 0, round: 1, name: 1, circuit: 1, country: 1, countryCode: 1, distanceKm: { $round: [{ $divide: ['$distance', 1000] }, 0] } } },
   ];
-  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+  const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
 // ---------------------------------------------------------------- web app

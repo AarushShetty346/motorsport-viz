@@ -105,7 +105,7 @@ export default function Team({ teamKey: key }) {
             </Link>
           ))}
         </div>
-        <Query text={season.data?.query} label="This team's season (aggregation on races)" />
+        <Query text={season.data?.query} explain={season.data?.explain} label="This team's season (aggregation on races)" />
       </section>
 
       <section className="container section">

@@ -84,7 +84,7 @@ function LapDocument({ id }) {
             <code>driverId</code> and <code>raceId</code> point to documents in the <code>drivers</code> and <code>races</code> collections, which many laps share.
           </p>
           <FeatureLabel name="Embedded documents + referencing" />
-          <Query text={data.query} />
+          <Query text={data.query} explain={data.explain} />
         </>
       )}
     </>

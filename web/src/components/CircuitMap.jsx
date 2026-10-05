@@ -66,7 +66,7 @@ export function NearbyCircuits({ round }) {
         ))}
       </ol>
       <FeatureLabel name="Geospatial: $geoNear on a 2dsphere index" />
-      <Query text={data?.query} />
+      <Query text={data?.query} explain={data?.explain} />
     </div>
   );
 }

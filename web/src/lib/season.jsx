@@ -33,6 +33,7 @@ export function SeasonProvider({ children }) {
       raceByRound: new Map(raceList.map((r) => [r.round, r])),
       standings: standingsRows,
       standingsQuery: standings.data?.query,
+      standingsExplain: standings.data?.explain,
       position: new Map(standingsRows.map((r, i) => [r.driverId, i + 1])),
       dashed,
       health: health.data,

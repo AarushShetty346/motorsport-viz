@@ -226,7 +226,7 @@ export function Movers({ round, limit = 5, title }) {
       </div>
       <p className="muted small">Grid position minus finishing position{round ? '' : ', added up over every race'}. Retirements and pit-lane starts are left out.</p>
       <FeatureLabel name={round ? 'Biggest movers' : 'Biggest movers (season)'} type="user" />
-      <Query text={data.query} />
+      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }
