@@ -11,6 +11,7 @@ import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
 import RaceLaps from '../components/RaceLaps.jsx';
+import { RaceNumbers, GapChart, TyreStrategy, PitStops, Movers } from '../components/RaceAnalytics.jsx';
 
 export default function Race({ round }) {
   const { raceByRound, driverById, ready } = useSeason();
@@ -62,10 +63,26 @@ export default function Race({ round }) {
         <Query text={laps.data?.query} explain={laps.data?.explain} />
       </section>
 
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">02</span>Gap to leader</p>
+          <h2 className="display-md">How far behind, lap by lap</h2>
+        </div>
+        <GapChart race={race} />
+      </section>
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">03</span>Race in numbers</p>
+          <h2 className="display-md">{race.laps} laps, summed up</h2>
+        </div>
+        <RaceNumbers round={race.round} />
+      </section>
+
       <section className="container section two-col">
         <div>
           <div className="section-head">
-            <p className="eyebrow"><span className="num">02</span>Classification</p>
+            <p className="eyebrow"><span className="num">04</span>Classification</p>
             <h2 className="display-md">Result</h2>
           </div>
           <div className="table-wrap">
@@ -94,7 +111,7 @@ export default function Race({ round }) {
         </div>
         <div>
           <div className="section-head">
-            <p className="eyebrow"><span className="num">03</span>Fastest laps</p>
+            <p className="eyebrow"><span className="num">05</span>Fastest laps</p>
             <h2 className="display-md">One lap, flat out</h2>
           </div>
           <Leaderboard round={race.round} />
@@ -103,9 +120,28 @@ export default function Race({ round }) {
         </div>
       </section>
 
+      <section className="container section two-col">
+        <div>
+          <div className="section-head">
+            <p className="eyebrow"><span className="num">06</span>Tyre strategy</p>
+            <h2 className="display-md">Who ran what</h2>
+          </div>
+          <TyreStrategy race={race} />
+        </div>
+        <div>
+          <div className="section-head">
+            <p className="eyebrow"><span className="num">07</span>Pit stops</p>
+            <h2 className="display-md">Time in the pits</h2>
+          </div>
+          <PitStops round={race.round} />
+          <div className="spacer" />
+          <Movers round={race.round} title="Biggest movers" />
+        </div>
+      </section>
+
       <section className="container section" id="laps">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">04</span>Every lap</p>
+          <p className="eyebrow"><span className="num">08</span>Every lap</p>
           <h2 className="display-md">Lap by lap</h2>
         </div>
         <RaceLaps race={race} />

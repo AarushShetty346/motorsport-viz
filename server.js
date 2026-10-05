@@ -644,6 +644,145 @@ app.get('/api/user/search', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
+// ------------------------------ NoSQL Functionality 7: $facet + $bucket
+// "Race in numbers": lap-time histogram, tyre split and summary stats in ONE query.
+
+app.get('/api/races/:round/numbers', async (req, res) => {
+  const round = intParam(req.params.round);
+  const race = await races().findOne({ round }, { projection: { 'track.lap.lapTime': 1 } });
+  if (!race) return res.status(404).json({ error: 'Race not found' });
+  // Half-second buckets from the race's fastest lap up to 8 s slower; slower laps go in "slower".
+  const fastest = Math.floor(race.track?.lap?.lapTime ?? 60);
+  const boundaries = Array.from({ length: 17 }, (_, i) => fastest + i * 0.5);
+  const pipeline = [
+    { $match: { round, ...REAL } },
+    {
+      $facet: {
+        histogram: [
+          { $match: { lapNumber: { $gt: 1 }, pitIn: { $ne: true }, pitOut: { $ne: true } } },
+          { $bucket: { groupBy: '$lapTime', boundaries, default: 'slower', output: { laps: { $sum: 1 } } } },
+        ],
+        compounds: [
+          { $group: { _id: { $ifNull: ['$compound', 'UNKNOWN'] }, laps: { $sum: 1 }, avgLapTime: { $avg: '$lapTime' } } },
+          { $sort: { laps: -1 } },
+        ],
+        summary: [
+          {
+            $group: {
+              _id: null,
+              laps: { $sum: 1 },
+              drivers: { $addToSet: '$driverId' },
+              fastest: { $min: '$lapTime' },
+              average: { $avg: '$lapTime' },
+              spread: { $stdDevPop: '$lapTime' },
+              pitStops: { $sum: { $cond: ['$pitIn', 1, 0] } },
+              topSpeed: { $max: '$telemetry.speed' },
+            },
+          },
+          { $project: { _id: 0, laps: 1, drivers: { $size: '$drivers' }, fastest: 1, average: { $round: ['$average', 3] }, spread: { $round: ['$spread', 3] }, pitStops: 1, topSpeed: 1 } },
+        ],
+      },
+    },
+  ];
+  const [[result], explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, ...result, summary: result.summary[0] || null });
+});
+
+// --------------------------- NoSQL Functionality 8: window functions
+// Gap to the leader at the end of every lap, worked out inside MongoDB:
+// a running total of each driver's lap times, then the smallest total on each lap.
+
+app.get('/api/races/:round/gaps', async (req, res) => {
+  const round = intParam(req.params.round);
+  const pipeline = [
+    { $match: { round, ...REAL } },
+    {
+      $setWindowFields: {
+        partitionBy: '$driverId',
+        sortBy: { lapNumber: 1 },
+        output: { raceTime: { $sum: '$lapTime', window: { documents: ['unbounded', 'current'] } } },
+      },
+    },
+    {
+      $setWindowFields: {
+        partitionBy: '$lapNumber',
+        output: { leaderTime: { $min: '$raceTime' } },
+      },
+    },
+    { $project: { _id: 0, driverId: 1, lapNumber: 1, gap: { $round: [{ $subtract: ['$raceTime', '$leaderTime'] }, 3] } } },
+    { $sort: { lapNumber: 1 } },
+    { $group: { _id: '$driverId', gaps: { $push: { lap: '$lapNumber', gap: '$gap' } } } },
+  ];
+  const [results, explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results: results.map((r) => ({ driverId: r._id, gaps: r.gaps })) });
+});
+
+// ------------------------------- User Functionality 6: tyre strategy
+// Each driver's stints: the compound and the first and last lap on it.
+
+app.get('/api/races/:round/stints', async (req, res) => {
+  const round = intParam(req.params.round);
+  const pipeline = [
+    { $match: { round, ...REAL } },
+    { $group: { _id: { driverId: '$driverId', stint: '$stint' }, compound: { $first: '$compound' }, from: { $min: '$lapNumber' }, to: { $max: '$lapNumber' }, laps: { $sum: 1 } } },
+    { $sort: { '_id.stint': 1 } },
+    { $group: { _id: '$_id.driverId', stints: { $push: { stint: '$_id.stint', compound: '$compound', from: '$from', to: '$to', laps: '$laps' } } } },
+  ];
+  const [results, explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results: results.map((r) => ({ driverId: r._id, stints: r.stints })) });
+});
+
+// -------------------------------- User Functionality 7: pit stop analysis
+// Stops, the laps they happened on, and time lost: in-lap + out-lap time
+// minus what two normal racing laps would have taken.
+
+app.get('/api/races/:round/pitstops', async (req, res) => {
+  const round = intParam(req.params.round);
+  const pitLap = { $or: [{ $eq: ['$pitIn', true] }, { $eq: ['$pitOut', true] }] };
+  const pipeline = [
+    { $match: { round, ...REAL } },
+    {
+      $group: {
+        _id: '$driverId',
+        stops: { $sum: { $cond: [{ $eq: ['$pitIn', true] }, 1, 0] } },
+        pitLaps: { $push: { $cond: [{ $eq: ['$pitIn', true] }, '$lapNumber', '$REMOVE'] } },
+        pitLapTime: { $sum: { $cond: [pitLap, '$lapTime', 0] } },
+        pitLapCount: { $sum: { $cond: [pitLap, 1, 0] } },
+        racingLap: { $avg: { $cond: [{ $and: [{ $not: [pitLap] }, { $gt: ['$lapNumber', 1] }] }, '$lapTime', null] } },
+      },
+    },
+    { $match: { stops: { $gt: 0 } } },
+    {
+      $project: {
+        _id: 0, driverId: '$_id', stops: 1, pitLaps: { $sortArray: { input: '$pitLaps', sortBy: 1 } },
+        racingLap: { $round: ['$racingLap', 3] },
+        timeLost: { $round: [{ $subtract: ['$pitLapTime', { $multiply: ['$pitLapCount', '$racingLap'] }] }, 1] },
+      },
+    },
+    { $sort: { timeLost: 1 } },
+  ];
+  const [results, explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
+});
+
+// --------------------------------- User Functionality 8: biggest movers
+// Places gained or lost from the grid, for one race or added up over the season.
+
+app.get('/api/movers', async (req, res) => {
+  const round = intParam(req.query.round);
+  const pipeline = [
+    ...(round ? [{ $match: { round } }] : []),
+    { $unwind: '$results' },
+    { $match: { 'results.grid': { $gt: 0 }, 'results.position': { $ne: null } } },
+    { $group: { _id: '$results.driverId', gained: { $sum: { $subtract: ['$results.grid', '$results.position'] } }, races: { $sum: 1 } } },
+    { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
+    { $unwind: '$driver' },
+    { $project: { _id: 0, driverId: '$_id', code: '$driver.code', name: '$driver.name', gained: 1, races: 1 } },
+    { $sort: { gained: -1, name: 1 } },
+  ];
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+});
+
 // ---------------------------------------------------------------- web app
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
