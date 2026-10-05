@@ -833,6 +833,20 @@ app.get('/api/teams/:team/degradation', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', results: await laps().aggregate(pipeline).toArray() });
 });
 
+// ------------------------------- NoSQL Functionality 9: geospatial queries
+// Circuits nearest to this one, by straight-line distance, on the 2dsphere index.
+
+app.get('/api/races/:round/nearby', async (req, res) => {
+  const race = await races().findOne({ round: intParam(req.params.round) }, { projection: { location: 1 } });
+  if (!race?.location) return res.status(404).json({ error: 'Race not found' });
+  const pipeline = [
+    { $geoNear: { near: race.location, distanceField: 'distance', spherical: true, query: { round: { $ne: intParam(req.params.round) } } } },
+    { $limit: 5 },
+    { $project: { _id: 0, round: 1, name: 1, circuit: 1, country: 1, countryCode: 1, distanceKm: { $round: [{ $divide: ['$distance', 1000] }, 0] } } },
+  ];
+  res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
+});
+
 // ---------------------------------------------------------------- web app
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));

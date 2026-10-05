@@ -154,6 +154,11 @@ async function setupCollections() {
   await laps.createIndex({ round: 1, lapNumber: 1 }, { name: 'round_1_lapNumber_1' });
   await laps.createIndex({ circuit: 'text' }, { name: 'circuit_text' });
   await db.collection('races').createIndex({ round: 1 }, { name: 'round_1', unique: true });
+  // GeoJSON point for every circuit (migrates races seeded before it existed), with a 2dsphere index for $geoNear.
+  await db.collection('races').updateMany({ location: { $exists: false }, lat: { $type: 'number' } }, [
+    { $set: { location: { type: 'Point', coordinates: ['$lng', '$lat'] } } },
+  ]);
+  await db.collection('races').createIndex({ location: '2dsphere' }, { name: 'location_2dsphere' });
   await db.collection('drivers').createIndex({ key: 1 }, { name: 'key_1', unique: true });
   console.log('[db] Ensured indexes on laps, races and drivers');
 }
@@ -179,6 +184,7 @@ async function seedIfEmpty() {
   const raceDocs = data.races.map((r) => ({
     _id: new ObjectId(),
     ...r,
+    location: { type: 'Point', coordinates: [r.lng, r.lat] },
     results: classification(r.results),
     sprint: classification(r.sprint),
   }));
