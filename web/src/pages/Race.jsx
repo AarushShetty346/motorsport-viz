@@ -10,6 +10,7 @@ import DriverName from '../components/DriverName.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import FeatureLabel from '../components/FeatureLabel.jsx';
 import RaceLaps from '../components/RaceLaps.jsx';
 import { NearbyCircuits } from '../components/CircuitMap.jsx';
 import { RaceNumbers, GapChart, TyreStrategy, PitStops, Movers } from '../components/RaceAnalytics.jsx';
@@ -61,6 +62,7 @@ export default function Race({ round }) {
           <h2 className="display-md">Every position change</h2>
         </div>
         {laps.data ? <RaceTrace laps={laps.data.results} results={race.results} /> : <div className="skeleton" style={{ height: 480 }} />}
+        <FeatureLabel name="Indexing: { round, lapNumber } index, explain() IXSCAN vs COLLSCAN" />
         <Query text={laps.data?.query} explain={laps.data?.explain} />
       </section>
 

@@ -5,6 +5,7 @@ import { fmtLap, fmtNum } from '../lib/format.js';
 import { Link } from '../lib/router.jsx';
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
+import FeatureLabel from './FeatureLabel.jsx';
 import { openLap } from './LapDrawer.jsx';
 
 // Laps whose top speed beat a threshold: a dot-notation query on the embedded telemetry.
@@ -50,6 +51,7 @@ export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap
         })}
       </ol>
       {data && data.total === 0 && <p className="muted">Nobody went that fast. Try a lower threshold.</p>}
+      <FeatureLabel name="Speed threshold: speed trap" type="user" />
       <Query text={data?.query} explain={data?.explain} />
     </div>
   );

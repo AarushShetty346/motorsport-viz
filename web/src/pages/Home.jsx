@@ -7,9 +7,9 @@ import SpeedTrap from '../components/SpeedTrap.jsx';
 import { Link } from '../lib/router.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import Marquee from '../components/Marquee.jsx';
-import HelmetGrid from '../components/HelmetGrid.jsx';
 import { fmtNum } from '../lib/format.js';
 import { CircuitMap } from '../components/CircuitMap.jsx';
+import { Movers } from '../components/RaceAnalytics.jsx';
 
 export default function Home() {
   const { ready, standings, health } = useSeason();
@@ -30,11 +30,17 @@ export default function Home() {
           <CircuitMap />
           {p1 && <Marquee items={['2025 World Champion', p1.name, `${p1.points} points`, `${p1.wins} wins`, 'Lap by Lap']} />}
           <Standings />
-          <HelmetGrid num="04" />
+          <section className="section container">
+            <div className="section-head">
+              <p className="eyebrow">Season movers</p>
+              <h2 className="display-lg">Who gained the most places</h2>
+            </div>
+            <Movers />
+          </section>
           <section className="section container split">
-            <SpeedTrap num="05" />
+            <SpeedTrap num="04" />
             <div className="cta-card tone-light">
-              <p className="eyebrow"><span className="num">06</span>Head to head</p>
+              <p className="eyebrow"><span className="num">05</span>Head to head</p>
               <h2 className="display-md">Who was really quicker?</h2>
               <p className="lede">Pick any two drivers. MongoDB averages their racing laps race by race, so the comparison is always like for like.</p>
               <Link to="/compare" className="btn btn-primary">Compare drivers</Link>

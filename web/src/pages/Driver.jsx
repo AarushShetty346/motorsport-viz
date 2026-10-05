@@ -7,6 +7,7 @@ import LapChart from '../components/LapChart.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import FeatureLabel from '../components/FeatureLabel.jsx';
 import DriverPortrait from '../components/DriverPortrait.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import { useDriverPhotos } from '../lib/photos.js';
@@ -155,6 +156,7 @@ export default function Driver({ driverKey }) {
                 </table>
               </div>
             </details>
+            <FeatureLabel name="All laps for a driver" type="user" />
             <Query text={laps.data.query} explain={laps.data.explain} />
           </>
         )}

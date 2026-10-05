@@ -82,6 +82,8 @@ const seasonEntries = [
   { $unwind: '$entries' },
 ];
 
+// NoSQL Functionality 3 (indexing): every "Under the hood" panel shows explain().
+
 // Laps hidden by a steward ($set: { deleted: true }) never show up outside Steward mode.
 const LIVE = { deleted: { $ne: true } };
 // Real race data only: steward-added laps are left out of every leaderboard, chart and statistic.
@@ -370,27 +372,7 @@ app.post('/api/laps/:id/penalty', async (req, res) => {
   });
 });
 
-// ------------------------------- NoSQL Functionality 2: Aggregation Pipeline
-// Average lap, fastest lap and lap count per driver, joined to the drivers collection.
-// The SQL equivalent is GROUP BY driverId with AVG(), MIN() and a JOIN.
-
-app.get('/api/nosql/aggregation', async (req, res) => {
-  const pipeline = [
-    { $match: REAL },
-    { $group: { _id: '$driverId', avgLapTime: { $avg: '$lapTime' }, fastestLap: { $min: '$lapTime' }, laps: { $sum: 1 } } },
-    { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
-    { $unwind: '$driver' },
-    {
-      $project: {
-        _id: 0, driverId: '$_id', code: '$driver.code', name: '$driver.name', team: '$driver.team', number: '$driver.number',
-        avgLapTime: { $round: ['$avgLapTime', 3] }, fastestLap: 1, laps: 1,
-      },
-    },
-    { $sort: { avgLapTime: 1 } },
-  ];
-  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', results: await laps().aggregate(pipeline).toArray() });
-});
-
+// ------------------------------- NoSQL Functionality 2: aggregation
 // Championship standings, computed inside MongoDB from the embedded race + sprint results.
 app.get('/api/season/standings', async (req, res) => {
   const pipeline = [
@@ -459,63 +441,6 @@ app.get('/api/teams/:team/season', async (req, res) => {
   const results = await races().aggregate(pipeline).toArray();
   if (!results.length) return res.status(404).json({ error: 'Team not found' });
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results });
-});
-
-// -------------------------------------------- NoSQL Functionality 3: Indexing
-
-function planSummary(plan) {
-  const s = plan.executionStats;
-  const winning = plan.queryPlanner.winningPlan;
-  return {
-    winningPlan: winning,
-    indexUsed: JSON.stringify(winning).match(/"indexName":"([^"]+)"/)?.[1] || null,
-    nReturned: s.nReturned,
-    totalKeysExamined: s.totalKeysExamined,
-    totalDocsExamined: s.totalDocsExamined,
-    executionTimeMillis: s.executionTimeMillis,
-  };
-}
-
-app.get('/api/nosql/indexes', async (req, res) => {
-  const indexes = await laps().indexes(); // same as db.laps.getIndexes()
-  const sample = await laps().findOne({ round: 16, ...LIVE }) || await laps().findOne(LIVE);
-  let explain = null;
-  if (sample) {
-    const filter = { driverId: sample.driverId, lapNumber: sample.lapNumber };
-    const [withIndex, withoutIndex] = await Promise.all([
-      laps().find(filter).explain('executionStats'),
-      laps().find(filter).hint({ $natural: 1 }).explain('executionStats'),
-    ]);
-    const q = `db.laps.find({ driverId: ObjectId("${sample.driverId}"), lapNumber: ${sample.lapNumber} })`;
-    explain = {
-      query: `${q}.explain("executionStats")`,
-      collscanQuery: `${q}.hint({ $natural: 1 }).explain("executionStats")`,
-      ...planSummary(withIndex),
-      collscan: planSummary(withoutIndex),
-      totalDocs: await laps().estimatedDocumentCount(),
-    };
-  }
-  res.json({ query: 'db.laps.getIndexes()', results: indexes, explain });
-});
-
-// -------------------- NoSQL Functionality 5: Embedded Documents & Referencing
-
-app.get('/api/nosql/embedded', async (req, res) => {
-  const [lap] = await laps().aggregate([{ $match: LIVE }, { $sample: { size: 1 } }]).toArray();
-  if (!lap) return res.status(404).json({ error: 'No laps in the collection' });
-  const [driver, race] = await Promise.all([
-    drivers().findOne({ _id: lap.driverId }),
-    races().findOne({ _id: lap.raceId }, { projection: { round: 1, name: 1, circuit: 1, country: 1, date: 1, laps: 1, results: { $slice: 3 } } }),
-  ]);
-  res.json({
-    query:
-      'db.laps.aggregate([{ $sample: { size: 1 } }])\n' +
-      `db.drivers.findOne({ _id: ObjectId("${lap.driverId}") })\n` +
-      `db.races.findOne({ _id: ObjectId("${lap.raceId}") }, { results: { $slice: 3 }, track: 0 })`,
-    lap,
-    referencedDriver: driver,
-    referencedRace: race,
-  });
 });
 
 // ------------------------------- User Functionality 1: laps for one driver
@@ -783,7 +708,7 @@ app.get('/api/movers', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
 });
 
-// ------------------ Driver page: season stats ($group + $lookup) and theoretical best lap
+// ------------- NoSQL Functionality 2 (Driver page): season stats with $group + $lookup
 
 app.get('/api/drivers/:id/stats', async (req, res) => {
   const driverId = toObjectId(req.params.id);
