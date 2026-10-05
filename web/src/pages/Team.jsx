@@ -9,6 +9,7 @@ import CarShowcase from '../components/CarShowcase.jsx';
 import Helmet from '../components/Helmet.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import Query from '../components/Query.jsx';
+import { TyreDegradation } from '../components/DriverTeamStats.jsx';
 
 export default function Team({ teamKey: key }) {
   const { driverById, standings, ready } = useSeason();
@@ -107,6 +108,14 @@ export default function Team({ teamKey: key }) {
           ))}
         </div>
         <Query text={season.data?.query} label="This team's season (aggregation on races)" />
+      </section>
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">03</span>Tyre degradation</p>
+          <h2 className="display-lg">Pace as the tyres age</h2>
+        </div>
+        <TyreDegradation team={team._id} color={color} />
       </section>
 
       <nav className="container section team-nav" aria-label="Other teams">
