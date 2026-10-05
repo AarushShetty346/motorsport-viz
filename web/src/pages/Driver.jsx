@@ -13,6 +13,7 @@ import { useDriverPhotos } from '../lib/photos.js';
 import { teamPath } from '../lib/teams.js';
 import { lapTags, lapRowClass } from '../lib/steward.js';
 import { openLap } from '../components/LapDrawer.jsx';
+import { SeasonStats, TheoreticalBest } from '../components/DriverTeamStats.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
@@ -102,6 +103,11 @@ export default function Driver({ driverKey }) {
         <Query text={season.data?.query} label="This driver's results (aggregation on races)" />
       </section>
 
+      <section className="container section-tight">
+        <h2 className="h-small">Season stats, every lap</h2>
+        <SeasonStats driver={driver} />
+      </section>
+
       <section className="container section">
         <div className="section-head row">
           <div>
@@ -124,7 +130,8 @@ export default function Driver({ driverKey }) {
               <div><span className="kpi-label">Top speed</span><span className="kpi mono">{fmtNum(Math.max(0, ...lapRows.map((l) => l.telemetry.speed)), 1)}</span><span className="muted small">km/h</span></div>
               <div><span className="kpi-label">Pit stops</span><span className="kpi mono">{lapRows.filter((l) => l.pitIn).length}</span></div>
             </div>
-            <LapChart laps={lapRows} />
+            <LapChart laps={lapRows.filter((l) => l.source !== 'steward')} />
+            <TheoreticalBest driver={driver} round={round} />
             <details className="lap-table-toggle">
               <summary>All {lapRows.length} laps with telemetry</summary>
               <div className="table-wrap" data-lenis-prevent>

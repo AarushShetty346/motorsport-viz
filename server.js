@@ -783,6 +783,56 @@ app.get('/api/movers', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', results: await races().aggregate(pipeline).toArray() });
 });
 
+// ------------------ Driver page: season stats ($group + $lookup) and theoretical best lap
+
+app.get('/api/drivers/:id/stats', async (req, res) => {
+  const driverId = toObjectId(req.params.id);
+  if (!driverId) return res.status(400).json({ error: 'Invalid driver id' });
+  const pipeline = [
+    { $match: { driverId, ...REAL } },
+    { $group: { _id: '$driverId', avgLapTime: { $avg: '$lapTime' }, fastestLap: { $min: '$lapTime' }, laps: { $sum: 1 }, races: { $addToSet: '$round' } } },
+    { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
+    { $unwind: '$driver' },
+    { $project: { _id: 0, name: '$driver.name', team: '$driver.team', avgLapTime: { $round: ['$avgLapTime', 3] }, fastestLap: 1, laps: 1, races: { $size: '$races' } } },
+  ];
+  const [[result], explain] = await Promise.all([laps().aggregate(pipeline).toArray(), explainAggregate(laps(), pipeline)]);
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, result: result || null });
+});
+
+// User Functionality 9: best S1 + best S2 + best S3 in one race, against the fastest real lap.
+app.get('/api/drivers/:id/theoretical', async (req, res) => {
+  const driverId = toObjectId(req.params.id);
+  const round = intParam(req.query.round);
+  if (!driverId || !round) return res.status(400).json({ error: 'Pick a driver and a race' });
+  const pipeline = [
+    { $match: { driverId, round, ...REAL } },
+    { $group: { _id: null, s1: { $min: '$sectors.s1' }, s2: { $min: '$sectors.s2' }, s3: { $min: '$sectors.s3' }, fastest: { $min: '$lapTime' } } },
+    { $project: { _id: 0, s1: 1, s2: 1, s3: 1, fastest: 1, theoretical: { $round: [{ $add: ['$s1', '$s2', '$s3'] }, 3] } } },
+    { $set: { difference: { $round: [{ $subtract: ['$fastest', '$theoretical'] }, 3] } } },
+  ];
+  const [result] = await laps().aggregate(pipeline).toArray();
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', result: result || null });
+});
+
+// ------------------------- User Functionality 10: tyre degradation for one team
+// Each lap as a % of that race's fastest lap, averaged by tyre age, for this team and the field.
+
+app.get('/api/teams/:team/degradation', async (req, res) => {
+  const team = String(req.params.team);
+  const pipeline = [
+    { $match: { ...REAL, lapNumber: { $gt: 1 }, pitIn: { $ne: true }, pitOut: { $ne: true }, tyreLife: { $gte: 1, $lte: 35 }, compound: { $in: ['SOFT', 'MEDIUM', 'HARD'] } } },
+    { $setWindowFields: { partitionBy: '$round', output: { raceBest: { $min: '$lapTime' } } } },
+    { $set: { pace: { $multiply: [{ $divide: ['$lapTime', '$raceBest'] }, 100] } } },
+    { $match: { pace: { $lt: 107 } } },
+    { $lookup: { from: 'drivers', localField: 'driverId', foreignField: '_id', as: 'driver' } },
+    { $set: { mine: { $eq: [{ $first: '$driver.team' }, team] } } },
+    { $group: { _id: '$tyreLife', field: { $avg: '$pace' }, team: { $avg: { $cond: ['$mine', '$pace', null] } }, teamLaps: { $sum: { $cond: ['$mine', 1, 0] } } } },
+    { $project: { _id: 0, tyreAge: '$_id', field: { $round: ['$field', 3] }, team: { $round: ['$team', 3] }, teamLaps: 1 } },
+    { $sort: { tyreAge: 1 } },
+  ];
+  res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', results: await laps().aggregate(pipeline).toArray() });
+});
+
 // ---------------------------------------------------------------- web app
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
