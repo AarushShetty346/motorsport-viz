@@ -46,6 +46,27 @@ const lapsValidator = {
         minimum: 1,
         description: 'running position at the end of the lap',
       },
+      compound: {
+        enum: ['SOFT', 'MEDIUM', 'HARD', 'INTERMEDIATE', 'WET', null],
+        description: 'tyre compound, one of the Pirelli compounds if present',
+      },
+      source: {
+        enum: ['steward'],
+        description: 'only set on laps added in Steward mode, which are not real race data',
+      },
+      stewardEdited: {
+        bsonType: 'bool',
+        description: 'true once a steward has changed a real lap',
+      },
+      deleted: {
+        bsonType: 'bool',
+        description: 'true when the lap is hidden (soft delete)',
+      },
+      penaltySeconds: {
+        bsonType: 'number',
+        minimum: 0,
+        description: 'time penalties a steward added to this lap, in seconds',
+      },
       circuit: {
         bsonType: 'string',
         description: 'circuit name, must be a string if present',
