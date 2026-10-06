@@ -16,7 +16,7 @@ function SeasonBars({ seasons, label }) {
     <div className="career-bars" role="list" aria-label={label}>
       {seasons.map((s) => (
         <div key={s.year} className={`career-col ${s.position === 1 ? 'champ' : ''}`} role="listitem" title={`${s.year}: ${s.position ? ordinal(s.position) : 'unclassified'}, ${s.points} pts${s.as || s.teams ? ` · ${(s.teams || [s.as]).map(constructorName).join(', ')}` : ''}`}>
-          <span className="career-pos mono">{s.position ?? '–'}</span>
+          <span className="career-pos mono">{s.position ?? '-'}</span>
           <span className="career-fill" style={{ height: `${s.position ? ((worst + 1 - s.position) / worst) * 100 : 4}%` }} />
           <span className="career-year mono">{String(s.year).slice(2)}</span>
         </div>

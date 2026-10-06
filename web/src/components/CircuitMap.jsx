@@ -21,7 +21,6 @@ export function CircuitMap() {
   return (
     <section className="section container" id="map">
       <div className="section-head">
-        <p className="eyebrow">Circuit map</p>
         <h2 className="display-lg">Where they raced</h2>
       </div>
       <figure className="chart circuit-map">

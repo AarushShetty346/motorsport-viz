@@ -36,7 +36,6 @@ export default function Calendar() {
     <section id="calendar" className={`calendar tone-light ${pinned ? 'is-pinned' : ''}`} ref={outer} style={pinned ? { height: `calc(100vh + ${distance}px)` } : undefined}>
       <div className="calendar-sticky">
         <div className="section-head container">
-          <p className="eyebrow"><span className="num">02</span>Calendar</p>
           <h2 className="display-lg">24 races, five continents</h2>
           <p className="lede">Every circuit below is drawn from the car's own GPS trace on that race's fastest lap. Pick one to replay it.</p>
         </div>

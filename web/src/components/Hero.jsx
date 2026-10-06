@@ -92,8 +92,8 @@ export default function Hero() {
 
         <div className="stage-stats container">
           <Stat value="24" label="Grands Prix" />
-          <Stat value={health ? fmtNum(health.counts.drivers) : '—'} label="Drivers" />
-          <Stat value={health ? fmtNum(health.counts.laps) : '—'} label="Laps in MongoDB" />
+          <Stat value={health ? fmtNum(health.counts.drivers) : '-'} label="Drivers" />
+          <Stat value={health ? fmtNum(health.counts.laps) : '-'} label="Laps in MongoDB" />
           {p1 && p2 && <Stat value={`${p1.points - p2.points} pts`} label="Title margin" />}
         </div>
 
