@@ -10,6 +10,7 @@ import ScrollWords from '../components/ScrollWords.jsx';
 import Query from '../components/Query.jsx';
 import { TyreDegradation } from '../components/DriverTeamStats.jsx';
 import { TeammateBattle } from '../components/Community.jsx';
+import { TeamProfile } from '../components/Profiles.jsx';
 
 export default function Team({ teamKey: key }) {
   const { driverById, standings, ready } = useSeason();
@@ -89,6 +90,14 @@ export default function Team({ teamKey: key }) {
             );
           })}
         </div>
+      </section>
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow">The team</p>
+          <h2 className="display-lg">Factory, people and history</h2>
+        </div>
+        <TeamProfile team={team._id} rounds={rounds} />
       </section>
 
       <section className="container section">

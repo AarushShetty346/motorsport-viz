@@ -333,3 +333,13 @@ test('shared comparisons expire with a TTL index; circuits support $geoNear', as
   assert.equal(near.results.length, 5);
   assert.equal((await api('/api/circuits')).body.results.length, 24);
 });
+
+test('driver and team profiles come from reference collections via $lookup', async () => {
+  const d = (await api('/api/drivers/fernando-alonso/profile')).body.result.profile;
+  assert.equal(d.firstSeason, 2001);
+  assert.ok(d.teams.includes('minardi') && d.seasons.find((s) => s.year === 2005).position === 1);
+  const t = (await api('/api/teams/Mercedes/profile')).body.result;
+  assert.equal(t.principal, 'Toto Wolff');
+  assert.equal(t.lineup.length, 2);
+  assert.equal((await api('/api/drivers/nobody/profile')).status, 404);
+});

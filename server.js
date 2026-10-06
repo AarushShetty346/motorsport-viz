@@ -974,6 +974,32 @@ app.get('/api/teams/:team/teammates', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
+// ------------------------- Driver and team profiles (NoSQL 2: aggregation with $lookup)
+
+app.get('/api/drivers/:key/profile', async (req, res) => {
+  const pipeline = [
+    { $match: { key: String(req.params.key) } },
+    { $lookup: { from: 'driver_profiles', localField: 'key', foreignField: '_id', as: 'profile' } },
+    { $unwind: '$profile' },
+    { $project: { _id: 0, name: 1, team: 1, nationality: 1, profile: 1 } },
+  ];
+  const [[result], explain] = await Promise.all([drivers().aggregate(pipeline).toArray(), explainAggregate(drivers(), pipeline)]);
+  if (!result) return res.status(404).json({ error: 'Driver not found' });
+  res.json({ query: 'db.drivers.aggregate(' + shell(pipeline) + ')', explain, result });
+});
+
+app.get('/api/teams/:team/profile', async (req, res) => {
+  const profiles = getDb().collection('team_profiles');
+  const pipeline = [
+    { $match: { _id: String(req.params.team) } },
+    { $lookup: { from: 'drivers', localField: '_id', foreignField: 'team', as: 'lineup' } },
+    { $set: { lineup: { $map: { input: '$lineup', in: { key: '$$this.key', name: '$$this.name' } } } } },
+  ];
+  const [[result], explain] = await Promise.all([profiles.aggregate(pipeline).toArray(), explainAggregate(profiles, pipeline)]);
+  if (!result) return res.status(404).json({ error: 'Team not found' });
+  res.json({ query: 'db.team_profiles.aggregate(' + shell(pipeline) + ')', explain, result });
+});
+
 // ---------------------------------------------------------------- web app
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));

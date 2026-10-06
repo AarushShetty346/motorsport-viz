@@ -921,3 +921,21 @@ tr.row-hidden td.row-actions { opacity: 1; }
   .note-form .note-text { grid-column: 1 / -1; }
   .mate-big { font-size: 22px; }
 }
+
+/* Driver and team profiles */
+.profile-grid { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; }
+.profile-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 20px 0; }
+.profile-sub { margin-top: 32px; }
+.block { display: block; margin-top: 4px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.career-bars { display: flex; align-items: flex-end; gap: 3px; height: 160px; margin: 10px 0 6px; }
+.career-col { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; }
+.career-fill { width: 100%; background: var(--team, var(--accent)); opacity: 0.55; border-radius: 2px 2px 0 0; }
+.career-col.champ .career-fill { opacity: 1; background: var(--accent); }
+.career-pos, .career-year { font-size: 9px; color: var(--muted); }
+.most-list { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 4px; }
+.most-list li span:first-child { margin-right: 8px; }
+.finish { display: inline-flex; gap: 4px; align-items: center; margin-right: 14px; }
+@media (max-width: 860px) { .profile-grid { grid-template-columns: 1fr; } }
+.chips .chip { cursor: default; }
+.profile-facts dd { font-size: 15px; }

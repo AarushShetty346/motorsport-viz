@@ -1,0 +1,193 @@
+{
+  "drivers": {
+    "lando-norris": "Came through karting and the junior single-seater ladder in Britain and Europe, joining McLaren's young driver programme before his 2019 debut. He has spent his whole Formula 1 career at McLaren, scored his first win in Miami in 2024 and became world champion in 2025.",
+    "max-verstappen": "Son of former F1 driver Jos Verstappen. He made his debut with Toro Rosso in 2015 at 17, the youngest driver ever to start a Grand Prix, and won on his first race for Red Bull in Spain 2016. World champion four years in a row from 2021 to 2024.",
+    "george-russell": "Won the GP3 title in 2017 and the Formula 2 title in 2018 as a Mercedes junior. He raced three seasons for Williams before joining Mercedes full time in 2022, where he took his first win in Brazil that year.",
+    "kimi-antonelli": "A Mercedes junior from Bologna who jumped straight from Formula 2 to the Mercedes race seat for 2025, replacing Lewis Hamilton at 18. In his rookie year he took a sprint pole in Miami and his first podium in Canada.",
+    "alexander-albon": "Born in London and racing under the Thai flag. Albon debuted with Toro Rosso in 2019, was promoted to Red Bull mid-season, then spent 2021 as a reserve before rebuilding his career at Williams from 2022.",
+    "lance-stroll": "Canadian, son of team owner Lawrence Stroll. He won the 2016 European F3 title, debuted with Williams in 2017 and took a podium in Baku in his rookie year. He has driven for the Racing Point / Aston Martin team since 2019.",
+    "nico-hulkenberg": "German veteran who won the 2009 GP2 title and took pole for Williams in Brazil in his 2010 rookie season. He won Le Mans with Porsche in 2015. After more than 200 starts without a podium, he finally finished third at Silverstone in 2025.",
+    "charles-leclerc": "From Monaco. He won GP3 in 2016 and Formula 2 in 2017, debuted with Sauber in 2018 and joined Ferrari in 2019, winning at Spa and Monza that year. He finally won his home race in Monaco in 2024.",
+    "oscar-piastri": "Australian who won Formula Renault Eurocup, F3 (2020) and F2 (2021) in consecutive years. After a year as a reserve, he debuted for McLaren in 2023 and won his first Grand Prix in Hungary in 2024. He led the 2025 championship for much of the year.",
+    "lewis-hamilton": "Seven-time world champion and the sport's record holder for wins and pole positions. He debuted with McLaren in 2007, won his first title in 2008, then won six more with Mercedes between 2014 and 2020. He moved to Ferrari for 2025.",
+    "pierre-gasly": "French driver, 2016 GP2 champion. He debuted with Toro Rosso in 2017, was promoted to Red Bull in 2019 and moved back mid-season. He won the 2020 Italian Grand Prix with AlphaTauri and joined Alpine in 2023.",
+    "yuki-tsunoda": "A Honda and Red Bull junior from Japan. He debuted with AlphaTauri in 2021 and spent four seasons with the Faenza team before being promoted to Red Bull Racing two races into 2025.",
+    "esteban-ocon": "Frenchman who beat Max Verstappen to the 2014 European F3 title. He debuted with Manor in 2016, raced for Force India, then Renault/Alpine, where he won the 2021 Hungarian Grand Prix. He joined Haas for 2025.",
+    "oliver-bearman": "A Ferrari junior from Essex. He made his debut as a stand-in for Ferrari in Saudi Arabia 2024 aged 18 and scored points, then made two more starts for Haas before joining them full time in 2025.",
+    "liam-lawson": "From New Zealand. He made his debut as a stand-in for AlphaTauri in 2023, returned to the team for the end of 2024 and started 2025 at Red Bull Racing before swapping back to Racing Bulls after two races.",
+    "gabriel-bortoleto": "Brazilian who won the FIA F3 title in 2023 and the Formula 2 title in 2024 as a rookie in both. He joined Sauber for 2025, ahead of the team becoming Audi in 2026.",
+    "fernando-alonso": "Two-time world champion with Renault in 2005 and 2006, at the time the youngest ever. He debuted with Minardi in 2001 and has also driven for McLaren, Ferrari and Alpine. He has been with Aston Martin since 2023 and holds the record for the most Grand Prix starts.",
+    "carlos-sainz-jr": "Spanish, son of two-time World Rally champion Carlos Sainz. He debuted alongside Verstappen at Toro Rosso in 2015, then drove for Renault, McLaren and Ferrari, winning four Grands Prix with Ferrari. He joined Williams for 2025.",
+    "jack-doohan": "Australian, son of five-time 500cc motorcycle world champion Mick Doohan. He made his debut for Alpine at the final race of 2024 and started the first six races of 2025 before Franco Colapinto replaced him.",
+    "isack-hadjar": "French driver of Algerian descent and a Red Bull junior who finished second in the 2024 Formula 2 championship. He debuted with Racing Bulls in 2025 and took his first podium at Zandvoort.",
+    "franco-colapinto": "Argentinian who made his debut for Williams mid-way through 2024, replacing Logan Sargeant, and scored points at Monza. He joined Alpine as a reserve for 2025 and took the race seat from round 7."
+  },
+  "teams": {
+    "mclaren": {
+      "factory": "McLaren Technology Centre, Woking, England",
+      "founded": "1963 by New Zealander Bruce McLaren; first Grand Prix in 1966",
+      "principal": "Andrea Stella",
+      "principalNote": "Team principal since 2023. Zak Brown is CEO of McLaren Racing and sits above him.",
+      "people": [
+        "Bruce McLaren (founder)",
+        "Ron Dennis (team boss 1981-2009)",
+        "Gordon Murray (designer)",
+        "Adrian Newey (technical director 1998-2005)",
+        "Ayrton Senna",
+        "Alain Prost",
+        "Niki Lauda",
+        "Mika Häkkinen",
+        "Lewis Hamilton"
+      ],
+      "history": "One of the sport's oldest and most successful teams. The McLaren-Honda era of Senna and Prost dominated the late 1980s, and Häkkinen won two titles in 1998 and 1999. After a long dip in the 2010s the team rebuilt under Zak Brown and Andrea Stella and won back-to-back constructors' titles in 2024 and 2025."
+    },
+    "ferrari": {
+      "factory": "Maranello, Italy",
+      "founded": "Scuderia Ferrari founded by Enzo Ferrari in 1929; in every Formula 1 season since 1950",
+      "principal": "Frédéric Vasseur",
+      "principalNote": "Team principal since 2023, after leading Sauber.",
+      "people": [
+        "Enzo Ferrari (founder)",
+        "Jean Todt (team principal 1993-2007)",
+        "Ross Brawn (technical director)",
+        "Rory Byrne (designer)",
+        "Niki Lauda",
+        "Michael Schumacher",
+        "Kimi Räikkönen",
+        "Sebastian Vettel"
+      ],
+      "history": "The only team to have raced in every Formula 1 season and the most successful by constructors' titles. Michael Schumacher's partnership with Todt, Brawn and Byrne won five drivers' titles in a row from 2000 to 2004. Kimi Räikkönen's 2007 title is Ferrari's most recent drivers' championship."
+    },
+    "red-bull": {
+      "factory": "Milton Keynes, England",
+      "founded": "2005, when Red Bull bought the Jaguar team (originally Stewart Grand Prix, 1997)",
+      "principal": "Laurent Mekies",
+      "principalNote": "Took over as team principal and CEO in July 2025 after Christian Horner, who had led the team since 2005, was dismissed.",
+      "people": [
+        "Dietrich Mateschitz (founder of Red Bull)",
+        "Christian Horner (team principal 2005-2025)",
+        "Adrian Newey (chief technical officer 2006-2024)",
+        "Helmut Marko (adviser)",
+        "Sebastian Vettel",
+        "Mark Webber",
+        "Daniel Ricciardo",
+        "Max Verstappen"
+      ],
+      "history": "Built from the Stewart and Jaguar teams. Vettel won four titles in a row from 2010 to 2013 with Newey-designed cars, and Verstappen won four more from 2021 to 2024. The 2023 car won 21 of 22 races."
+    },
+    "mercedes": {
+      "factory": "Brackley, England (power units built at Brixworth)",
+      "founded": "Current works team since 2010, built on Brawn GP (2009), which grew out of BAR (1999) and Honda",
+      "principal": "Toto Wolff",
+      "principalNote": "Team principal and CEO since 2013, and a one-third owner of the team. A team principal runs the race team day to day and speaks for it at the track.",
+      "people": [
+        "Juan Manuel Fangio (Mercedes 1954-55)",
+        "Ross Brawn (Brawn GP owner, Mercedes team principal 2010-2013)",
+        "Toto Wolff",
+        "Niki Lauda (non-executive chairman 2012-2019)",
+        "Michael Schumacher",
+        "Nico Rosberg",
+        "Lewis Hamilton"
+      ],
+      "history": "Mercedes raced in 1954 and 1955 with Fangio, then returned as a works team in 2010. From 2014, the start of the hybrid turbo era, it won eight constructors' titles in a row, with Hamilton taking six drivers' titles and Rosberg one."
+    },
+    "williams": {
+      "factory": "Grove, Oxfordshire, England",
+      "founded": "1977 by Frank Williams and Patrick Head",
+      "principal": "James Vowles",
+      "principalNote": "Team principal since 2023, after years as Mercedes' strategy director.",
+      "people": [
+        "Sir Frank Williams (founder)",
+        "Patrick Head (co-founder, technical director)",
+        "Adrian Newey (designer)",
+        "Alan Jones",
+        "Nelson Piquet",
+        "Nigel Mansell",
+        "Alain Prost",
+        "Damon Hill",
+        "Jacques Villeneuve"
+      ],
+      "history": "A family-run team for over 40 years that won nine constructors' titles between 1980 and 1997, including Mansell's dominant 1992 season. It was sold to Dorilton Capital in 2020 and is rebuilding under James Vowles."
+    },
+    "aston-martin": {
+      "factory": "Silverstone, England (a new factory opened in 2023)",
+      "founded": "Raced as Aston Martin since 2021; the team began as Jordan Grand Prix in 1991, then Midland, Spyker, Force India and Racing Point",
+      "principal": "Andy Cowell",
+      "principalNote": "CEO and team principal during 2025. Lawrence Stroll is executive chairman and owner; Adrian Newey joined in 2025 as managing technical partner.",
+      "people": [
+        "Eddie Jordan (founder of Jordan)",
+        "Lawrence Stroll (owner)",
+        "Adrian Newey (joined 2025)",
+        "Michael Schumacher (debut with Jordan, 1991)",
+        "Damon Hill",
+        "Sergio Pérez",
+        "Sebastian Vettel",
+        "Fernando Alonso"
+      ],
+      "history": "The Silverstone team has changed name more than any other. Jordan won four races, Racing Point won the 2020 Sakhir Grand Prix with Pérez, and as Aston Martin it scored eight podiums with Alonso in 2023."
+    },
+    "racing-bulls": {
+      "factory": "Faenza, Italy (aerodynamics in Milton Keynes)",
+      "founded": "2006 as Toro Rosso, when Red Bull bought Minardi (founded 1985); later AlphaTauri (2020-23) and RB (2024)",
+      "principal": "Alan Permane",
+      "principalNote": "Team principal since July 2025, when Laurent Mekies moved up to run Red Bull Racing.",
+      "people": [
+        "Giancarlo Minardi (founder of Minardi)",
+        "Franz Tost (team principal 2006-2023)",
+        "Fernando Alonso (debut with Minardi)",
+        "Sebastian Vettel",
+        "Max Verstappen",
+        "Carlos Sainz",
+        "Pierre Gasly",
+        "Daniel Ricciardo"
+      ],
+      "history": "Red Bull's second team and training ground for its young drivers. Vettel gave it a shock win at Monza in 2008, in the wet, and Gasly won again at Monza in 2020."
+    },
+    "haas": {
+      "factory": "Kannapolis, North Carolina, USA, with a base in Banbury, England and design work in Maranello",
+      "founded": "2016 by American industrialist Gene Haas",
+      "principal": "Ayao Komatsu",
+      "principalNote": "Team principal since 2024, after years as the team's chief race engineer. Gene Haas owns the team.",
+      "people": [
+        "Gene Haas (founder and owner)",
+        "Guenther Steiner (team principal 2016-2023)",
+        "Romain Grosjean",
+        "Kevin Magnussen",
+        "Mick Schumacher",
+        "Nico Hülkenberg"
+      ],
+      "history": "The first American-led team in F1 for 30 years. It scored points on its debut in Australia 2016 and took a best-ever fifth in the 2018 constructors' championship. Magnussen took a surprise pole in Brazil 2022."
+    },
+    "kick-sauber": {
+      "factory": "Hinwil, Switzerland",
+      "founded": "1993 by Peter Sauber; raced as BMW Sauber (2006-09) and Alfa Romeo (2019-23); becomes Audi in 2026",
+      "principal": "Jonathan Wheatley",
+      "principalNote": "Team principal since 2025, after almost 20 years as Red Bull's sporting director. Mattia Binotto heads the Audi F1 project above him.",
+      "people": [
+        "Peter Sauber (founder)",
+        "Kimi Räikkönen (debut 2001)",
+        "Felipe Massa",
+        "Robert Kubica",
+        "Nick Heidfeld",
+        "Charles Leclerc",
+        "Valtteri Bottas"
+      ],
+      "history": "Switzerland's long-running independent team. Its only win came as BMW Sauber, with Kubica in Canada 2008. Audi bought the team, which runs as Audi from 2026."
+    },
+    "alpine": {
+      "factory": "Enstone, Oxfordshire, England",
+      "founded": "Raced as Alpine since 2021; the Enstone team began as Toleman in 1981 and then raced as Benetton, Renault and Lotus",
+      "principal": "Flavio Briatore (executive adviser)",
+      "principalNote": "After Oliver Oakes resigned in May 2025, Briatore, Renault's executive adviser to the team, took charge of running it.",
+      "people": [
+        "Ted Toleman (founder)",
+        "Flavio Briatore",
+        "Ayrton Senna (debut with Toleman, 1984)",
+        "Michael Schumacher",
+        "Fernando Alonso",
+        "Kimi Räikkönen"
+      ],
+      "history": "Enstone has won titles under two names: Schumacher's drivers' titles with Benetton in 1994 and 1995, and Alonso's with Renault in 2005 and 2006. As Alpine it won the 2021 Hungarian Grand Prix with Ocon."
+    }
+  }
+}
