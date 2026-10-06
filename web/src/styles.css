@@ -941,3 +941,30 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .profile-facts dd { font-size: 15px; }
 .inline-icon { vertical-align: -2px; margin: 0 2px; }
 .note-icon { color: var(--note); display: inline-flex; vertical-align: -1px; }
+
+/* Chart polish: quieter grids, crisp marks, one calm entry animation */
+.grid line { stroke: var(--line); stroke-dasharray: 2 4; }
+.grid text, .axis { font: 500 11px var(--mono); letter-spacing: 0.02em; }
+.chart-wrap svg path[fill="none"] { stroke-linecap: round; stroke-linejoin: round; }
+.chart-wrap svg g { transition: opacity 200ms var(--ease-out); }
+.histogram { gap: 3px; height: 220px; padding-bottom: 26px; }
+.histo-bar { border-radius: 3px 3px 0 0; transition: filter 150ms var(--ease-out); }
+.histo-col:hover .histo-bar { filter: brightness(1.15); }
+.histo-label { transform: none; bottom: -22px; font-size: 10px; }
+.histo-col:nth-child(4n+2) .histo-label, .histo-col:nth-child(4n+3) .histo-label, .histo-col:nth-child(4n) .histo-label { visibility: hidden; }
+.stint-track { background: transparent; border-bottom: 1px solid var(--line); border-radius: 0; }
+.stint { border-radius: 2px; }
+.compound-split { height: 10px; gap: 2px; border-radius: 0; }
+.compound-split span { border-radius: 2px; }
+.career-bars { gap: 2px; }
+.career-fill { border-radius: 2px 2px 0 0; }
+.kpi { letter-spacing: -0.02em; }
+@media (prefers-reduced-motion: no-preference) {
+  .chart-wrap svg path[fill="none"]:not([stroke-dasharray]) { stroke-dasharray: 4000; stroke-dashoffset: 4000; animation: draw 1.4s var(--ease-out) forwards; }
+  .histo-bar, .team-bar-fill, .career-fill, .stint { transform-origin: bottom; animation: grow 700ms var(--ease-out) both; }
+  .stint { transform-origin: left; animation-name: grow-x; }
+  .histo-col:nth-child(n) .histo-bar { animation-delay: calc(var(--i, 0) * 25ms); }
+}
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes grow { from { transform: scaleY(0); } }
+@keyframes grow-x { from { transform: scaleX(0); } }
