@@ -226,6 +226,20 @@ async function seedCircuits() {
   console.log(`[seed] Inserted ${docs.length} circuits with GeoJSON locations`);
 }
 
+// Reference data for the Driver and Team pages: careers and team histories from
+// F1DB (data/profiles.json) plus written notes (data/profiles-notes.json).
+// Replaced on every start, never read by any statistic.
+async function seedProfiles() {
+  const facts = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'profiles.json'), 'utf8'));
+  const notes = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'profiles-notes.json'), 'utf8'));
+  const driverDocs = Object.entries(facts.drivers).map(([key, f]) => ({ _id: key, ...f, bio: notes.drivers[key] || null, source: facts.source }));
+  const teamDocs = Object.entries(facts.teams).map(([key, f]) => ({ _id: TEAM_NAMES[key] || key, key, ...f, ...(notes.teams[key] || {}), source: facts.source }));
+  for (const [name, docs] of [['driver_profiles', driverDocs], ['team_profiles', teamDocs]]) {
+    await db.collection(name).deleteMany({});
+    await db.collection(name).insertMany(docs);
+  }
+}
+
 // Rebuilds season_summary from races and laps with $merge (run by "npm run summary:rebuild" and on first start).
 async function rebuildSeasonSummary() {
   const target = (whenMatched) => ({ $merge: { into: 'season_summary', on: '_id', whenMatched, whenNotMatched: 'insert' } });
@@ -323,6 +337,7 @@ async function init() {
   await setupCollections();
   await seedIfEmpty();
   await seedCircuits();
+  await seedProfiles();
   if ((await db.collection('season_summary').countDocuments()) === 0) console.log(`[db] Built season_summary with $merge (${await rebuildSeasonSummary()} drivers)`);
   return db;
 }

@@ -16,6 +16,7 @@ import { lapTags, lapRowClass } from '../lib/steward.js';
 import { openLap } from '../components/LapDrawer.jsx';
 import { SeasonStats, TheoreticalBest } from '../components/DriverTeamStats.jsx';
 import { Consistency } from '../components/Community.jsx';
+import { DriverProfile } from '../components/Profiles.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
@@ -70,6 +71,14 @@ export default function Driver({ driverKey }) {
           <ScrollWords text={`${driver.firstName} ${driver.lastName} finished ${ordinal(idx + 1)} in 2025 for ${driver.team}, with ${st.points} points, ${st.wins} ${st.wins === 1 ? 'win' : 'wins'} and ${st.podiums} ${st.podiums === 1 ? 'podium' : 'podiums'} from ${st.starts} starts.`} />
         </section>
       )}
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow">Profile</p>
+          <h2 className="display-lg">Who is {driver.firstName} {driver.lastName}?</h2>
+        </div>
+        <DriverProfile driver={driver} raceRows={raceRows} sprintByRound={sprintByRound} />
+      </section>
 
       <section className="container section-tight">
         <h2 className="h-small">Season at a glance</h2>
