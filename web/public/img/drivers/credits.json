@@ -1,11 +1,5 @@
 {
   "lando-norris": {
-    "helmet": {
-      "file": "lando-norris.jpg",
-      "author": "Liauzh",
-      "license": "CC BY-SA 4.0",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lando_Norris_Helmet_2024.jpg"
-    },
     "file": "lando-norris.jpg",
     "author": "Original: Steffen Prößdorf; Derivative work: Mb2437",
     "license": "CC BY-SA 4.0",
@@ -39,12 +33,6 @@
     }
   },
   "oscar-piastri": {
-    "helmet": {
-      "file": "oscar-piastri.jpg",
-      "author": "Liauzh",
-      "license": "CC BY-SA 4.0",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Oscar_Piastri_Helmet_2024.jpg"
-    },
     "file": "oscar-piastri.jpg",
     "author": "Liauzh",
     "license": "CC BY 4.0",
@@ -55,21 +43,7 @@
       "w": 42
     }
   },
-  "lewis-hamilton": {
-    "helmet": {
-      "file": "lewis-hamilton.jpg",
-      "author": "Morio",
-      "license": "CC BY-SA 4.0",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Lewis_Hamilton_2013_helmet_2017_Museo_Fernando_Alonso.jpg"
-    }
-  },
   "pierre-gasly": {
-    "helmet": {
-      "file": "pierre-gasly.jpg",
-      "author": "Lukas Raich",
-      "license": "CC BY-SA 4.0",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Pierre_Gasly_Helmet_2022_(2).jpg"
-    },
     "file": "pierre-gasly.jpg",
     "author": "nabtifal",
     "license": "CC BY 2.0",
@@ -81,12 +55,6 @@
     }
   },
   "fernando-alonso": {
-    "helmet": {
-      "file": "fernando-alonso.jpg",
-      "author": "Morio",
-      "license": "CC BY-SA 4.0",
-      "sourceUrl": "https://commons.wikimedia.org/wiki/File:Fernando_Alonso_2005_helmet_front_2017_Museo_Fernando_Alonso.jpg"
-    },
     "file": "fernando-alonso.jpg",
     "author": "United Autosports",
     "license": "CC BY-SA 2.0",
