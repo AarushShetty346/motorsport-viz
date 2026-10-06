@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api } from '../lib/api.js';
 import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
@@ -8,9 +8,8 @@ import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { ValidationError } from './labValidation.jsx';
+import { useDisplayName, rememberDisplayName } from '../lib/displayName.js';
 
-const NAME_KEY = 'lbl-note-name';
-const savedName = () => { try { return localStorage.getItem(NAME_KEY) || ''; } catch { return ''; } };
 const ago = (iso) => {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
   if (s < 60) return 'just now';
@@ -26,7 +25,9 @@ export const useRaceNotes = (round) => useApi(`/api/races/${round}/notes`);
 export function LapNotes({ race }) {
   const { driverById } = useSeason();
   const notes = useRaceNotes(race.round);
-  const [form, setForm] = useState({ author: savedName(), lapNumber: '', driverId: '', text: '' });
+  const me = useDisplayName();
+  const [form, setForm] = useState({ author: me.name, lapNumber: '', driverId: '', text: '' });
+  useEffect(() => { if (me.signedIn) setForm((f) => ({ ...f, author: me.name })); }, [me]);
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -49,7 +50,7 @@ export function LapNotes({ race }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const submit = async (e) => {
     e.preventDefault();
-    try { localStorage.setItem(NAME_KEY, form.author); } catch { /* private mode */ }
+    rememberDisplayName(form.author);
     const r = await run(() => api(`/api/races/${race.round}/notes`, { method: 'POST', body: form }));
     if (r) setForm((f) => ({ ...f, text: '' }));
   };
@@ -65,7 +66,7 @@ export function LapNotes({ race }) {
   return (
     <div className="lap-notes">
       <form className="note-form" onSubmit={submit} noValidate autoComplete="off">
-        <label>Your name<input type="text" value={form.author} onChange={set('author')} placeholder="Aarush" maxLength={40} /></label>
+        <label>Your name<input type="text" value={form.author} onChange={set('author')} placeholder="Aarush" maxLength={40} readOnly={me.signedIn} /></label>
         <label>Lap<input type="text" inputMode="numeric" value={form.lapNumber} onChange={set('lapNumber')} placeholder={`1-${race.laps}`} /></label>
         <label>Driver<select value={form.driverId} onChange={set('driverId')}><option value="">Whole race</option>{race.results.map((r) => driverById.get(r.driverId)).filter(Boolean).map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}</select></label>
         <label className="note-text">Note<input type="text" value={form.text} onChange={set('text')} placeholder="The undercut that won it" maxLength={280} /></label>
