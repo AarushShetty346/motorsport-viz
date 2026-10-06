@@ -10,7 +10,6 @@ import Marquee from '../components/Marquee.jsx';
 import { fmtNum } from '../lib/format.js';
 import { CircuitMap } from '../components/CircuitMap.jsx';
 import { Movers } from '../components/RaceAnalytics.jsx';
-import HelmetLens from '../components/HelmetLens.jsx';
 import { NotesFeed, SeasonSummary } from '../components/Community.jsx';
 
 export default function Home() {
@@ -27,7 +26,6 @@ export default function Home() {
               <ScrollWords text={`${p1.name} won the 2025 title by ${p1.points - p2.points} points. ${last(p2)} was second and ${last(p3)} third, ${p2.points - p3.points} points further back. Twenty-four Grands Prix and ${health ? fmtNum(health.counts.laps) : 'thousands of'} laps decided it, and every one of those laps is in here.`} />
             </section>
           )}
-          <HelmetLens />
           <TitleFight />
           <Calendar />
           <CircuitMap />
