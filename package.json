@@ -12,10 +12,14 @@
     "serve": "node server.js",
     "test": "node --test test/api.test.js",
     "data:build": "python3 scripts/build_season.py",
+    "photos:fetch": "node scripts/fetch-driver-photos.mjs",
+    "cars:fetch": "node scripts/fetch-car-photos.mjs",
     "docker": "docker compose up --build",
     "db:up": "docker compose up -d mongo",
     "db:down": "docker compose down",
-    "shell": "docker compose exec mongo mongosh motorsport"
+    "shell": "docker compose exec mongo mongosh motorsport",
+    "db:setup": "node scripts/setup-db.js",
+    "summary:rebuild": "node scripts/rebuild-summary.js"
   },
   "engines": {
     "node": ">=20.19"
@@ -35,6 +39,7 @@
     "motion": "^13.4.6",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "three": "^0.186.1",
     "vite": "^8.3.1"
   }
 }

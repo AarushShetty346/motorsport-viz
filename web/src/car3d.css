@@ -1,0 +1,11 @@
+/* The 3D car on a team page: chassis name set huge behind it, canvas on top. */
+.car3d { outline: none; }
+.car3d:focus-visible { outline: 2px solid var(--flag-ink); outline-offset: -2px; }
+.car3d canvas { position: relative; z-index: 1; }
+.car3d-word {
+  position: absolute; inset: 0; display: grid; place-items: center; z-index: 0; pointer-events: none;
+  font: 900 clamp(110px, 22vw, 340px)/0.8 var(--sans); letter-spacing: -0.07em; white-space: nowrap;
+  color: rgba(11, 11, 12, 0.07);
+}
+.car3d-hint { z-index: 2; display: flex; align-items: center; gap: 10px; }
+.car3d-hint strong { font-weight: 500; color: var(--flag); background: var(--flag-ink); padding: 3px 6px 2px; }

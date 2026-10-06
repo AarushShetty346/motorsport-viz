@@ -3,6 +3,7 @@ import { useSeason } from '../lib/season.jsx';
 import { fmtLap, fmtGap, fmtNum, COMPOUND } from '../lib/format.js';
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
+import FeatureLabel from './FeatureLabel.jsx';
 
 // Each driver's single fastest lap of the race ($sort + $group with $first).
 export default function Leaderboard({ round }) {
@@ -38,7 +39,8 @@ export default function Leaderboard({ round }) {
           </tbody>
         </table>
       </div>
-      <Query text={data.query} />
+      <FeatureLabel name="Fastest lap leaderboard" type="user" />
+      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }

@@ -7,8 +7,8 @@ const LINKS = [
   { to: '/', label: 'Season', match: (p) => p === '/' },
   { to: '/#calendar', label: 'Races', match: (p) => p.startsWith('/race') },
   { to: '/#standings', label: 'Drivers', match: (p) => p.startsWith('/driver') },
+  { to: '/team/mclaren', label: 'Teams', match: (p) => p.startsWith('/team') },
   { to: '/compare', label: 'Head to head', match: (p) => p.startsWith('/compare') },
-  { to: '/lab', label: 'Data lab', match: (p) => p.startsWith('/lab') },
 ];
 
 export default function Nav({ onSearch }) {

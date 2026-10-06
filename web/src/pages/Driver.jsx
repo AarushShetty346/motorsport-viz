@@ -7,12 +7,23 @@ import LapChart from '../components/LapChart.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import FeatureLabel from '../components/FeatureLabel.jsx';
+import DriverPortrait from '../components/DriverPortrait.jsx';
+import ScrollWords from '../components/ScrollWords.jsx';
+import { useDriverPhotos } from '../lib/photos.js';
+import { teamPath } from '../lib/teams.js';
+import { lapTags, lapRowClass } from '../lib/steward.js';
+import { openLap } from '../components/LapDrawer.jsx';
+import { SeasonStats, TheoreticalBest } from '../components/DriverTeamStats.jsx';
+import { Consistency } from '../components/Community.jsx';
+import { DriverProfile } from '../components/Profiles.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
   const driver = driverByKey.get(driverKey);
   const season = useApi(driver ? `/api/drivers/${driver._id}/season` : null);
   const [round, setRound] = useState(null);
+  const photos = useDriverPhotos();
   const laps = useApi(driver && round ? `/api/user/driver-laps/${driver._id}?round=${round}` : null);
 
   const raceRows = useMemo(() => (season.data?.results || []).filter((r) => r.kind === 'race'), [season.data]);
@@ -26,7 +37,7 @@ export default function Driver({ driverKey }) {
   const idx = standings.findIndex((s) => s.driverId === driver._id);
   const st = standings[idx];
   const lapRows = laps.data?.results || [];
-  const best = lapRows.filter((l) => !l.deleted).reduce((a, b) => (!a || b.lapTime < a.lapTime ? b : a), null);
+  const best = lapRows.filter((l) => !l.deleted && l.source !== 'steward').reduce((a, b) => (!a || b.lapTime < a.lapTime ? b : a), null);
   const race = raceByRound.get(round);
 
   return (
@@ -35,12 +46,11 @@ export default function Driver({ driverKey }) {
         <span className="driver-number" aria-hidden="true">{driver.number}</span>
         <div className="driver-hero">
         <div className="driver-hero-copy">
-          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · {driver.team} · No. {driver.number}</p>
+          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · <Link to={teamPath(driver.team)} className="band-link">{driver.team}</Link> · No. {driver.number}</p>
           <h1 className="display-xl"><span className="driver-first">{driver.firstName}</span><br />{driver.lastName}</h1>
           <div className="driver-actions">
             <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare with…</Link>
           </div>
-        </div>
         {st && (
           <dl className="driver-stats">
             <div><dt>Championship</dt><dd className="display-md">{ordinal(idx + 1)}</dd></div>
@@ -51,8 +61,24 @@ export default function Driver({ driverKey }) {
           </dl>
         )}
         </div>
+        <DriverPortrait driver={driver} photo={photos[driver.key]} />
+        </div>
         <span className="band-team" aria-hidden="true" />
       </Band>
+
+      {st && (
+        <section className="container section-tight">
+          <ScrollWords text={`${driver.firstName} ${driver.lastName} finished ${ordinal(idx + 1)} in 2025 for ${driver.team}, with ${st.points} points, ${st.wins} ${st.wins === 1 ? 'win' : 'wins'} and ${st.podiums} ${st.podiums === 1 ? 'podium' : 'podiums'} from ${st.starts} starts.`} />
+        </section>
+      )}
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow">Profile</p>
+          <h2 className="display-lg">Who is {driver.firstName} {driver.lastName}?</h2>
+        </div>
+        <DriverProfile driver={driver} raceRows={raceRows} sprintByRound={sprintByRound} />
+      </section>
 
       <section className="container section-tight">
         <h2 className="h-small">Season at a glance</h2>
@@ -85,7 +111,14 @@ export default function Driver({ driverKey }) {
           <span><span className="sw-cell points" />Points</span><span><span className="sw-cell out" />No points</span>
           <span><span className="sw-cell dnf" />Did not finish</span><span><span className="strip-sprint inline" />Sprint weekend</span>
         </p>
-        <Query text={season.data?.query} label="This driver's results (aggregation on races)" />
+        <Query text={season.data?.query} explain={season.data?.explain} label="This driver's results (aggregation on races)" />
+      </section>
+
+      <section className="container section-tight">
+        <h2 className="h-small">Season stats, every lap</h2>
+        <SeasonStats driver={driver} />
+        <div className="spacer" />
+        <Consistency driver={driver} />
       </section>
 
       <section className="container section">
@@ -110,16 +143,17 @@ export default function Driver({ driverKey }) {
               <div><span className="kpi-label">Top speed</span><span className="kpi mono">{fmtNum(Math.max(0, ...lapRows.map((l) => l.telemetry.speed)), 1)}</span><span className="muted small">km/h</span></div>
               <div><span className="kpi-label">Pit stops</span><span className="kpi mono">{lapRows.filter((l) => l.pitIn).length}</span></div>
             </div>
-            <LapChart laps={lapRows} />
+            <LapChart laps={lapRows.filter((l) => l.source !== 'steward')} />
+            <TheoreticalBest driver={driver} round={round} />
             <details className="lap-table-toggle">
               <summary>All {lapRows.length} laps with telemetry</summary>
               <div className="table-wrap" data-lenis-prevent>
-                <table className="data-table">
+                <table className="data-table lap-table">
                   <thead><tr><th className="num">Lap</th><th className="num">Pos</th><th className="num">Time</th><th>Tyre</th><th className="num">Top speed</th><th className="num">Peak RPM</th><th>Throttle</th><th>Braking</th><th>DRS</th></tr></thead>
                   <tbody>
                     {lapRows.map((l) => (
-                      <tr key={l._id} className={best && l._id === best._id ? 'best' : ''}>
-                        <td className="num mono">{l.lapNumber}{(l.pitIn || l.pitOut) && <span className="pit-tag">PIT</span>}</td>
+                      <tr key={l._id} className={`clickable ${best && l._id === best._id ? 'best' : ''} ${lapRowClass(l)}`} onClick={() => openLap(l._id)}>
+                        <td className="num mono">{l.lapNumber}{(l.pitIn || l.pitOut) && <span className="pit-tag">PIT</span>}{lapTags(l).map((t) => <span key={t} className={`lap-tag ${t}`}>({t})</span>)}</td>
                         <td className="num mono">{l.position ?? '—'}</td>
                         <td className="num mono strong">{fmtLap(l.lapTime)}</td>
                         <td>{l.compound && <span className="tyre" style={{ '--tyre': COMPOUND[l.compound]?.color }}>{COMPOUND[l.compound]?.label}</span>}</td>
@@ -134,7 +168,8 @@ export default function Driver({ driverKey }) {
                 </table>
               </div>
             </details>
-            <Query text={laps.data.query} />
+            <FeatureLabel name="All laps for a driver" type="user" />
+            <Query text={laps.data.query} explain={laps.data.explain} />
           </>
         )}
       </section>

@@ -7,9 +7,10 @@ import { fmtLap, fmtNum } from '../lib/format.js';
 import { EASE_OUT } from '../lib/motion.js';
 import Flag from './Flag.jsx';
 import Query from './Query.jsx';
+import FeatureLabel from './FeatureLabel.jsx';
 
 // Search: MongoDB full-text search ($text on the laps text index) finds
-// Grands Prix by circuit, race or country; drivers are matched by name in the page.
+// Grands Prix by circuit; drivers are matched by name in the page.
 export default function SearchPalette({ open, onClose }) {
   const { drivers, raceByRound } = useSeason();
   const { navigate } = useRouter();
@@ -33,7 +34,7 @@ export default function SearchPalette({ open, onClose }) {
     setRes((r) => ({ ...r, loading: true }));
     const t = setTimeout(() => {
       api(`/api/user/search?q=${encodeURIComponent(term)}`).then(
-        (d) => setRes({ results: d.results, query: d.query, error: null, loading: false }),
+        (d) => setRes({ results: d.results, query: d.query, explain: d.explain, error: null, loading: false }),
         (e) => setRes({ results: [], query: '', error: e, loading: false })
       );
     }, 160);
@@ -84,7 +85,7 @@ export default function SearchPalette({ open, onClose }) {
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setActive(0); }}
                 onKeyDown={onKey}
-                placeholder="Try Monza, Silverstone, Italy, street… or a driver"
+                placeholder="Try Monza, Silverstone, Spa… or a driver"
                 aria-label="Search circuits, races, countries or drivers"
               />
               <kbd>esc</kbd>
@@ -92,16 +93,16 @@ export default function SearchPalette({ open, onClose }) {
             <div className="palette-body">
               {!q.trim() && (
                 <div className="palette-hint">
-                  <p>Full-text search over every lap in the season, using MongoDB's <code>$text</code> index on race, circuit and country.</p>
+                  <p>Full-text search over every lap in the season, using MongoDB's <code>$text</code> index on circuit.</p>
                   <div className="chips">
-                    {['monza', 'silverstone', 'italy', 'spa', 'united states', 'marina bay'].map((s) => (
+                    {['monza', 'silverstone', 'spa', 'suzuka', 'monaco', 'marina bay'].map((s) => (
                       <button key={s} type="button" className="chip" onClick={() => setQ(s)}>{s}</button>
                     ))}
                   </div>
                 </div>
               )}
               {res.error && <p className="msg msg-err">{res.error.message}</p>}
-              {q.trim() && !res.loading && !items.length && !res.error && <p className="palette-empty">No race, circuit or driver matches “{q}”.</p>}
+              {q.trim() && !res.loading && !items.length && !res.error && <p className="palette-empty">No circuit or driver matches “{q}”.</p>}
               {!!res.results.length && <p className="palette-group">Grands Prix · $text matches</p>}
               <ul className="palette-list">
                 {items.map((item, i) => (
@@ -131,7 +132,7 @@ export default function SearchPalette({ open, onClose }) {
                 ))}
               </ul>
             </div>
-            {res.query && <div className="palette-foot"><Query text={res.query} /></div>}
+            <div className="palette-foot"><FeatureLabel name="Search by circuit: $text index" type="user" />{res.query && <Query text={res.query} explain={res.explain} />}</div>
           </motion.div>
         </motion.div>
       )}

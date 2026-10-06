@@ -7,12 +7,14 @@ import { EASE_OUT, prefersReducedMotion } from './lib/motion.js';
 import Nav from './components/Nav.jsx';
 import SearchPalette from './components/SearchPalette.jsx';
 import Footer from './components/Footer.jsx';
+import LapDrawer from './components/LapDrawer.jsx';
 import Home from './pages/Home.jsx';
 import Race from './pages/Race.jsx';
 import Driver from './pages/Driver.jsx';
 import Compare from './pages/Compare.jsx';
-import Lab from './pages/Lab.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Team from './pages/Team.jsx';
+import { startReveals } from './lib/reveal.js';
 
 export let lenis = null;
 
@@ -21,8 +23,8 @@ function route(path) {
   if (path === '/' || path === '') return { key: 'home', el: <Home /> };
   if ((m = path.match(/^\/race\/(\d+)\/?$/))) return { key: 'race-' + m[1], el: <Race round={Number(m[1])} /> };
   if ((m = path.match(/^\/driver\/([a-z0-9-]+)\/?$/))) return { key: 'driver-' + m[1], el: <Driver driverKey={m[1]} /> };
+  if ((m = path.match(/^\/team\/([a-z0-9-]+)\/?$/))) return { key: 'team-' + m[1], el: <Team teamKey={m[1]} /> };
   if (path.startsWith('/compare')) return { key: 'compare', el: <Compare /> };
-  if (path.startsWith('/lab')) return { key: 'lab', el: <Lab /> };
   return { key: '404', el: <NotFound /> };
 }
 
@@ -36,7 +38,7 @@ function Shell() {
   // Smooth scrolling (skipped for people who ask for reduced motion).
   useEffect(() => {
     if (prefersReducedMotion()) return;
-    lenis = new Lenis({ autoRaf: true, lerp: 0.12 });
+    lenis = new Lenis({ autoRaf: true, lerp: 0.075, wheelMultiplier: 0.95 });
     return () => { lenis.destroy(); lenis = null; };
   }, []);
 
@@ -51,6 +53,16 @@ function Shell() {
     const t = setTimeout(go, hash ? 350 : 0);
     return () => clearTimeout(t);
   }, [path, hash, nav, season.ready]);
+
+  // Scroll-in reveals for whatever the current page renders.
+  useEffect(() => {
+    let stop = () => {};
+    const t = setTimeout(() => {
+      const mains = document.querySelectorAll('main');
+      stop = startReveals(mains[mains.length - 1]);
+    }, 220);
+    return () => { clearTimeout(t); stop(); };
+  }, [current.key]);
 
   // ⌘K / Ctrl+K or "/" opens search.
   useEffect(() => {
@@ -84,6 +96,7 @@ function Shell() {
       </AnimatePresence>
       <Footer />
       <SearchPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <LapDrawer />
     </>
   );
 }

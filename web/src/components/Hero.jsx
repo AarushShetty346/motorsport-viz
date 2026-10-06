@@ -77,7 +77,7 @@ export default function Hero() {
           </p>
           <div className="hero-actions">
             <Link to="/#title" className="btn btn-stage">Explore the season</Link>
-            <Link to="/lab" className="btn btn-stage-ghost">Open the data lab</Link>
+            <Link to="/compare" className="btn btn-stage-ghost">Compare drivers</Link>
           </div>
         </motion.div>
 

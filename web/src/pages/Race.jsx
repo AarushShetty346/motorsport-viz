@@ -10,6 +10,11 @@ import DriverName from '../components/DriverName.jsx';
 import Flag from '../components/Flag.jsx';
 import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
+import FeatureLabel from '../components/FeatureLabel.jsx';
+import RaceLaps from '../components/RaceLaps.jsx';
+import { NearbyCircuits } from '../components/CircuitMap.jsx';
+import { LapNotes } from '../components/Community.jsx';
+import { RaceNumbers, GapChart, TyreStrategy, PitStops, Movers } from '../components/RaceAnalytics.jsx';
 
 export default function Race({ round }) {
   const { raceByRound, driverById, ready } = useSeason();
@@ -58,13 +63,30 @@ export default function Race({ round }) {
           <h2 className="display-md">Every position change</h2>
         </div>
         {laps.data ? <RaceTrace laps={laps.data.results} results={race.results} /> : <div className="skeleton" style={{ height: 480 }} />}
-        <Query text={laps.data?.query} />
+        <FeatureLabel name="Indexing: { round, lapNumber } index, explain() IXSCAN vs COLLSCAN" />
+        <Query text={laps.data?.query} explain={laps.data?.explain} />
+      </section>
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">02</span>Gap to leader</p>
+          <h2 className="display-md">How far behind, lap by lap</h2>
+        </div>
+        <GapChart race={race} />
+      </section>
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">03</span>Race in numbers</p>
+          <h2 className="display-md">{race.laps} laps, summed up</h2>
+        </div>
+        <RaceNumbers round={race.round} />
       </section>
 
       <section className="container section two-col">
         <div>
           <div className="section-head">
-            <p className="eyebrow"><span className="num">02</span>Classification</p>
+            <p className="eyebrow"><span className="num">04</span>Classification</p>
             <h2 className="display-md">Result</h2>
           </div>
           <div className="table-wrap">
@@ -81,7 +103,7 @@ export default function Race({ round }) {
                         {r.grid ?? 'PL'}
                         {gained ? <span className={`delta ${gained > 0 ? 'up' : 'down'}`}>{gained > 0 ? '▲' : '▼'}{Math.abs(gained)}</span> : null}
                       </td>
-                      <td className="num mono small">{r.position === 1 ? r.time : r.gap || r.retired || (r.laps ? `${r.laps} laps` : '')}</td>
+                      <td className="num mono small">{r.position === 1 ? r.time : r.gap || r.retired || (r.laps ? `${r.laps} laps` : '')}{r.penaltySeconds ? <span className="pen-tag" title="Time penalty added in Steward mode (edited)">+{r.penaltySeconds}s (edited)</span> : null}</td>
                       <td className="num mono">{r.points || ''}</td>
                     </tr>
                   );
@@ -93,13 +115,51 @@ export default function Race({ round }) {
         </div>
         <div>
           <div className="section-head">
-            <p className="eyebrow"><span className="num">03</span>Fastest laps</p>
+            <p className="eyebrow"><span className="num">05</span>Fastest laps</p>
             <h2 className="display-md">One lap, flat out</h2>
           </div>
           <Leaderboard round={race.round} />
           <div className="spacer" />
+          <NearbyCircuits round={race.round} />
+          <div className="spacer" />
           <SpeedTrap round={race.round} defaultMin={Math.round((race.track?.speed ? Math.max(...race.track.speed) : 330) + 4)} title="Speed trap" compact />
         </div>
+      </section>
+
+      <section className="container section two-col">
+        <div>
+          <div className="section-head">
+            <p className="eyebrow"><span className="num">06</span>Tyre strategy</p>
+            <h2 className="display-md">Who ran what</h2>
+          </div>
+          <TyreStrategy race={race} />
+        </div>
+        <div>
+          <div className="section-head">
+            <p className="eyebrow"><span className="num">07</span>Pit stops</p>
+            <h2 className="display-md">Time in the pits</h2>
+          </div>
+          <PitStops round={race.round} />
+          <div className="spacer" />
+          <Movers round={race.round} title="Biggest movers" />
+        </div>
+      </section>
+
+      <section className="container section" id="notes">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">08</span>Fan notes</p>
+          <h2 className="display-md">What did you see?</h2>
+          <p className="lede">Leave a note on a lap or a moment. Pinned notes show up on the gap chart and as 💬 in the lap table. Notes are fan comments, never race data.</p>
+        </div>
+        <LapNotes race={race} />
+      </section>
+
+      <section className="container section" id="laps">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">09</span>Every lap</p>
+          <h2 className="display-md">Lap by lap</h2>
+        </div>
+        <RaceLaps race={race} />
       </section>
 
       <nav className="container race-nav" aria-label="Other races">

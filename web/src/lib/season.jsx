@@ -7,7 +7,7 @@ const SeasonContext = createContext(null);
 export function SeasonProvider({ children }) {
   const drivers = useApi('/api/drivers');
   const races = useApi('/api/races');
-  const standings = useApi('/api/nosql/aggregation');
+  const standings = useApi('/api/season/standings');
   const health = useApi('/api/health');
 
   const value = useMemo(() => {
@@ -33,6 +33,7 @@ export function SeasonProvider({ children }) {
       raceByRound: new Map(raceList.map((r) => [r.round, r])),
       standings: standingsRows,
       standingsQuery: standings.data?.query,
+      standingsExplain: standings.data?.explain,
       position: new Map(standingsRows.map((r, i) => [r.driverId, i + 1])),
       dashed,
       health: health.data,

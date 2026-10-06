@@ -28,9 +28,10 @@ Lap by Lap is a full-stack web app built on a **local MongoDB** database. It hol
 
 What happens on the first start:
 
-- The server creates the `laps` collection with its `$jsonSchema` validator, creates the indexes, and loads the 2025 season from `data/season-2025.json.gz` into MongoDB (about 2 seconds). You'll see this in the terminal.
+- MongoDB starts as a single-node replica set (`rs0`, needed for transactions); the healthcheck runs `rs.initiate()` once.
+- The server creates the `laps` collection with its `$jsonSchema` validator, creates the indexes, adds GeoJSON locations to the circuits, and loads the 2025 season from `data/season-2025.json.gz` into MongoDB (about 2 seconds). You'll see this in the terminal.
 - Stop it with `Ctrl+C`. Start it again later with `docker compose up`.
-- The data is kept in a Docker volume between runs. To wipe it and reload the season, click **Reset demo data** in the Data lab, or run `docker compose down -v` and start again.
+- The data is kept in a Docker volume between runs. To wipe it and reload the season, turn on **Steward mode** on any Race page and click **Reset demo data**, or run `docker compose down -v` and start again.
 
 > **Offline note:** the *first* `docker compose up --build` needs internet once, to download the `mongo:7` and `node:22-alpine` images and the npm packages. After that everything runs fully offline, including the fonts and the season data. **Run it once before your demo** while you're online.
 
@@ -85,6 +86,7 @@ The app connects to `mongodb://localhost:27017` by default. To use a different s
 | `docker compose down -v` | Stop and **delete** the data volume (reloads the season next start) |
 | `npm start` | Build the website, then start the server (Options B and C) |
 | `npm run dev` | Website with live reload on port 5173 (needs the server running) |
+| `npm run db:setup` | Set up the database by hand: start the replica set if needed, apply the validator, create the indexes and circuit locations, load the season |
 | `npm run shell` | Open `mongosh` inside the MongoDB container, on the `motorsport` database |
 | `npm test` | Run the API test suite (needs MongoDB on localhost:27017) |
 | `npm run data:build` | Re-download and rebuild the season file (see section 4) |
@@ -97,6 +99,7 @@ db.laps.find({ round: 16 }).limit(2)                        // Monza laps
 db.laps.getIndexes()
 db.getCollectionInfos({ name: "laps" })[0].options.validator
 db.laps.insertOne({ circuit: "Monza" })                     // -> Document failed validation
+rs.status().set                                             // "rs0"
 db.laps.find({ $text: { $search: "silverstone" } }).count()
 db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 ```
@@ -111,7 +114,7 @@ db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 
 ### Sign in with Google (optional)
 
-The site has a **Sign in** button (top right) that lets people log in with their Google / Gmail account. Everything works without signing in; signing in just shows your name and photo in the corner. The button only appears once you've given the app a Google "client ID" and "client secret". Getting them is free and takes about five minutes:
+The site has a **Sign in** button (top right) that lets people log in with their Google / Gmail account. Everything works without signing in; signing in just shows your name and photo in the corner. When you are signed in, Fan notes on the Race page use your Google name automatically: the name comes from one helper, `web/src/lib/displayName.js`, which asks `/api/auth/me` and falls back to the name typed in the form. The button only appears once you've given the app a Google "client ID" and "client secret". Getting them is free and takes about five minutes:
 
 1. Go to **https://console.cloud.google.com** and sign in with your Google account.
 2. At the top, click the project picker, then **New project**. Call it `Lap by Lap` and click **Create**. Make sure the new project is selected.
@@ -149,29 +152,51 @@ Things to know:
 
 | Page | What's on it |
 |---|---|
-| **Season** (`/`) | Hero, the title fight (points chart that draws itself as you scroll), the 24-race calendar (slides sideways as you scroll), final driver and constructor standings, and a season-wide speed trap. |
-| **Race** (`/race/16`) | The circuit drawn from the car's real GPS trace, coloured by speed, with a car lapping it at the real pace of that race's fastest lap. Podium, race story (every position change, lap by lap), full classification, fastest-lap leaderboard and a speed trap for that race. |
-| **Driver** (`/driver/lando-norris`) | Championship stats, the season at a glance (result in every round), and a lap explorer: every lap of any race with its tyre, pit stops and telemetry. |
+| **Season** (`/`) | Hero, the title fight (points chart that draws itself as you scroll), the 24-race calendar, a map of every circuit, final driver and constructor standings, the season's biggest movers and a season-wide speed trap. |
+| **Race** (`/race/16`) | The circuit drawn from the car's GPS trace, the podium, every position change, the gap to the leader lap by lap, "Race in numbers", the classification, the fastest-lap leaderboard, nearby circuits, a speed trap, tyre strategy, pit stops, biggest movers and every lap of the race with **Steward mode**. |
+| **Driver** (`/driver/lando-norris`) | Championship stats, the season at a glance, season lap stats, and a lap explorer: every lap of any race with its tyre, pit stops, telemetry and the theoretical best lap. |
+| **Team** (`/team/mclaren`) | A 3D model of the team's car in its colours that you can drag around, the team's drivers, its points round by round and its tyre degradation against the field. |
 | **Head to head** (`/compare`) | Two drivers compared race by race on average racing-lap pace, plus who finished ahead each weekend. |
-| **Data lab** (`/lab`) | The database side: a lap editor (CRUD), the standings pipeline, indexes with `explain()`, schema validation and the document model. |
-| **Search** (press `/` or ⌘K) | Full-text search for a circuit, race or country (e.g. *monza*, *italy*, *marina bay*), plus drivers by name. |
+| **Search** (press `/` or Ctrl+K) | Full-text search for a circuit (e.g. *monza*, *marina bay*), plus drivers by name. |
 
-Every feature has a **MongoDB query** drop-down that shows the exact query it ran, which is useful while presenting.
+Every feature sits inside these normal pages. Under each one there is a small grey caption naming the feature and its type, e.g. *Aggregation: $group + $lookup (Mongo)* or *Head-to-head comparison (User)*, and an **Under the hood** drop-down with the exact query it ran and, for queries on `laps`, what `explain()` says (IXSCAN or COLLSCAN, documents examined, time).
 
-### Where each of the 10 functionalities lives
+Clicking any lap (in the Race page lap table, the Driver page lap explorer or a speed trap) opens a drawer with that lap's raw MongoDB document.
 
-| # | Functionality | Where on the site | MongoDB feature shown |
-|---|---|---|---|
-| NoSQL 1 | CRUD operations | Data lab → Lap editor | `insertOne`, `aggregate` + `$lookup` (read), `replaceOne`, `deleteOne` |
-| NoSQL 2 | Aggregation pipeline | Season → standings; Data lab → Standings pipeline | `$unwind`, `$group` (`$sum`, `$avg`, `$min`), `$lookup`, `$sort` |
-| NoSQL 3 | Indexing | Data lab → Indexes | `getIndexes()`, compound + text index, `explain("executionStats")` vs a forced `COLLSCAN` |
-| NoSQL 4 | Schema validation | Data lab → Schema validation (and any bad write in the lap editor) | `$jsonSchema` validator, error code 121 |
-| NoSQL 5 | Embedded documents & referencing | Data lab → Document model | embedded `telemetry`, embedded race `results`, `driverId` / `raceId` references |
-| User 1 | All laps for a driver | Driver page → Lap explorer | `find({ driverId, round })` on the compound index |
-| User 2 | Head-to-head average lap time | Head to head | two-stage `$group` + `$lookup`, plus `$filter` on embedded results |
-| User 3 | Fastest lap leaderboard | Race page → Fastest laps | `$sort` + `$group` with `$first: "$$ROOT"` |
-| User 4 | Laps above a speed threshold | Season and race pages → Speed trap | dot notation `{ "telemetry.speed": { $gt: N } }` |
-| User 5 | Search by circuit | Search box (`/`) | `$text` search on the text index + `textScore` |
+### Steward mode and "not real" data
+
+The **Every lap** table on each Race page has a **Steward mode** switch. With it on you can add, edit, penalise, hide and delete laps:
+
+- A lap added in Steward mode is stored with `source: "steward"`. It shows in purple with an **(added)** tag.
+- A real lap a steward changes (edit or penalty) gets `stewardEdited: true` and an orange **(edited)** tag.
+- Steward laps appear in the lap tables but are left out of every leaderboard, standing, fastest lap, chart and statistic.
+- Real laps can't be deleted, only hidden (`deleted: true`). Hidden laps disappear from every page and query; in Steward mode they show greyed out with a **Restore** button.
+- **Reset demo data** (in the Steward mode bar) reloads the whole season and undoes every steward change.
+
+### The 20 features: where they are and how to show them in a demo
+
+| # | Feature | Page | How to trigger it live | MongoDB query / pipeline |
+|---|---|---|---|---|
+| N1 | CRUD | Race → *Every lap* | Tick **Steward mode**. **Add lap** → fill in → *Add lap*. **Edit** a row → *Save lap*. **Delete** an added lap. The table itself is the read. | `insertOne`, `aggregate([$match, $sort, $skip, $limit, $lookup])`, `updateOne({ _id }, { $set })`, `deleteOne({ _id, source: "steward" })` |
+| N2 | Aggregation ($group, $lookup) | Driver → *Season stats, every lap*; Season → *Final standings* | Open any driver page; on the Season page open the standings' *Under the hood* | laps: `$match` → `$group` (`$avg`, `$min`, `$sum`) → `$lookup` drivers → `$project`. Standings: `$unwind` results → `$group` → `$lookup` → `$sort` |
+| N3 | Indexing | Race → *Race story* (and every *Under the hood*) | Open *Under the hood* under the race story: IXSCAN on `round_1_lapNumber_1`, ~970 docs examined vs all 26,657 for the forced COLLSCAN | `db.laps.createIndex({ round: 1, lapNumber: 1 })`, `find({ round }).sort({ lapNumber: 1 }).explain("executionStats")` vs `.hint({ $natural: 1 })` |
+| N4 | Schema validation | Race → *Every lap* | Steward mode → **Add lap** → type `fast` as the lap time → *Add lap*. MongoDB's real error appears inside the form. | `$jsonSchema` validator on `laps` (`validationLevel: "strict"`), error code 121 `DocumentValidationFailure` |
+| N5 | Embedded + referencing | Any lap table | Click a lap. The drawer highlights the embedded `telemetry` and `sectors`; click `driverId` or `raceId` to open that driver or race. | `db.laps.findOne({ _id })` |
+| N6 | Update operators | Race → *Every lap* | Steward mode → **Apply 5 s penalty**, **Hide** / **Restore**, **Restore all hidden laps** | `$inc: { lapTime: 5, penaltySeconds: 5 }`, `$set: { deleted: true/false, stewardEdited: true }`, `updateMany({ round, deleted: true }, { $set: { deleted: false } })` |
+| N7 | $facet + $bucket | Race → *Race in numbers* | Open any race | One `aggregate`: `$match` → `$facet { histogram: [$bucket on lapTime], compounds: [$group], summary: [$group] }` |
+| N8 | Window functions | Race → *Gap to leader* | Open any race; hover a line | `$setWindowFields` (running `$sum` of lap time per driver) → `$setWindowFields` (`$min` per lap) → gap = race time − leader's |
+| N9 | Geospatial | Season → *Where they raced*; Race → *Nearby circuits* | Open the Season page map, or any race's nearby list | `races.location` GeoJSON `Point`, `createIndex({ location: "2dsphere" })`, `$geoNear` |
+| N10 | Transactions | Race → *Every lap* | Steward mode → **Apply 5 s penalty**. The lap and the race result (`+5s (edited)` in the classification) change together. | `session.withTransaction(() => { laps.updateOne($inc); races.updateOne({ "results.$[r].penaltySeconds": $inc }, { arrayFilters }) })` on the `rs0` replica set |
+| U1 | All laps for a driver | Driver → *Lap explorer* | Pick a race in the dropdown or the season strip | `find({ driverId, round, deleted: { $ne: true } }).sort({ circuit: 1, lapNumber: 1 })` |
+| U2 | Head-to-head | Head to head | Pick two drivers | `$match` → `$group` per circuit → `$group` overall → `$lookup`; `$filter` on the races' embedded results |
+| U3 | Fastest lap leaderboard | Race → *Fastest laps* | Open any race | `$sort: { lapTime: 1 }` → `$group` with `$first: "$$ROOT"` → `$lookup` |
+| U4 | Speed trap | Season and Race | Drag the speed slider | `find({ "telemetry.speed": { $gt: N } }).sort({ "telemetry.speed": -1 })` |
+| U5 | Search by circuit | Search (`/` or Ctrl+K) | Type *monza* or *marina bay* | `$match: { $text: { $search } }` → `$group` by round, sorted by `textScore` |
+| U6 | Tyre strategy chart | Race → *Tyre strategy* | Open any race | `$group` by driver + stint (compound, first and last lap) → `$group` by driver |
+| U7 | Pit stop analysis | Race → *Pit stops* | Open any race | `$group` per driver: stops, `$push` pit laps, in-lap + out-lap time minus two average racing laps |
+| U8 | Biggest movers | Race → *Biggest movers*; Season → *Season movers* | Open any race, or scroll the Season page | `$unwind` results → `$group` sum of `grid − position` → `$lookup` → `$sort` |
+| U9 | Theoretical best lap | Driver → *Lap explorer* | Pick a race | `$group` with `$min` of `sectors.s1/s2/s3` and `lapTime` → `$add` → difference |
+| U10 | Tyre degradation | Team → *Tyre degradation* | Open any team | `$setWindowFields` (race's fastest lap) → pace % → `$lookup` driver team → `$group` by tyre age (team vs field) |
 
 ---
 
@@ -189,18 +214,19 @@ Three collections in the `motorsport` database hold the season (plus `users` and
   nationality: "British", countryCode: "GB", dateOfBirth: "1999-11-13" }
 ```
 
-**`races`** (24 documents). Each race embeds its classification (and sprint classification) as arrays of sub-documents, plus the circuit trace used for the maps.
+**`races`** (24 documents). Each race embeds its classification (and sprint classification) as arrays of sub-documents, the circuit trace used for the maps, and the circuit's location as GeoJSON.
 
 ```js
 { _id: ObjectId("..."), round: 16, name: "Italian Grand Prix", circuit: "Monza",
   circuitFullName: "Autodromo Nazionale Monza", country: "Italy", date: "2025-09-07", laps: 53,
+  location: { type: "Point", coordinates: [9.289444, 45.620556] },   // 2dsphere index
   results: [ { position: 1, driverId: ObjectId("..."), team: "Red Bull Racing", grid: 1, points: 25, ... }, ... ],
   sprint: null,
   track: { x: [...], y: [...], speed: [...], lap: { code: "NOR", lapNumber: 53, lapTime: 80.901 } },
   corners: [ { number: 1, x: ..., y: ... }, ... ] }
 ```
 
-**`laps`** (26,657 documents), validated by `$jsonSchema`. Required: `driverId`, `raceId`, `round`, `lapNumber`, `lapTime`, `telemetry`.
+**`laps`** (26,657 documents), validated by `$jsonSchema`. Required: `driverId`, `lapNumber`, `lapTime`, `telemetry` (with types and ranges checked). `source` may only be `"steward"`; `stewardEdited` and `deleted` must be booleans.
 
 ```js
 {
@@ -209,44 +235,18 @@ Three collections in the `motorsport` database hold the season (plus `users` and
   raceId: ObjectId("..."),     // reference -> races._id
   round: 16, race: "Italian Grand Prix", circuit: "Monza", country: "Italy",
   lapNumber: 53, lapTime: 80.901, position: 2,
-  compound: "HARD", stint: 2, tyreLife: 29, pitIn: false, pitOut: false, deleted: false,
+  compound: "HARD", stint: 2, tyreLife: 29, pitIn: false, pitOut: false,
+  deleted: false,              // true only when a steward hides the lap
+  timeDeleted: false,          // true when the FIA struck off the lap time for track limits (still a real lap)
   sectors: { s1: 26.6, s2: 27.1, s3: 27.2 },   // embedded
-  telemetry: {                 // embedded sub-document, summarised from the car data of that lap
-    speed: 336.0,              // top speed, km/h
-    avgSpeed: 257.8,           // average speed, km/h
-    rpm: 11912,                // peak engine RPM
-    throttle: 81.3,            // % of the lap at full/partial throttle (time-weighted average)
-    brake: 10.9,               // % of the lap on the brakes
-    drs: 21.4,                 // % of the lap with DRS open
-    gear: 8,                   // highest gear
-    speedTrap: 331             // speed at the official speed trap
-  }
+  telemetry: { speed: 336.0, avgSpeed: 257.8, rpm: 11912, throttle: 81.3, brake: 10.9, drs: 21.4, gear: 8, speedTrap: 331 }
+  // Steward mode only: source: "steward", stewardEdited: true, penaltySeconds: 5
 }
 ```
 
-**Indexes on `laps`:** `_id` (default), `{ driverId: 1, round: 1, lapNumber: 1 }` (compound: one driver's laps, optionally in one race), `{ round: 1, lapTime: 1 }` (a race's laps, fastest first) and a text index on `race`, `circuit` and `country` (weighted 2 / 3 / 1). `races.round` and `drivers.key` have unique indexes.
+**Indexes on `laps`:** `_id` (default), `{ driverId: 1, lapNumber: 1 }` (Driver page), `{ round: 1, lapNumber: 1 }` (Race page) and `{ circuit: "text" }` (search). `races` has a unique index on `round` and a `2dsphere` index on `location`; `drivers.key` is unique.
 
-### The 10 functionalities in detail
-
-**NoSQL 1: CRUD.** The Data lab's lap editor builds a lap document (including the embedded `telemetry` object) and stores it with `insertOne()`. The table below it reads laps with an aggregation that filters by race and driver, pages with `$skip`/`$limit`, and `$lookup`s each lap's driver. *Edit* loads a row into the form and saving calls `replaceOne({ _id })`; *Delete* calls `deleteOne({ _id })`. The app doesn't validate fields itself, so leaving a required field blank lets you see MongoDB's validator reject the write. MongoDB has no foreign keys, so the app checks that the chosen driver exists and fills in `raceId` from the chosen round. After any write, every page re-reads MongoDB, so standings, charts and leaderboards update straight away.
-
-**NoSQL 2: Aggregation pipeline.** The championship standings are computed inside MongoDB from the results embedded in each race. `$project` merges each race's `results` and `sprint` arrays, `$unwind` turns them into one document per result, `$group` by `driverId` computes `$sum` of points, wins and podiums, `$avg` finishing position and `$min` (best) finish, `$lookup` joins the driver, and `$sort` orders by points. The result matches the official 2025 table (Norris 423, Verstappen 421, Piastri 410). The same idea powers the constructors table and the points-by-round chart.
-
-**NoSQL 3: Indexing.** Shows `db.laps.getIndexes()` with a card per index, then runs the same query, `find({ driverId, round })`, twice with `explain("executionStats")`: once normally (MongoDB picks an `IXSCAN` on `driverId_1_round_1_lapNumber_1` and reads only the ~50 matching documents) and once forced to a full collection scan with `hint({ $natural: 1 })` (it reads all 26,657). The bars make the difference obvious.
-
-**NoSQL 4: Schema validation.** The `laps` collection has a `$jsonSchema` validator (`validationLevel: "strict"`, `validationAction: "error"`). The button tries `insertOne({ circuit: "Monza", lapNumber: "three" })`. MongoDB rejects it with `Document failed validation` (code `121`), and the page shows the full `errInfo` (missing `driverId`, `raceId`, `round`, `lapTime`, `telemetry`, and `lapNumber` has the wrong type) next to a readable summary and the validator itself.
-
-**NoSQL 5: Embedded documents & referencing.** Shows a random lap as raw JSON next to the documents it references. `telemetry` and `sectors` are **embedded**: they belong to exactly one lap and come back in the same read. `driverId` and `raceId` are **references**: a driver is stored once and referenced by over a thousand laps (one-to-many), joined with `$lookup` when needed. Races show a third pattern: their classification is an embedded **array** of sub-documents, which the standings pipeline unwinds.
-
-**User 1: All laps for a driver.** On a driver's page, pick a race to run `db.laps.find({ driverId, round }).sort({ round: 1, lapNumber: 1 })`. It's served by the compound index. The page plots every lap coloured by tyre, marks pit laps, and lists each lap's telemetry.
-
-**User 2: Head to head.** Pick two drivers. `$match` keeps both drivers' racing laps (no lap 1, no pit laps), a first `$group` averages lap time per driver *per race*, a second `$group` rolls those up with a `$push`ed per-race breakdown, and `$lookup` adds the driver. A second pipeline on `races` uses `$filter` on the embedded results to find who finished ahead each weekend. Comparing race by race matters because a Monza lap (1:21) and a Monaco lap (1:13) can't be averaged together fairly.
-
-**User 3: Fastest lap leaderboard.** On a race page: `$match` the round, `$sort` every lap by time, then `$group` with `$first: "$$ROOT"` keeps each driver's whole fastest lap document (not just the time, as `$min` would), so the table can show the lap number, tyre and top speed too.
-
-**User 4: Laps above a speed threshold.** The speed trap slider runs `db.laps.find({ "telemetry.speed": { $gt: N } }).sort({ "telemetry.speed": -1 })`, season-wide on the home page and per race on each race page. Dot notation filters on a field inside the embedded sub-document.
-
-**User 5: Search.** The search box runs a `$text` search on the text index over `race`, `circuit` and `country`, groups the matching laps by race and sorts by `textScore`. *monza* finds the Italian GP, *italy* finds Imola and Monza, *monza silverstone* finds both. Text search is case-insensitive and uses English stemming. Drivers are matched by name on the page itself.
+**Replica set:** MongoDB runs as a single-node replica set called `rs0`, because multi-document transactions (the steward penalty) need one. `docker compose up` starts it with `--replSet rs0` and the healthcheck runs `rs.initiate()` the first time.
 
 ---
 
@@ -268,11 +268,39 @@ npm run data:build
 
 The home page hero is designed around a podium photo. Put a free-licensed photo at `web/public/img/podium.jpg` (Wikimedia Commons has real F1 podium champagne photos you can reuse: search [Formula 1 podium champagne](https://commons.wikimedia.org/w/index.php?search=Formula+1+podium+champagne&title=Special:MediaSearch&type=image)), then fill in the author, licence and link in `web/src/content.js`. The credit line appears on the photo and in the footer. Until a photo is there, the hero shows the Abu Dhabi circuit instead.
 
+### Driver photos
+
+The driver pages show a head-and-shoulders photo when one is in `web/public/img/drivers/`. To fetch free-licensed photos (CC BY, CC BY-SA, CC0 or public domain only) from Wikimedia Commons for every driver:
+
+```bash
+npm run photos:fetch
+```
+
+It writes `web/public/img/drivers/credits.json` with each photo's author, licence and source link, and the credit is shown under the photo. Drivers without a photo get a silhouette.
+
+### Car photos and models
+
+Each team page has an **Animated / Real car** switch. *Animated* is the 3D car the site draws in the team's colours. *Real* shows a photo or a 3D model of that team's actual 2025 car, loaded from `web/public/img/cars/`.
+
+To add real car photos:
+
+1. Run `npm run cars:fetch`. It downloads only freely licensed photos from Wikimedia Commons (CC BY, CC BY-SA, CC0 or public domain) to `web/public/img/cars/<team>.jpg`.
+2. It also writes each photo's author, licence and source link to `web/public/img/cars/credits.json`. The team page shows that credit under the photo.
+3. Open each photo and check that it really shows that team's 2025 car before you commit it.
+
+To use a 3D model instead of a photo:
+
+1. Put a `.glb` file of the car in `web/public/img/cars/`.
+2. In `credits.json`, add these to that team's entry: `"model"` (the file name), `"modelAuthor"`, `"modelLicense"` and `"modelSourceUrl"`.
+3. If the car faces the wrong way, also add `"modelRotate": 180`.
+
+Until a team has a photo or a model, the real view shows a silhouette.
+
 ---
 
 ## 5. Tests
 
-`npm test` (12 tests) starts the real server against a throwaway `motorsport_test` database, loads the full season and checks: the season loaded (24 races, 21 drivers, 26,657 laps) · CRUD insert / update / delete plus a validator rejection (121) and an unknown-driver rejection · standings (Norris 423, Verstappen 421, Piastri 410) and sort order · indexes, and that `explain()` uses the compound index and examines only the matching documents while a forced scan examines all of them · the invalid insert's missing fields · embedded telemetry and both references · a driver's laps for the season and for one race · head to head · the Monza fastest-lap leaderboard · the speed threshold · text search (monza, italy, monza silverstone, no match) · reset.
+`npm test` (17 tests) starts the real server against a throwaway `motorsport_test` database, loads the full season and checks every feature: CRUD and the validator's code 121 rejection, Steward mode (added laps kept out of leaderboards and the speed trap, real laps refused by DELETE, hide / restore / `updateMany`, and the penalty transaction changing both the lap and the race result), the indexes and `explain()` (IXSCAN on `round_1_lapNumber_1` vs a full COLLSCAN), hidden laps being filtered out, standings, head to head, the fastest-lap leaderboard, the speed threshold, text search, the `$facet`, window-function, stint, pit stop, movers, theoretical best, tyre degradation and `$geoNear` queries, and reset. It needs MongoDB running (`docker compose up -d mongo`).
 
 ---
 
@@ -280,16 +308,17 @@ The home page hero is designed around a podium photo. Put a free-licensed photo 
 
 ```
 motorsport-viz/
-├── docker-compose.yml   # mongo:7 (with healthcheck + volume) and the app
+├── docker-compose.yml   # mongo:7 as replica set rs0 (healthcheck initiates it, volume) and the app
 ├── Dockerfile           # builds the website, then runs the Express server
 ├── .env.example         # Google sign-in settings (copy to .env)
 ├── package.json         # npm start / dev / test / data:build
 ├── server.js            # Express API (one endpoint group per functionality) + serves the website
 ├── auth.js              # Sign in with Google (OAuth) + users/sessions collections
-├── db.js                # connection + retry, $jsonSchema validator, indexes, loads the season
+├── db.js                # connection + retry, $jsonSchema validator, indexes, circuit locations, loads the season
 ├── data/
 │   └── season-2025.json.gz   # the 2025 season (results, circuits, 26,657 laps with telemetry)
 ├── scripts/
+│   ├── setup-db.js      # npm run db:setup: replica set, validator, indexes, circuit locations, seed
 │   └── build_season.py  # rebuilds the season file from F1DB + TracingInsights
 ├── vite.config.mjs      # builds web/ into dist/
 ├── web/
@@ -297,7 +326,7 @@ motorsport-viz/
 │   ├── public/          # favicon, img/ (hero photo goes here)
 │   └── src/
 │       ├── App.jsx      # routes, smooth scrolling, page transitions
-│       ├── pages/       # Home, Race, Driver, Compare, Lab
+│       ├── pages/       # Home, Race, Driver, Team, Compare
 │       ├── components/  # TrackMap, TitleFight, Calendar, RaceTrace, Leaderboard, SearchPalette, ...
 │       ├── lib/         # API client, router, formatting, circuit geometry
 │       └── styles.css
@@ -307,20 +336,27 @@ motorsport-viz/
 
 ### API reference
 
-| Method & path | Used by |
+| Method & path | Feature |
 |---|---|
-| `GET /api/health`, `GET /api/drivers`, `GET /api/races`, `GET /api/races/:round`, `POST /api/reset` | every page / Data lab reset |
-| `GET /api/races/:round/laps` | race story chart |
-| `GET /api/laps?round=&driverId=&page=&limit=`, `POST /api/laps`, `PUT /api/laps/:id`, `DELETE /api/laps/:id` | NoSQL 1 (CRUD) |
-| `GET /api/nosql/aggregation`, `GET /api/season/progression`, `GET /api/season/constructors` | NoSQL 2 (standings, title chart, constructors) |
-| `GET /api/nosql/indexes` | NoSQL 3 |
-| `POST /api/nosql/invalid-insert` | NoSQL 4 |
-| `GET /api/nosql/embedded` | NoSQL 5 |
-| `GET /api/user/driver-laps/:driverId?round=`, `GET /api/drivers/:id/season` | User 1, driver page |
-| `GET /api/user/compare?a=&b=` | User 2 |
-| `GET /api/user/leaderboard?round=` | User 3 |
-| `GET /api/user/speed?min=&round=` | User 4 |
-| `GET /api/user/search?q=` | User 5 |
+| `GET /api/health`, `GET /api/drivers`, `GET /api/races`, `GET /api/races/:round`, `POST /api/reset` | every page, Reset demo data |
+| `GET /api/races/:round/laps` | race story chart, N3 explain() |
+| `GET /api/laps?round=&driverId=&page=&limit=&steward=1`, `GET /api/laps/:id`, `POST /api/laps`, `PUT /api/laps/:id`, `DELETE /api/laps/:id` | N1 CRUD, N4 validation, N5 lap drawer |
+| `PATCH /api/laps/:id/hidden`, `POST /api/races/:round/restore` | N6 update operators |
+| `POST /api/laps/:id/penalty` | N6 `$inc` + N10 transaction |
+| `GET /api/drivers/:id/stats`, `GET /api/season/standings`, `GET /api/season/progression`, `GET /api/season/constructors`, `GET /api/teams/:team/season` | N2 aggregation |
+| `GET /api/races/:round/numbers` | N7 `$facet` + `$bucket` |
+| `GET /api/races/:round/gaps` | N8 `$setWindowFields` |
+| `GET /api/races/:round/nearby` | N9 `$geoNear` |
+| `GET /api/user/driver-laps/:driverId?round=`, `GET /api/drivers/:id/season` | U1 |
+| `GET /api/user/compare?a=&b=` | U2 |
+| `GET /api/user/leaderboard?round=` | U3 |
+| `GET /api/user/speed?min=&round=` | U4 |
+| `GET /api/user/search?q=` | U5 |
+| `GET /api/races/:round/stints` | U6 |
+| `GET /api/races/:round/pitstops` | U7 |
+| `GET /api/movers?round=` | U8 |
+| `GET /api/drivers/:id/theoretical?round=` | U9 |
+| `GET /api/teams/:team/degradation` | U10 |
 | `GET /api/auth/me`, `GET /api/auth/google`, `GET /api/auth/google/callback`, `POST /api/auth/logout` | Sign in with Google |
 
 *Unofficial fan project. Not associated with Formula 1 or the FIA. F1 and related marks are trademarks of Formula One Licensing B.V.*

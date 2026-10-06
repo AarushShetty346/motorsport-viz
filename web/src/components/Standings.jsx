@@ -3,9 +3,11 @@ import { useApi } from '../lib/useApi.js';
 import { Link } from '../lib/router.jsx';
 import Flag from './Flag.jsx';
 import Query from './Query.jsx';
+import FeatureLabel from './FeatureLabel.jsx';
+import { teamPath } from '../lib/teams.js';
 
 export default function Standings() {
-  const { standings, standingsQuery, driverById } = useSeason();
+  const { standings, standingsQuery, standingsExplain, driverById } = useSeason();
   const constructors = useApi('/api/season/constructors');
   const leader = standings[0]?.points || 1;
   const teamColor = (team) => standings.find((s) => s.team === team)?.teamColor;
@@ -42,22 +44,23 @@ export default function Standings() {
             );
           })}
         </ol>
-        <aside className="constructors">
+        <aside className="constructors" id="teams">
           <h3 className="h-small">Constructors</h3>
           <ol>
             {constructors.data?.results.map((c, i) => (
               <li key={c._id}>
                 <span className="pos mono">{i + 1}</span>
-                <span className="c-name">{c._id}</span>
+                <Link to={teamPath(c._id)} className="c-name">{c._id}</Link>
                 <span className="c-bar"><span style={{ transform: `scaleX(${c.points / cLeader})`, background: teamColor(c._id) }} /></span>
                 <span className="mono">{c.points}</span>
               </li>
             ))}
           </ol>
-          <Query text={constructors.data?.query} label="Constructors pipeline" />
+          <Query text={constructors.data?.query} explain={constructors.data?.explain} label="Constructors pipeline" />
         </aside>
       </div>
-      <Query text={standingsQuery} label="Standings pipeline ($unwind → $group → $lookup → $sort)" />
+      <FeatureLabel name="Aggregation: $unwind + $group + $lookup" />
+      <Query text={standingsQuery} explain={standingsExplain} label="Standings pipeline ($unwind → $group → $lookup → $sort)" />
     </section>
   );
 }
