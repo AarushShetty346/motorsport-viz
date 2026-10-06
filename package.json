@@ -18,7 +18,8 @@
     "db:up": "docker compose up -d mongo",
     "db:down": "docker compose down",
     "shell": "docker compose exec mongo mongosh motorsport",
-    "db:setup": "node scripts/setup-db.js"
+    "db:setup": "node scripts/setup-db.js",
+    "summary:rebuild": "node scripts/rebuild-summary.js"
   },
   "engines": {
     "node": ">=20.19"

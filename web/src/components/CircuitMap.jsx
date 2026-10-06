@@ -11,12 +11,12 @@ const W = 1000, H = 440;
 const x = (lng) => ((lng + 180) / 360) * W;
 const y = (lat) => ((60 - lat) / 105) * H;
 
-// Every circuit of the season, placed by the GeoJSON location stored on its race.
+// Every circuit of the season, placed by its GeoJSON point in the circuits collection.
 export function CircuitMap() {
-  const { races } = useSeason();
+  const circuits = useApi('/api/circuits');
   const { navigate } = useRouter();
   const [hover, setHover] = useState(null);
-  const placed = races.filter((r) => r.location);
+  const placed = (circuits.data?.results || []).filter((r) => r.location);
   const route = placed.map((r, i) => `${i ? 'L' : 'M'}${x(r.location.coordinates[0]).toFixed(1)},${y(r.location.coordinates[1]).toFixed(1)}`).join('');
   return (
     <section className="section container" id="map">
@@ -45,7 +45,7 @@ export function CircuitMap() {
         <figcaption className="muted small">{hover ? `Round ${hover.round} · ${hover.name} · ${hover.circuit}` : 'The line follows the calendar order. Click a circuit to open its race.'}</figcaption>
       </figure>
       <FeatureLabel name="Geospatial: GeoJSON points + 2dsphere index" />
-      <Query text={'db.races.find({}, { round: 1, name: 1, location: 1 })   // location: { type: "Point", coordinates: [lng, lat] }\ndb.races.createIndex({ location: "2dsphere" })'} />
+      <Query text={circuits.data?.query} />
     </section>
   );
 }

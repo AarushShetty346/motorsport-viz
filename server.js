@@ -770,12 +770,205 @@ app.get('/api/teams/:team/degradation', async (req, res) => {
 // Circuits nearest to this one, by straight-line distance, on the 2dsphere index.
 
 app.get('/api/races/:round/nearby', async (req, res) => {
-  const race = await races().findOne({ round: intParam(req.params.round) }, { projection: { location: 1 } });
-  if (!race?.location) return res.status(404).json({ error: 'Race not found' });
+  const round = intParam(req.params.round);
+  const circuits = getDb().collection('circuits');
+  const here = await circuits.findOne({ round }, { projection: { location: 1 } });
+  if (!here?.location) return res.status(404).json({ error: 'Race not found' });
   const pipeline = [
-    { $geoNear: { near: race.location, distanceField: 'distance', spherical: true, query: { round: { $ne: intParam(req.params.round) } } } },
+    { $geoNear: { near: here.location, distanceField: 'distance', spherical: true, query: { round: { $ne: round } } } },
     { $limit: 5 },
     { $project: { _id: 0, round: 1, name: 1, circuit: 1, country: 1, countryCode: 1, distanceKm: { $round: [{ $divide: ['$distance', 1000] }, 0] } } },
+  ];
+  const [results, explain] = await Promise.all([circuits.aggregate(pipeline).toArray(), explainAggregate(circuits, pipeline)]);
+  res.json({ query: 'db.circuits.aggregate(' + shell(pipeline) + ')', explain, results });
+});
+
+// ======================================================================
+// Newer features. Laps, races and drivers are only ever read here; anything
+// users write goes to its own collection (annotations, notes_feed,
+// shared_comparisons) and never feeds a statistic.
+
+const annotations = () => getDb().collection('annotations');
+const notesFeed = () => getDb().collection('notes_feed');
+const cleanLaps = () => getDb().collection('clean_laps');
+
+function noteInput(body) {
+  const clip = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : '');
+  return { author: clip(body.author, 40), text: clip(body.text, 280) };
+}
+
+// NoSQL Functionality 13 (capped collection): every note action is logged to notes_feed (max 50 docs, oldest roll off).
+async function logNote(action, note) {
+  const race = await races().findOne({ round: note.round }, { projection: { name: 1 } });
+  await notesFeed().insertOne({ action, noteId: note._id, round: note.round, race: race?.name, lapNumber: note.lapNumber ?? null, author: note.author, text: note.text.slice(0, 120), at: new Date() });
+}
+
+// ------------------------- NoSQL Functionality 6: lap notes with update operators
+
+app.get('/api/races/:round/notes', async (req, res) => {
+  const round = intParam(req.params.round);
+  const filter = { round };
+  const results = await annotations().find(filter).sort({ helpful: -1, createdAt: -1 }).toArray();
+  res.json({ query: `db.annotations.find(${shell(filter)}).sort({ helpful: -1, createdAt: -1 })`, results });
+});
+
+app.post('/api/races/:round/notes', async (req, res) => {
+  const round = intParam(req.params.round);
+  const { author, text } = noteInput(req.body || {});
+  const lapNumber = intParam(req.body?.lapNumber);
+  const doc = {
+    round, lapNumber: lapNumber && lapNumber > 0 ? lapNumber : null, driverId: toObjectId(req.body?.driverId),
+    author, text, helpful: 0, tags: [], pinned: true, createdAt: new Date(),
+  };
+  try {
+    const r = await annotations().insertOne(doc);
+    await logNote('created', doc);
+    res.status(201).json({ insertedId: r.insertedId, query: 'db.annotations.insertOne(' + shell(doc) + ')' });
+  } catch (err) {
+    if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
+    throw err;
+  }
+});
+
+async function updateNote(req, res, update, action) {
+  const _id = toObjectId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid note id' });
+  try {
+    const note = await annotations().findOneAndUpdate({ _id }, update, { returnDocument: 'after' });
+    if (!note) return res.status(404).json({ error: 'Note not found' });
+    if (action) await logNote(action, note);
+    res.json({ note, query: `db.annotations.updateOne({ _id: ObjectId("${_id}") }, ${shell(update)})` });
+  } catch (err) {
+    if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
+    throw err;
+  }
+}
+
+// "Helpful" upvote: $inc.
+app.post('/api/notes/:id/helpful', (req, res) => updateNote(req, res, { $inc: { helpful: 1 } }, 'upvoted'));
+
+// Edit: $set the new text and an editedAt timestamp, shown as "(edited)".
+app.patch('/api/notes/:id', (req, res) => {
+  const { text } = noteInput(req.body || {});
+  return updateNote(req, res, { $set: { text, editedAt: new Date() } }, 'edited');
+});
+
+// Tags: $addToSet, so the same tag is never stored twice.
+app.post('/api/notes/:id/tags', (req, res) => {
+  const tag = String(req.body?.tag || '').trim().toLowerCase().replace(/[^a-z0-9 -]/g, '').slice(0, 24);
+  if (!tag) return res.status(400).json({ error: 'Type a tag first' });
+  return updateNote(req, res, { $addToSet: { tags: tag } });
+});
+
+// Pin or unpin every note of a race on the charts in one updateMany.
+app.post('/api/races/:round/notes/pin', async (req, res) => {
+  const filter = { round: intParam(req.params.round) };
+  const update = { $set: { pinned: !!req.body?.pinned } };
+  const r = await annotations().updateMany(filter, update);
+  res.json({ matchedCount: r.matchedCount, modifiedCount: r.modifiedCount, query: `db.annotations.updateMany(${shell(filter)}, ${shell(update)})` });
+});
+
+// ------------------------- NoSQL Functionality 13: the latest notes, newest first, from the capped collection
+
+app.get('/api/notes/feed', async (req, res) => {
+  const [results, stats] = await Promise.all([
+    notesFeed().find().sort({ $natural: -1 }).limit(12).toArray(),
+    getDb().command({ collStats: 'notes_feed' }).catch(() => ({})),
+  ]);
+  res.json({ query: 'db.createCollection("notes_feed", { capped: true, size: 65536, max: 50 })\ndb.notes_feed.find().sort({ $natural: -1 }).limit(12)', capped: !!stats.capped, max: stats.max, count: stats.count, results });
+});
+
+// ------------------------- NoSQL Functionality 9: circuits with GeoJSON points
+
+app.get('/api/circuits', async (req, res) => {
+  const results = await getDb().collection('circuits').find({}, { projection: { _id: 0 } }).sort({ round: 1 }).toArray();
+  res.json({ query: 'db.circuits.find({}).sort({ round: 1 })   // location: { type: "Point", coordinates: [lng, lat] }\ndb.circuits.createIndex({ location: "2dsphere" })', results });
+});
+
+// ------------------------- NoSQL Functionality 11: season_summary, materialised with $merge
+
+app.get('/api/season/summary', async (req, res) => {
+  const results = await getDb().collection('season_summary').find().sort({ position: 1 }).toArray();
+  res.json({ query: 'db.season_summary.find().sort({ position: 1 })   // rebuilt from races + clean_laps with $merge: npm run summary:rebuild', builtAt: results[0]?.builtAt, results });
+});
+
+// ------------------------- NoSQL Functionality 12: shared comparisons that expire (TTL index)
+
+const SHARE_TTL_DAYS = 7;
+const daysLeft = (createdAt) => Math.max(0, Math.ceil((createdAt.getTime() + SHARE_TTL_DAYS * 864e5 - Date.now()) / 864e5));
+
+app.post('/api/shares', async (req, res) => {
+  const a = String(req.body?.a || ''), b = String(req.body?.b || '');
+  if (!/^[a-z0-9-]{2,40}$/.test(a) || !/^[a-z0-9-]{2,40}$/.test(b)) return res.status(400).json({ error: 'Pick two drivers' });
+  const doc = { _id: Math.random().toString(36).slice(2, 8), a, b, createdAt: new Date() };
+  await getDb().collection('shared_comparisons').insertOne(doc);
+  res.status(201).json({ code: doc._id, expiresInDays: SHARE_TTL_DAYS, query: 'db.shared_comparisons.insertOne(' + shell(doc) + ')\ndb.shared_comparisons.createIndex({ createdAt: 1 }, { expireAfterSeconds: 604800 })' });
+});
+
+app.get('/api/shares/:code', async (req, res) => {
+  const doc = await getDb().collection('shared_comparisons').findOne({ _id: String(req.params.code) });
+  if (!doc) return res.status(404).json({ error: 'This link has expired or never existed' });
+  res.json({ a: doc.a, b: doc.b, expiresInDays: daysLeft(doc.createdAt) });
+});
+
+// ------------------------- User Functionality 11: driver consistency (clean_laps view, NoSQL 10)
+// Std dev of each driver's racing laps in every race, averaged over the season, ranked against the field.
+
+app.get('/api/drivers/:id/consistency', async (req, res) => {
+  const driverId = toObjectId(req.params.id);
+  if (!driverId) return res.status(400).json({ error: 'Invalid driver id' });
+  const pipeline = [
+    { $group: { _id: { driverId: '$driverId', round: '$round' }, sd: { $stdDevPop: '$lapTime' }, laps: { $sum: 1 } } },
+    { $match: { laps: { $gte: 10 } } },
+    { $group: { _id: '$_id.driverId', stdDev: { $avg: '$sd' }, races: { $sum: 1 } } },
+    { $match: { races: { $gte: 3 } } },
+    { $setWindowFields: { sortBy: { stdDev: 1 }, output: { rank: { $rank: {} }, field: { $count: {} }, fieldAvg: { $avg: '$stdDev' } } } },
+    { $match: { _id: driverId } },
+    { $project: { _id: 0, stdDev: { $round: ['$stdDev', 3] }, races: 1, rank: 1, field: 1, fieldAvg: { $round: ['$fieldAvg', 3] } } },
+  ];
+  const [[result], explain] = await Promise.all([cleanLaps().aggregate(pipeline).toArray(), explainAggregate(cleanLaps(), pipeline)]);
+  res.json({ query: 'db.clean_laps.aggregate(' + shell(pipeline) + ')', explain, result: result || null });
+});
+
+// ------------------------- User Functionality 12: teammate battle over the whole season
+
+app.get('/api/teams/:team/teammates', async (req, res) => {
+  const team = String(req.params.team);
+  // Each race where exactly this team's two cars started, with who finished ahead.
+  const pipeline = [
+    { $project: { round: 1, name: 1, mates: { $sortArray: { input: { $filter: { input: '$results', cond: { $eq: ['$$this.team', team] } } }, sortBy: { driverId: 1 } } } } },
+    { $match: { mates: { $size: 2 } } },
+    { $lookup: {
+      from: 'clean_laps', let: { round: '$round', ids: '$mates.driverId' },
+      pipeline: [
+        { $match: { $expr: { $and: [{ $eq: ['$round', '$$round'] }, { $in: ['$driverId', '$$ids'] }] } } },
+        { $group: { _id: '$driverId', avg: { $avg: '$lapTime' } } },
+      ],
+      as: 'pace',
+    } },
+    { $set: {
+      a: { $first: '$mates' }, b: { $last: '$mates' },
+      aPace: { $first: { $filter: { input: '$pace', cond: { $eq: ['$$this._id', { $first: '$mates.driverId' }] } } } },
+      bPace: { $first: { $filter: { input: '$pace', cond: { $eq: ['$$this._id', { $last: '$mates.driverId' }] } } } },
+    } },
+    { $project: {
+      _id: 0, round: 1, name: 1, pair: ['$a.driverId', '$b.driverId'],
+      aPos: '$a.position', bPos: '$b.position',
+      gap: { $cond: [{ $and: ['$aPace', '$bPace'] }, { $subtract: ['$aPace.avg', '$bPace.avg'] }, null] },
+    } },
+    { $group: {
+      _id: '$pair',
+      races: { $push: { round: '$round', name: '$name', aPos: '$aPos', bPos: '$bPos', gap: { $round: ['$gap', 3] } } },
+      aAhead: { $sum: { $cond: [{ $and: ['$aPos', { $or: [{ $not: ['$bPos'] }, { $lt: ['$aPos', '$bPos'] }] }] }, 1, 0] } },
+      bAhead: { $sum: { $cond: [{ $and: ['$bPos', { $or: [{ $not: ['$aPos'] }, { $lt: ['$bPos', '$aPos'] }] }] }, 1, 0] } },
+      gaps: { $push: '$gap' },
+    } },
+    { $set: { gaps: { $sortArray: { input: { $filter: { input: '$gaps', cond: { $ne: ['$$this', null] } } }, sortBy: 1 } } } },
+    { $project: {
+      _id: 0, a: { $first: '$_id' }, b: { $last: '$_id' }, races: 1, aAhead: 1, bAhead: 1,
+      medianGap: { $round: [{ $arrayElemAt: ['$gaps', { $floor: { $divide: [{ $size: '$gaps' }, 2] } }] }, 3] },
+    } },
+    { $sort: { races: -1 } },
   ];
   const [results, explain] = await Promise.all([races().aggregate(pipeline).toArray(), explainAggregate(races(), pipeline)]);
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });

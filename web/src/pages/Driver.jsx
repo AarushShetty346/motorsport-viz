@@ -15,6 +15,7 @@ import { teamPath } from '../lib/teams.js';
 import { lapTags, lapRowClass } from '../lib/steward.js';
 import { openLap } from '../components/LapDrawer.jsx';
 import { SeasonStats, TheoreticalBest } from '../components/DriverTeamStats.jsx';
+import { Consistency } from '../components/Community.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
@@ -107,6 +108,8 @@ export default function Driver({ driverKey }) {
       <section className="container section-tight">
         <h2 className="h-small">Season stats, every lap</h2>
         <SeasonStats driver={driver} />
+        <div className="spacer" />
+        <Consistency driver={driver} />
       </section>
 
       <section className="container section">

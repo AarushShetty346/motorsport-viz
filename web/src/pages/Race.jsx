@@ -13,6 +13,7 @@ import Band from '../components/Band.jsx';
 import FeatureLabel from '../components/FeatureLabel.jsx';
 import RaceLaps from '../components/RaceLaps.jsx';
 import { NearbyCircuits } from '../components/CircuitMap.jsx';
+import { LapNotes } from '../components/Community.jsx';
 import { RaceNumbers, GapChart, TyreStrategy, PitStops, Movers } from '../components/RaceAnalytics.jsx';
 
 export default function Race({ round }) {
@@ -144,9 +145,18 @@ export default function Race({ round }) {
         </div>
       </section>
 
+      <section className="container section" id="notes">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">08</span>Fan notes</p>
+          <h2 className="display-md">What did you see?</h2>
+          <p className="lede">Leave a note on a lap or a moment. Pinned notes show up on the gap chart and as 💬 in the lap table. Notes are fan comments, never race data.</p>
+        </div>
+        <LapNotes race={race} />
+      </section>
+
       <section className="container section" id="laps">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">08</span>Every lap</p>
+          <p className="eyebrow"><span className="num">09</span>Every lap</p>
           <h2 className="display-md">Lap by lap</h2>
         </div>
         <RaceLaps race={race} />

@@ -9,6 +9,7 @@ import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { openLap } from './LapDrawer.jsx';
 import { ValidationError } from './labValidation.jsx';
+import { useRaceNotes } from './Community.jsx';
 
 const EMPTY = { id: '', driverId: '', lapNumber: '', lapTime: '', position: '', compound: '', speed: '', rpm: '', throttle: '', brake: '' };
 
@@ -23,6 +24,8 @@ export default function RaceLaps({ race }) {
   const [busy, setBusy] = useState(false);
   const qs = new URLSearchParams({ round: race.round, page, limit: 20, ...(driverId && { driverId }), ...(steward && { steward: '1' }) });
   const { data, error } = useApi(`/api/laps?${qs}`);
+  const notes = useRaceNotes(race.round);
+  const noted = (l) => (notes.data?.results || []).filter((n) => n.lapNumber === l.lapNumber && (!n.driverId || n.driverId === l.driverId));
   useEffect(() => setPage(1), [driverId, steward]);
   useEffect(() => { if (!steward) setForm(null); }, [steward]);
 
@@ -147,7 +150,7 @@ export default function RaceLaps({ race }) {
               const added = l.source === 'steward';
               return (
                 <tr key={l._id} className={`clickable ${lapRowClass(l)}`} onClick={() => openLap(l._id)}>
-                  <td className="num mono">{l.lapNumber}</td>
+                  <td className="num mono">{l.lapNumber}{noted(l).length ? <a href="#notes" className="note-icon" title={noted(l).map((n) => `(user note) ${n.author}: ${n.text}`).join('\n')} onClick={(e) => e.stopPropagation()}>💬</a> : null}</td>
                   <td><DriverName driver={driverById.get(l.driverId)} short sub={lapTags(l).map((t) => `(${t})`).join(' ') || undefined} /></td>
                   <td className="num mono">{l.position ?? '—'}</td>
                   <td className="num mono strong">{fmtLap(l.lapTime)}{l.penaltySeconds ? <span className="pen-tag">+{l.penaltySeconds}s</span> : null}</td>
