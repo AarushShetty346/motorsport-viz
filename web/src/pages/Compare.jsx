@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../lib/api.js';
+import { ShareComparison } from '../components/Community.jsx';
 import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
 import { useRouter } from '../lib/router.jsx';
@@ -11,6 +13,15 @@ import FeatureLabel from '../components/FeatureLabel.jsx';
 export default function Compare() {
   const { standings, driverByKey, drivers, ready } = useSeason();
   const { query, navigate } = useRouter();
+  const code = query.get('s');
+  const [shared, setShared] = useState(null);
+  useEffect(() => {
+    if (!code) return;
+    api(`/api/shares/${encodeURIComponent(code)}`).then(
+      (s) => { setShared({ days: s.expiresInDays }); navigate(`/compare?a=${s.a}&b=${s.b}`, { replace: true }); },
+      (e) => setShared({ error: e.message })
+    );
+  }, [code]);
   const aKey = query.get('a') || standings[0]?.key;
   const bKey = query.get('b') || standings.find((s) => s.key !== aKey)?.key;
   const A = driverByKey.get(aKey);
@@ -63,6 +74,7 @@ export default function Compare() {
       </Band>
       <div className="container compare-body">
 
+      {shared?.error && <p className="msg msg-err">{shared.error}</p>}
       {same && <p className="msg msg-err">Pick two different drivers.</p>}
       {error && <p className="msg msg-err">{error.message}</p>}
       {data && (
@@ -116,6 +128,7 @@ export default function Compare() {
           )}
           <FeatureLabel name="Head-to-head comparison" type="user" />
           <Query text={data.query} explain={data.explain} />
+          <ShareComparison key={`${aKey}-${bKey}`} a={aKey} b={bKey} sharedDays={shared?.days} />
         </>
       )}
       </div>

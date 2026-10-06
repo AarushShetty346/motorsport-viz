@@ -887,3 +887,37 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .map-pin { cursor: pointer; }
 .map-pin circle { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
 .nearby .movers-list a { display: inline-flex; gap: 6px; align-items: center; }
+
+/* Fan notes: user content, always tagged and coloured apart from race data */
+:root { --note: #ff9f43; --note-bg: rgba(255, 159, 67, 0.12); }
+.user-tag { color: var(--note); font: 500 11px/1 var(--mono); }
+.note-form { display: grid; grid-template-columns: 1fr 80px 1.2fr 3fr auto; gap: 10px; align-items: end; margin-bottom: 12px; }
+.note-form label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); }
+.note-form input, .note-form select, .note-inline input { background: var(--surface); color: var(--ink); border: 1px solid var(--line-2); border-radius: var(--radius-sm); padding: 7px 9px; font: inherit; font-size: 14px; min-width: 0; }
+.notes-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin: 8px 0; }
+.notes-bulk { display: inline-flex; gap: 14px; }
+.note-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.note { border-left: 3px solid var(--note); background: var(--note-bg); padding: 10px 12px; border-radius: var(--radius-sm); }
+.note-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.note-body { margin: 6px 0; }
+.note-actions { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; font-size: 13px; }
+.note-tag { font: 400 12px var(--mono); color: var(--note); }
+.note-inline { display: inline-flex; gap: 8px; align-items: center; margin: 6px 0; flex-wrap: wrap; }
+.note-icon { margin-left: 6px; text-decoration: none; font-size: 12px; }
+.note-pin line { stroke: var(--note); stroke-width: 1.5; stroke-dasharray: 3 3; }
+.note-pin circle { fill: var(--note); }
+.feed-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.feed-list li { border-left: 3px solid var(--note); padding-left: 10px; }
+.feed-text { margin: 2px 0 0; }
+.share-box { margin-top: 20px; }
+.share-link code { word-break: break-all; }
+.mate-pair { margin-bottom: 24px; }
+.mate-score { display: grid; grid-template-columns: auto 1fr auto; gap: 14px; align-items: center; margin-bottom: 8px; }
+.mate-side { display: inline-flex; gap: 10px; align-items: center; }
+.mate-big { font-size: 32px; font-weight: 600; }
+.mate-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; background: var(--surface-2); }
+@media (max-width: 720px) {
+  .note-form { grid-template-columns: 1fr 1fr; }
+  .note-form .note-text { grid-column: 1 / -1; }
+  .mate-big { font-size: 22px; }
+}

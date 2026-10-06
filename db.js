@@ -91,6 +91,36 @@ const lapsValidator = {
   },
 };
 
+// $jsonSchema validator for lap notes (user content, never race data).
+const annotationsValidator = {
+  $jsonSchema: {
+    bsonType: 'object',
+    title: 'Lap note validation',
+    required: ['round', 'author', 'text', 'helpful', 'tags', 'pinned', 'createdAt'],
+    properties: {
+      round: { bsonType: ['int', 'long'], minimum: 1, maximum: 24 },
+      lapNumber: { bsonType: ['int', 'long', 'null'], minimum: 1 },
+      driverId: { bsonType: ['objectId', 'null'] },
+      author: { bsonType: 'string', minLength: 1, maxLength: 40 },
+      text: { bsonType: 'string', minLength: 1, maxLength: 280 },
+      helpful: { bsonType: ['int', 'long'], minimum: 0 },
+      tags: { bsonType: 'array', maxItems: 8, items: { bsonType: 'string', minLength: 1, maxLength: 24 } },
+      pinned: { bsonType: 'bool' },
+      createdAt: { bsonType: 'date' },
+      editedAt: { bsonType: 'date' },
+    },
+  },
+};
+
+// Racing laps only: no opening lap, pit in/out laps, steward changes, or laps
+// slower than 107% of that race's fastest lap (safety cars, traffic, damage).
+const cleanLapsPipeline = [
+  { $match: { deleted: { $ne: true }, source: { $ne: 'steward' }, lapNumber: { $gt: 1 }, pitIn: { $ne: true }, pitOut: { $ne: true } } },
+  { $setWindowFields: { partitionBy: '$round', output: { raceBest: { $min: '$lapTime' } } } },
+  { $match: { $expr: { $lte: ['$lapTime', { $multiply: ['$raceBest', 1.07] }] } } },
+  { $unset: 'raceBest' },
+];
+
 const TEAM_NAMES = {
   mclaren: 'McLaren',
   mercedes: 'Mercedes',
@@ -167,6 +197,69 @@ async function setupCollections() {
   await db.collection('races').createIndex({ location: '2dsphere' }, { name: 'location_2dsphere' });
   await db.collection('drivers').createIndex({ key: 1 }, { name: 'key_1', unique: true });
   console.log('[db] Ensured indexes on laps, races and drivers');
+  await setupUserCollections();
+}
+
+async function ensureCollection(name, options) {
+  if ((await db.listCollections({ name }).toArray()).length === 0) await db.createCollection(name, options);
+  else if (options.validator || options.viewOn) await db.command({ collMod: name, ...options });
+}
+
+// Collections added for the newer features. None of them write to laps, races or drivers.
+async function setupUserCollections() {
+  await ensureCollection('annotations', { validator: annotationsValidator, validationLevel: 'strict', validationAction: 'error' });
+  await db.collection('annotations').createIndex({ round: 1, createdAt: -1 }, { name: 'round_1_createdAt_-1' });
+  await ensureCollection('clean_laps', { viewOn: 'laps', pipeline: cleanLapsPipeline });
+  await ensureCollection('notes_feed', { capped: true, size: 65536, max: 50 });
+  await ensureCollection('shared_comparisons', {});
+  await db.collection('shared_comparisons').createIndex({ createdAt: 1 }, { name: 'createdAt_ttl', expireAfterSeconds: 7 * 24 * 3600 });
+  await db.collection('circuits').createIndex({ location: '2dsphere' }, { name: 'location_2dsphere' });
+}
+
+// One-time seed of circuit reference data (GeoJSON points) from the race calendar.
+async function seedCircuits() {
+  const circuits = db.collection('circuits');
+  if ((await circuits.countDocuments()) > 0) return;
+  const docs = await db.collection('races').find({}, { projection: { round: 1, name: 1, circuit: 1, circuitFullName: 1, locality: 1, country: 1, countryCode: 1, lat: 1, lng: 1 } }).sort({ round: 1 }).toArray();
+  if (!docs.length) return;
+  await circuits.insertMany(docs.map(({ _id, lat, lng, ...r }) => ({ ...r, location: { type: 'Point', coordinates: [lng, lat] } })));
+  console.log(`[seed] Inserted ${docs.length} circuits with GeoJSON locations`);
+}
+
+// Rebuilds season_summary from races and laps with $merge (run by "npm run summary:rebuild" and on first start).
+async function rebuildSeasonSummary() {
+  const target = (whenMatched) => ({ $merge: { into: 'season_summary', on: '_id', whenMatched, whenNotMatched: 'insert' } });
+  await db.collection('season_summary').deleteMany({});
+  // 1. Points, wins and podiums from every race and sprint classification.
+  await db.collection('races').aggregate([
+    { $project: { entries: { $concatArrays: [{ $map: { input: '$results', in: { $mergeObjects: ['$$this', { kind: 'race' }] } } }, { $map: { input: { $ifNull: ['$sprint', []] }, in: { $mergeObjects: ['$$this', { kind: 'sprint' }] } } }] } } },
+    { $unwind: '$entries' },
+    { $replaceWith: '$entries' },
+    { $group: {
+      _id: '$driverId',
+      points: { $sum: { $ifNull: ['$points', 0] } },
+      wins: { $sum: { $cond: [{ $and: [{ $eq: ['$kind', 'race'] }, { $eq: ['$position', 1] }] }, 1, 0] } },
+      podiums: { $sum: { $cond: [{ $and: [{ $eq: ['$kind', 'race'] }, { $lte: ['$position', 3] }, { $gte: ['$position', 1] }] }, 1, 0] } },
+      starts: { $sum: { $cond: [{ $eq: ['$kind', 'race'] }, 1, 0] } },
+      team: { $last: '$team' },
+    } },
+    target('replace'),
+  ]).toArray();
+  // 2. Lap statistics from the clean_laps view, merged into the same documents.
+  await db.collection('clean_laps').aggregate([
+    { $group: { _id: '$driverId', racingLaps: { $sum: 1 }, topSpeed: { $max: '$telemetry.speed' }, avgThrottle: { $avg: '$telemetry.throttle' } } },
+    { $set: { avgThrottle: { $round: ['$avgThrottle', 1] } } },
+    target('merge'),
+  ]).toArray();
+  // 3. Championship position, worked out on the summary itself and merged back.
+  await db.collection('season_summary').aggregate([
+    { $setWindowFields: { sortBy: { points: -1 }, output: { position: { $rank: {} } } } },
+    { $lookup: { from: 'drivers', localField: '_id', foreignField: '_id', as: 'driver' } },
+    { $set: { code: { $first: '$driver.code' }, name: { $first: '$driver.name' }, key: { $first: '$driver.key' }, builtAt: '$$NOW' } },
+    { $unset: 'driver' },
+    target('merge'),
+  ]).toArray();
+  return db.collection('season_summary').countDocuments();
 }
 
 async function seedIfEmpty() {
@@ -222,18 +315,23 @@ async function resetDemoData() {
   for (const name of ['laps', 'races', 'drivers']) await db.collection(name).drop().catch(() => {});
   await setupCollections();
   await seedIfEmpty();
+  await rebuildSeasonSummary();
 }
 
 async function init() {
   await connectWithRetry();
   await setupCollections();
   await seedIfEmpty();
+  await seedCircuits();
+  if ((await db.collection('season_summary').countDocuments()) === 0) console.log(`[db] Built season_summary with $merge (${await rebuildSeasonSummary()} drivers)`);
   return db;
 }
 
 module.exports = {
   init,
   resetDemoData,
+  rebuildSeasonSummary,
+  cleanLapsPipeline,
   getDb: () => db,
   client,
 };

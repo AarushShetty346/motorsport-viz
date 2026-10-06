@@ -10,6 +10,7 @@ import Marquee from '../components/Marquee.jsx';
 import { fmtNum } from '../lib/format.js';
 import { CircuitMap } from '../components/CircuitMap.jsx';
 import { Movers } from '../components/RaceAnalytics.jsx';
+import { NotesFeed, SeasonSummary } from '../components/Community.jsx';
 
 export default function Home() {
   const { ready, standings, health } = useSeason();
@@ -32,10 +33,24 @@ export default function Home() {
           <Standings />
           <section className="section container">
             <div className="section-head">
+              <p className="eyebrow">Season in one table</p>
+              <h2 className="display-lg">Points, wins and racing laps</h2>
+            </div>
+            <SeasonSummary />
+          </section>
+          <section className="section container">
+            <div className="section-head">
               <p className="eyebrow">Season movers</p>
               <h2 className="display-lg">Who gained the most places</h2>
             </div>
             <Movers />
+          </section>
+          <section className="section container">
+            <div className="section-head">
+              <p className="eyebrow">Latest notes</p>
+              <h2 className="display-lg">What fans are saying</h2>
+            </div>
+            <NotesFeed />
           </section>
           <section className="section container split">
             <SpeedTrap num="04" />

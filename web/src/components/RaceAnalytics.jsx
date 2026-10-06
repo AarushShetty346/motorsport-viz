@@ -5,6 +5,7 @@ import { fmtLap, fmtNum, COMPOUND } from '../lib/format.js';
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
+import { useRaceNotes } from './Community.jsx';
 
 const compoundColor = (c) => COMPOUND[c]?.color || '#888';
 const compoundLabel = (c) => COMPOUND[c]?.label || 'Unknown';
@@ -78,6 +79,7 @@ const GW = 1000, GH = 340, GP = { l: 52, r: 56, t: 12, b: 28 };
 export function GapChart({ race }) {
   const { driverById, dashed } = useSeason();
   const { data, error } = useApi(`/api/races/${race.round}/gaps`);
+  const notes = useRaceNotes(race.round);
   const [focus, setFocus] = useState(null);
   const model = useMemo(() => {
     if (!data) return null;
@@ -107,6 +109,13 @@ export function GapChart({ race }) {
           ))}
           <text className="axis" x={x(1)} y={GH - 6}>Lap 1</text>
           <text className="axis" x={x(maxLap)} y={GH - 6} textAnchor="end">Lap {maxLap}</text>
+          {(notes.data?.results || []).filter((n) => n.pinned && n.lapNumber && n.lapNumber <= maxLap).map((n) => (
+            <a key={n._id} href="#notes" className="note-pin">
+              <line x1={x(n.lapNumber)} x2={x(n.lapNumber)} y1={GP.t} y2={GH - GP.b} />
+              <circle cx={x(n.lapNumber)} cy={GP.t + 6} r="6" />
+              <title>{`Lap ${n.lapNumber} (user note) ${n.author}: ${n.text}`}</title>
+            </a>
+          ))}
           {series.map((s) => {
             const d = driverById.get(s.driverId);
             const path = s.gaps.map((g, i) => `${i ? 'L' : 'M'}${x(g.lap).toFixed(1)},${y(g.gap).toFixed(1)}`).join('');

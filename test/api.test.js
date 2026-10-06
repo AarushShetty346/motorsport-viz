@@ -285,3 +285,51 @@ test('reset re-seeds the season', async () => {
   const { body } = await api('/api/reset', { method: 'POST' });
   assert.deepEqual(body, { ok: true, drivers: 21, races: 24, laps: totalLaps });
 });
+
+// ------------------------------ newer features (read-only on race data)
+
+test('lap notes: insert, $inc, $set + editedAt, $addToSet, updateMany, validator', async () => {
+  const before = (await api('/api/user/leaderboard')).body;
+  const created = await api('/api/races/3/notes', { method: 'POST', body: { author: 'Tester', text: 'Great restart', lapNumber: 20 } });
+  assert.equal(created.status, 201);
+  const id = created.body.insertedId;
+  assert.equal((await api(`/api/notes/${id}/helpful`, { method: 'POST' })).body.note.helpful, 1);
+  const edited = await api(`/api/notes/${id}`, { method: 'PATCH', body: { text: 'Great restart, again' } });
+  assert.ok(edited.body.note.editedAt);
+  await api(`/api/notes/${id}/tags`, { method: 'POST', body: { tag: 'restart' } });
+  const tagged = await api(`/api/notes/${id}/tags`, { method: 'POST', body: { tag: 'restart' } });
+  assert.deepEqual(tagged.body.note.tags, ['restart']);
+  const unpin = await api('/api/races/3/notes/pin', { method: 'POST', body: { pinned: false } });
+  assert.equal(unpin.body.modifiedCount, 1);
+  const bad = await api('/api/races/3/notes', { method: 'POST', body: { author: '', text: 'x' } });
+  assert.equal(bad.status, 400);
+  assert.equal(bad.body.mongoError.code, 121);
+  const feed = await api('/api/notes/feed');
+  assert.equal(feed.body.capped, true);
+  assert.deepEqual(feed.body.results.slice(0, 3).map((f) => f.action), ['edited', 'upvoted', 'created']);
+  assert.deepEqual((await api('/api/user/leaderboard')).body.results, before.results, 'notes never touch race stats');
+});
+
+test('season_summary ($merge), clean_laps view, consistency and teammate battle', async () => {
+  const summary = (await api('/api/season/summary')).body.results;
+  assert.equal(summary[0].position, 1);
+  assert.ok(summary[0].racingLaps > 0);
+  const nor = (await api('/api/drivers')).body.find((d) => d.code === 'NOR');
+  const c = (await api(`/api/drivers/${nor._id}/consistency`)).body.result;
+  assert.ok(c.stdDev > 0 && c.rank >= 1 && c.rank <= c.field);
+  const mates = (await api('/api/teams/McLaren/teammates')).body.results;
+  assert.ok(mates[0].races.length >= 20);
+  assert.ok(typeof mates[0].medianGap === 'number');
+});
+
+test('shared comparisons expire with a TTL index; circuits support $geoNear', async () => {
+  const share = await api('/api/shares', { method: 'POST', body: { a: 'lando-norris', b: 'oscar-piastri' } });
+  assert.equal(share.status, 201);
+  const got = (await api(`/api/shares/${share.body.code}`)).body;
+  assert.equal(got.b, 'oscar-piastri');
+  assert.equal(got.expiresInDays, 7);
+  const near = (await api('/api/races/1/nearby')).body;
+  assert.equal(near.explain.indexUsed, 'location_2dsphere');
+  assert.equal(near.results.length, 5);
+  assert.equal((await api('/api/circuits')).body.results.length, 24);
+});

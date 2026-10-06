@@ -9,6 +9,7 @@ import CarShowcase from '../components/CarShowcase.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
 import Query from '../components/Query.jsx';
 import { TyreDegradation } from '../components/DriverTeamStats.jsx';
+import { TeammateBattle } from '../components/Community.jsx';
 
 export default function Team({ teamKey: key }) {
   const { driverById, standings, ready } = useSeason();
@@ -110,7 +111,16 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">03</span>Tyre degradation</p>
+          <p className="eyebrow"><span className="num">03</span>Teammate battle</p>
+          <h2 className="display-lg">Who won the garage</h2>
+          <p className="lede">The whole season between the team's own drivers: who finished ahead, and the median gap in racing pace.</p>
+        </div>
+        <TeammateBattle team={team._id} />
+      </section>
+
+      <section className="container section">
+        <div className="section-head">
+          <p className="eyebrow"><span className="num">04</span>Tyre degradation</p>
           <h2 className="display-lg">Pace as the tyres age</h2>
         </div>
         <TyreDegradation team={team._id} color={color} />
