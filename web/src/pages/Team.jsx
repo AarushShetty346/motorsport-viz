@@ -60,8 +60,8 @@ export default function Team({ teamKey: key }) {
           <div><dt>Championship</dt><dd className="display-md">{ordinal(idx + 1)}</dd></div>
           <div><dt>Points</dt><dd className="display-md mono">{team.points}</dd></div>
           <div><dt>Wins</dt><dd className="display-md mono">{team.wins}</dd></div>
-          <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '—'}</dd></div>
-          <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '—'}</dd></div>
+          <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '-'}</dd></div>
+          <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '-'}</dd></div>
         </dl>
         <CarShowcase teamKey={key} name={team._id} info={info} />
         <span className="band-team" aria-hidden="true" />
@@ -75,7 +75,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">01</span>Drivers</p>
           <h2 className="display-lg">Who drove for {team._id}</h2>
         </div>
         <div className="team-drivers">
@@ -94,7 +93,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow">The team</p>
           <h2 className="display-lg">Factory, people and history</h2>
         </div>
         <TeamProfile team={team._id} rounds={rounds} />
@@ -102,7 +100,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">02</span>Round by round</p>
           <h2 className="display-lg">Points per weekend</h2>
           <p className="lede">Both cars' race and sprint points, added up per round inside MongoDB.</p>
         </div>
@@ -120,7 +117,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">03</span>Teammate battle</p>
           <h2 className="display-lg">Who won the garage</h2>
           <p className="lede">The whole season between the team's own drivers: who finished ahead, and the median gap in racing pace.</p>
         </div>
@@ -129,7 +125,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">04</span>Tyre degradation</p>
           <h2 className="display-lg">Pace as the tyres age</h2>
         </div>
         <TyreDegradation team={team._id} color={color} />

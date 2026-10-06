@@ -119,7 +119,7 @@ export default function Compare() {
                   const bWon = d.b.position && (!d.a.position || d.b.position < d.a.position);
                   return (
                     <span key={d.round} className="duel-cell" style={{ background: aWon ? ra.driver.teamColor : bWon ? rb.driver.teamColor : 'var(--surface-2)' }} title={`${d.name}: ${ra.driver.code} ${d.a.position ?? d.a.positionText} · ${rb.driver.code} ${d.b.position ?? d.b.positionText}`}>
-                      <span className="mono">{aWon ? ra.driver.code : bWon ? rb.driver.code : '–'}</span>
+                      <span className="mono">{aWon ? ra.driver.code : bWon ? rb.driver.code : '-'}</span>
                     </span>
                   );
                 })}

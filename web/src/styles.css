@@ -26,8 +26,8 @@
   --radius-sm: 3px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --display: var(--sans);
-  --sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
   --nav-h: 64px;
   --gutter: clamp(16px, 4vw, 48px);
 }
@@ -939,3 +939,5 @@ tr.row-hidden td.row-actions { opacity: 1; }
 @media (max-width: 860px) { .profile-grid { grid-template-columns: 1fr; } }
 .chips .chip { cursor: default; }
 .profile-facts dd { font-size: 15px; }
+.inline-icon { vertical-align: -2px; margin: 0 2px; }
+.note-icon { color: var(--note); display: inline-flex; vertical-align: -1px; }

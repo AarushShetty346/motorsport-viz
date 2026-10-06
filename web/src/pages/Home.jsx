@@ -33,21 +33,18 @@ export default function Home() {
           <Standings />
           <section className="section container">
             <div className="section-head">
-              <p className="eyebrow">Season in one table</p>
               <h2 className="display-lg">Points, wins and racing laps</h2>
             </div>
             <SeasonSummary />
           </section>
           <section className="section container">
             <div className="section-head">
-              <p className="eyebrow">Season movers</p>
               <h2 className="display-lg">Who gained the most places</h2>
             </div>
             <Movers />
           </section>
           <section className="section container">
             <div className="section-head">
-              <p className="eyebrow">Latest notes</p>
               <h2 className="display-lg">What fans are saying</h2>
             </div>
             <NotesFeed />
@@ -55,7 +52,6 @@ export default function Home() {
           <section className="section container split">
             <SpeedTrap num="04" />
             <div className="cta-card tone-light">
-              <p className="eyebrow"><span className="num">05</span>Head to head</p>
               <h2 className="display-md">Who was really quicker?</h2>
               <p className="lede">Pick any two drivers. MongoDB averages their racing laps race by race, so the comparison is always like for like.</p>
               <Link to="/compare" className="btn btn-primary">Compare drivers</Link>
