@@ -32,7 +32,7 @@ export default function Race({ round }) {
       <Band className="race-band">
         <div className="race-hero">
         <div className="race-hero-copy">
-          <p className="band-meta"><Flag code={race.countryCode} /> Round {race.round} of 24 · {fmtDate(race.date, { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+          <p className="band-meta"><Flag code={race.countryCode} /> Round {race.round} of 24<span>{fmtDate(race.date, { day: 'numeric', month: 'long', year: 'numeric' })}</span></p>
           <h1 className="display-xl race-title">{race.name.replace(' Grand Prix', '')}<br /><span className="light-text">Grand Prix</span></h1>
           <dl className="facts">
             <div><dt>Circuit</dt><dd>{race.circuitFullName}</dd></div>

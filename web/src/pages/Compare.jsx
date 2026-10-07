@@ -63,7 +63,7 @@ export default function Compare() {
   return (
     <article className="page band-page compare-page">
       <Band className="compare-band">
-        <p className="band-meta">Head to head · 2025 season</p>
+        <p className="band-meta">Head to head, 2025 season</p>
         <h1 className="display-xl">Who was<br />quicker?</h1>
         <p className="lede">Racing laps only: no opening lap and no pit laps. Averages are compared race by race so every gap is like for like.</p>
         <div className="h2h-pickers">

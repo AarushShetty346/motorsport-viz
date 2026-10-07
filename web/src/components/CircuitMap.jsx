@@ -41,7 +41,7 @@ export function CircuitMap() {
             })}
           </svg>
         </div>
-        <figcaption className="muted small">{hover ? `Round ${hover.round} · ${hover.name} · ${hover.circuit}` : 'The line follows the calendar order. Click a circuit to open its race.'}</figcaption>
+        <figcaption className="muted small">{hover ? `Round ${hover.round}: ${hover.name}, ${hover.circuit}` : 'The line follows the calendar order. Click a circuit to open its race.'}</figcaption>
       </figure>
       <FeatureLabel name="Geospatial: GeoJSON points + 2dsphere index" />
       <Query text={circuits.data?.query} />

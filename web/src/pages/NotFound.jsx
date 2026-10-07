@@ -5,7 +5,7 @@ export default function NotFound() {
   return (
     <article className="page band-page">
       <Band className="notfound-band">
-        <p className="band-meta">404 · Off track</p>
+        <p className="band-meta">404, off track</p>
         <h1 className="display-xl">This page<br />ran wide.</h1>
         <p className="lede"><Link to="/" className="btn btn-primary">Back to the season</Link></p>
       </Band>

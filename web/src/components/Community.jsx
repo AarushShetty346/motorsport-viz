@@ -133,7 +133,7 @@ export function NotesFeed() {
   return (
     <div className="notes-feed">
       {!data ? <div className="skeleton" style={{ height: 160 }} /> : !list.length ? (
-        <p className="muted">No notes yet. Open any race and add one under “Fan notes”.</p>
+        <div className="empty-state"><p className="empty-title">No fan notes yet.</p><p className="muted">Notes left on any race page show up here, newest first.</p><Link to="/race/24" className="btn btn-ghost btn-sm">Add one on Abu Dhabi</Link></div>
       ) : (
         <ul className="feed-list">
           {list.map((f) => (
