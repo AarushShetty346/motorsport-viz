@@ -276,7 +276,6 @@ kbd { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line-2); border
   .circuit { width: 92vw; --depth: 0.9px; }
   .stage-object { inset: 0 0 22% 0; }
 }
-@media (prefers-reduced-motion: reduce) { .stage { height: auto; } .stage-sticky { position: relative; } .stage-scroll { animation: none; } }
 
 /* ---------------------------------------------------------------- charts (shared) */
 .chart { margin: 0; }
@@ -737,9 +736,6 @@ pre.json.tall { max-height: 460px; }
 .footer-word { margin: 40px 0 -0.13em; padding-left: calc(var(--gutter) - 0.05em); white-space: nowrap; font: 900 clamp(96px, 20.5vw, 340px)/0.85 var(--sans); letter-spacing: -0.065em; color: var(--flag-ink); user-select: none; }
 @media (max-width: 800px) { .footer-inner { grid-template-columns: 1fr; gap: 24px; } }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
-}
 .nowrap { white-space: nowrap; }
 
 /* ---------------------------------------------------------------- scroll reveals */
@@ -959,7 +955,7 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .career-bars { gap: 2px; }
 .career-fill { border-radius: 2px 2px 0 0; }
 .kpi { letter-spacing: -0.02em; }
-@media (prefers-reduced-motion: no-preference) {
+@media all {
   .chart-wrap svg path[fill="none"]:not([stroke-dasharray]) { stroke-dasharray: 4000; stroke-dashoffset: 4000; animation: draw 1.4s var(--ease-out) forwards; }
   .histo-bar, .team-bar-fill, .career-fill, .stint { transform-origin: bottom; animation: grow 700ms var(--ease-out) both; }
   .stint { transform-origin: left; animation-name: grow-x; }

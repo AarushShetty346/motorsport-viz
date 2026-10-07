@@ -3,7 +3,7 @@ import Lenis from 'lenis';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRouter } from './lib/router.jsx';
 import { SeasonProvider, useSeason } from './lib/season.jsx';
-import { EASE_OUT, prefersReducedMotion } from './lib/motion.js';
+import { EASE_OUT } from './lib/motion.js';
 import Nav from './components/Nav.jsx';
 import SearchPalette from './components/SearchPalette.jsx';
 import Footer from './components/Footer.jsx';
@@ -38,8 +38,7 @@ function Shell() {
 
   // Smooth scrolling (skipped for people who ask for reduced motion).
   useEffect(() => {
-    if (prefersReducedMotion()) return;
-    lenis = new Lenis({ autoRaf: !window.gsap, lerp: 0.075, wheelMultiplier: 0.95 });
+    lenis = new Lenis({ autoRaf: false, lerp: 0.075, wheelMultiplier: 0.95 });
     const unhook = connectLenis(lenis);
     return () => { unhook(); lenis.destroy(); lenis = null; };
   }, []);

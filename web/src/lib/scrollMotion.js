@@ -1,7 +1,9 @@
-import { prefersReducedMotion } from './motion.js';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
-// GSAP and ScrollTrigger are bundled and set on window in lib/gsap.js.
-// If they fail to load the site still works, it just doesn't animate.
+gsap.registerPlugin(ScrollTrigger);
+
+// GSAP is bundled with the app, so scroll motion works offline too.
 const HEADINGS = '.display-xl, .display-lg';
 const NUMBERS = '.driver-stats dd, .team-stats dd, .hero-stat-value, .kpi';
 const PARALLAX = '.portrait-layer img, .stage-photo img';
@@ -10,9 +12,7 @@ let ticking = null;
 
 // Drive ScrollTrigger from Lenis so pinned and scrubbed effects stay in sync with smooth scrolling.
 export function connectLenis(lenis) {
-  const { gsap, ScrollTrigger } = window;
-  if (!gsap || !ScrollTrigger || !lenis) return () => {};
-  gsap.registerPlugin(ScrollTrigger);
+  if (!lenis) return () => {};
   lenis.on('scroll', ScrollTrigger.update);
   ticking = (t) => lenis.raf(t * 1000);
   gsap.ticker.add(ticking);
@@ -43,9 +43,7 @@ function countUp(el, gsap) {
 }
 
 export function startScrollMotion(root) {
-  const { gsap, ScrollTrigger } = window;
-  if (!root || !gsap || !ScrollTrigger || prefersReducedMotion()) return () => {};
-  gsap.registerPlugin(ScrollTrigger);
+  if (!root) return () => {};
 
   const seen = new WeakSet();
   const ctx = gsap.context(() => {});
