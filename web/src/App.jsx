@@ -15,6 +15,7 @@ import Compare from './pages/Compare.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Team from './pages/Team.jsx';
 import { startReveals } from './lib/reveal.js';
+import { connectLenis, startScrollMotion } from './lib/scrollMotion.js';
 
 export let lenis = null;
 
@@ -38,8 +39,9 @@ function Shell() {
   // Smooth scrolling (skipped for people who ask for reduced motion).
   useEffect(() => {
     if (prefersReducedMotion()) return;
-    lenis = new Lenis({ autoRaf: true, lerp: 0.075, wheelMultiplier: 0.95 });
-    return () => { lenis.destroy(); lenis = null; };
+    lenis = new Lenis({ autoRaf: !window.gsap, lerp: 0.075, wheelMultiplier: 0.95 });
+    const unhook = connectLenis(lenis);
+    return () => { unhook(); lenis.destroy(); lenis = null; };
   }, []);
 
   // New page: jump to the top, or to the #section in the URL.
@@ -59,7 +61,10 @@ function Shell() {
     let stop = () => {};
     const t = setTimeout(() => {
       const mains = document.querySelectorAll('main');
-      stop = startReveals(mains[mains.length - 1]);
+      const main = mains[mains.length - 1];
+      const stopReveals = startReveals(main);
+      const stopMotion = startScrollMotion(main);
+      stop = () => { stopReveals(); stopMotion(); };
     }, 220);
     return () => { clearTimeout(t); stop(); };
   }, [current.key]);

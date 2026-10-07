@@ -969,3 +969,48 @@ tr.row-hidden td.row-actions { opacity: 1; }
 @keyframes grow { from { transform: scaleY(0); } }
 @keyframes grow-x { from { transform: scaleX(0); } }
 
+
+/* ---------------------------------------------------------------- polish pass */
+::selection { background: var(--flag); color: var(--flag-ink); }
+
+/* Labels read as plain words instead of a wall of tiny mono caps. */
+.eyebrow, .band-meta, .h-small, .stage-label, .stage-outro-kicker {
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  letter-spacing: -0.01em; text-transform: none;
+}
+.h-small { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; padding-bottom: 12px; }
+
+/* Nav slides away while reading and returns on the first scroll up. */
+.nav { transition: transform 420ms var(--ease-out), background-color 240ms var(--ease-out), border-color 240ms var(--ease-out); }
+.nav.nav-hidden { transform: translateY(-100%); }
+.nav:focus-within { transform: none; }
+
+/* No "scroll" arrow: the hero already invites it. */
+.stage-scroll { display: none; }
+
+/* Primary buttons fill from the left on hover, like a timing bar. */
+.btn-primary, .btn-stage { position: relative; overflow: hidden; isolation: isolate; }
+.btn-primary::before, .btn-stage::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  transform: scaleX(0); transform-origin: left; transition: transform 380ms var(--ease-out);
+}
+.btn-primary:hover:not(:disabled)::before, .btn-stage:hover::before { transform: scaleX(1); }
+.btn-primary:hover:not(:disabled) { background: var(--accent); }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+
+/* Table rows pick up a yellow edge under the pointer so the eye can track a line. */
+.data-table tbody tr { transition: background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+.data-table tbody tr:hover { background: color-mix(in srgb, var(--flag) 7%, transparent); box-shadow: inset 3px 0 0 var(--flag); }
+
+/* Section titles get a short flag-yellow rule, the one accent that ties dark pages back to the bands. */
+.tone-dark .section-head h2::after, .after-stage .section-head h2::after {
+  content: ''; display: block; width: 56px; height: 6px; margin-top: 18px; background: var(--flag);
+}
+.tone-light .section-head h2::after { display: none; }
+
+/* Photos sit inside their frame while they drift. */
+.portrait-layer img { will-change: transform; }
+
+/* Stat labels match the plainer label style. */
+.driver-stats dt, .facts dt, .kpi-label { font-family: var(--sans); font-size: 13px; font-weight: 600; letter-spacing: -0.005em; text-transform: none; }
