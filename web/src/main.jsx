@@ -4,6 +4,7 @@ import '@fontsource-variable/geist';
 import '@fontsource-variable/geist-mono';
 import 'lenis/dist/lenis.css';
 import './styles.css';
+import './lib/gsap.js';
 import App from './App.jsx';
 import { RouterProvider } from './lib/router.jsx';
 

@@ -1,6 +1,6 @@
 import { prefersReducedMotion } from './motion.js';
 
-// GSAP and ScrollTrigger come from the CDN <script> tags in index.html.
+// GSAP and ScrollTrigger are bundled and set on window in lib/gsap.js.
 // If they fail to load the site still works, it just doesn't animate.
 const HEADINGS = '.display-xl, .display-lg';
 const NUMBERS = '.driver-stats dd, .team-stats dd, .hero-stat-value, .kpi';
