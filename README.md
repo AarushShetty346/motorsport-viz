@@ -83,7 +83,7 @@ Measured on the production build (`npm start`) with MongoDB 7 in Docker, on a Li
 | Check | Result |
 |---|---|
 | API test suite (`npm test`) | **21 / 21 passing** in 7.7 s, against a real MongoDB |
-| Production build (`npm run build`) | Builds in **1.7 s** |
+| Production build (`npm run build`) | Builds in **1.9 s** |
 | Main JavaScript bundle | 572 kB (**178 kB gzipped**) |
 | 3D car bundle (loaded only on Team pages) | 613 kB (155 kB gzipped) |
 | CSS | 64 kB (14 kB gzipped) |
@@ -92,9 +92,9 @@ Measured on the production build (`npm start`) with MongoDB 7 in Docker, on a Li
 
 | Page | Performance | Accessibility | Best practices | SEO | First paint | Largest paint | Blocking time |
 |---|---|---|---|---|---|---|---|
-| Season `/` | **97** | 93 | 96 | 91 | 0.9 s | 1.1 s | 0 ms |
-| Race `/race/16` | 87 | **97** | 96 | 91 | 0.9 s | 1.6 s | 0 ms |
-| Driver `/driver/lando-norris` | 87 | 94 | 96 | 92 | 0.7 s | 1.6 s | 0 ms |
+| Season `/` | **97** | 93 | 96 | 91 | 0.9 s | 1.1 s | 10 ms |
+| Race `/race/16` | 86 | **97** | 96 | 91 | 0.9 s | 1.7 s | 0 ms |
+| Driver `/driver/lando-norris` | 87 | 94 | 96 | 92 | 0.8 s | 1.6 s | 0 ms |
 
 **API load test** ([autocannon](https://github.com/mcollina/autocannon), 50 connections for 10 seconds, zero errors)
 
