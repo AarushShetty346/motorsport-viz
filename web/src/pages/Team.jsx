@@ -52,7 +52,7 @@ export default function Team({ teamKey: key }) {
   return (
     <article className="page band-page team-page" style={{ '--team': color }}>
       <Band className="team-band">
-        <p className="band-meta">Constructor · {ordinal(idx + 1)} in 2025{info.base && ` · ${info.base}`}{info.engine && ` · ${info.engine} power unit`}</p>
+        <p className="band-meta"><span>{ordinal(idx + 1)} in the 2025 constructors' championship</span>{info.base && <span>{info.base}</span>}{info.engine && <span>{info.engine} power</span>}</p>
         <h1 className="display-xl team-title">
           {words.length > 1 ? <><span className="driver-first">{words.slice(0, -1).join(' ')}</span><br />{words.at(-1)}</> : team._id}
         </h1>
@@ -84,7 +84,7 @@ export default function Team({ teamKey: key }) {
             return (
               <Link key={d.driverId} to={`/driver/${drv.key}`} className="team-driver" style={{ '--team': drv.teamColor }}>
                 <span className="team-driver-name">{drv.firstName}<br /><strong>{drv.lastName}</strong></span>
-                <span className="team-driver-stats mono">{d.points} pts · {d.starts} {d.starts === 1 ? 'start' : 'starts'}{d.best ? ` · best P${d.best}` : ''}</span>
+                <span className="team-driver-stats mono">{d.points} pts, {d.starts} {d.starts === 1 ? 'start' : 'starts'}{d.best ? `, best P${d.best}` : ''}</span>
               </Link>
             );
           })}

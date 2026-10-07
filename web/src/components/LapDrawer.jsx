@@ -61,7 +61,7 @@ function LapDocument({ id }) {
         <div>
           <p className="eyebrow">laps document</p>
           <h2 className="h-small">{lap ? `${driver?.name ?? 'Unknown driver'} · lap ${lap.lapNumber}` : 'Loading…'}</h2>
-          {lap && <p className="muted small">{race?.name} · {fmtLap(lap.lapTime)}{lapTags(lap).map((t) => <span key={t} className={`lap-tag ${t}`}>({t})</span>)}</p>}
+          {lap && <p className="muted small">{race?.name}, {fmtLap(lap.lapTime)}{lapTags(lap).map((t) => <span key={t} className={`lap-tag ${t}`}>({t})</span>)}</p>}
         </div>
         <button type="button" className="btn btn-ghost btn-sm" onClick={closeLap}>Close</button>
       </div>

@@ -31,26 +31,22 @@ export default function Home() {
           <CircuitMap />
           {p1 && <Marquee items={['2025 World Champion', p1.name, `${p1.points} points`, `${p1.wins} wins`, 'Lap by Lap']} />}
           <Standings />
-          <section className="section container">
-            <div className="section-head">
-              <h2 className="display-lg">Points, wins and racing laps</h2>
-            </div>
+          <section className="section-tight container">
+            <h3 className="h-small">Points, wins and racing laps, every driver</h3>
             <SeasonSummary />
           </section>
-          <section className="section container">
-            <div className="section-head">
-              <h2 className="display-lg">Who gained the most places</h2>
+          <section className="section container home-pair">
+            <div>
+              <h2 className="display-md">Who gained the most places</h2>
+              <Movers />
             </div>
-            <Movers />
-          </section>
-          <section className="section container">
-            <div className="section-head">
-              <h2 className="display-lg">What fans are saying</h2>
+            <div>
+              <h2 className="display-md">What fans are saying</h2>
+              <NotesFeed />
             </div>
-            <NotesFeed />
           </section>
           <section className="section container split">
-            <SpeedTrap num="04" />
+            <SpeedTrap />
             <div className="cta-card tone-light">
               <h2 className="display-md">Who was really quicker?</h2>
               <p className="lede">Pick any two drivers. MongoDB averages their racing laps race by race, so the comparison is always like for like.</p>

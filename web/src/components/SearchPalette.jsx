@@ -113,11 +113,11 @@ export default function SearchPalette({ open, onClose }) {
                           <Flag code={raceByRound.get(item.r.round)?.countryCode} />
                           <span className="pi-main">
                             <strong>{item.r.race}</strong>
-                            <span className="muted">{item.r.circuit} · {item.r.country} · Round {item.r.round}</span>
+                            <span className="muted">{item.r.circuit}, {item.r.country}, round {item.r.round}</span>
                           </span>
                           <span className="pi-meta mono">
                             {fmtNum(item.r.laps)} laps<br />
-                            <span className="muted">best {fmtLap(item.r.fastestLap)} · score {item.r.score}</span>
+                            <span className="muted">best {fmtLap(item.r.fastestLap)}, score {item.r.score}</span>
                           </span>
                         </>
                       ) : (

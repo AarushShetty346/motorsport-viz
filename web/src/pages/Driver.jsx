@@ -46,10 +46,10 @@ export default function Driver({ driverKey }) {
         <span className="driver-number" aria-hidden="true">{driver.number}</span>
         <div className="driver-hero">
         <div className="driver-hero-copy">
-          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · <Link to={teamPath(driver.team)} className="band-link">{driver.team}</Link> · No. {driver.number}</p>
+          <p className="band-meta"><span><Flag code={driver.countryCode} /> {driver.nationality}</span><Link to={teamPath(driver.team)} className="band-link">{driver.team}</Link><span>No. {driver.number}</span></p>
           <h1 className="display-xl"><span className="driver-first">{driver.firstName}</span><br />{driver.lastName}</h1>
           <div className="driver-actions">
-            <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare with…</Link>
+            <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare</Link>
           </div>
         {st && (
           <dl className="driver-stats">

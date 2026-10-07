@@ -456,7 +456,7 @@ export default function Car3D({ livery, car, label, model = null }) {
       aria-label={`${label}. Drag or use the arrow keys to turn it; it returns to the side view when you let go.`}
     >
       {car && <span className="car3d-word" aria-hidden="true">{car}</span>}
-      <p className="car3d-hint mono">{car && <strong>{car}</strong>}Drag to spin it · let go and it settles back</p>
+      <p className="car3d-hint mono">{car && <strong>{car}</strong>}Drag to spin it, let go and it settles back</p>
     </div>
   );
 }
