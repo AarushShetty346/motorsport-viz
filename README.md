@@ -46,8 +46,8 @@ Clicking any lap (in the Race page lap table, the Driver page lap explorer or a 
 | M11 | View | Driver > Consistency | View: clean_laps (Mongo) |
 | M12 | $merge | Home > Season in one table | $merge: season_summary (Mongo) |
 | M13 | TTL index | Compare > Share this comparison | TTL index: shared links expire after 7 days (Mongo) |
-| extra | Update operators on notes | Race > Fan notes | Update operators: $inc, $set, $addToSet, updateMany (Mongo) |
-| extra | Capped collection | Home > Latest notes | Capped collection: notes_feed (Mongo) |
+| M14 | Update operators on notes | Race > Fan notes | Update operators: $inc, $set, $addToSet, updateMany (Mongo) |
+| M14 | Capped collection | Home > Latest notes | Capped collection: notes_feed (Mongo) |
 | U1 | All laps for a driver | Driver > pick a race | All laps for a driver (User) |
 | U2 | Head to head | Compare | Head-to-head comparison (User) |
 | U3 | Fastest lap leaderboard | Race > Fastest laps | Fastest lap leaderboard (User) |
