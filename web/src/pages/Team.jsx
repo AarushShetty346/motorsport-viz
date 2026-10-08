@@ -63,7 +63,7 @@ export default function Team({ teamKey: key }) {
           <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '-'}</dd></div>
           <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '-'}</dd></div>
         </dl>
-        <CarShowcase teamKey={key} name={team._id} info={info} />
+        <CarShowcase name={team._id} info={info} />
         <span className="band-team" aria-hidden="true" />
       </Band>
 

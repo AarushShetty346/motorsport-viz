@@ -1,11 +1,11 @@
-// The driver's photo, or a stand-in silhouette until one is added.
-export default function DriverPortrait({ driver, photo }) {
+// The driver's photo, or a portrait card with their initials in team colour until one is added.
+export default function DriverPortrait({ driver, photo, small = false }) {
   return (
-    <figure className="portrait">
+    <figure className={`portrait ${small ? 'portrait-small' : ''}`}>
       <div className="portrait-layer portrait-face">
-        {photo?.file ? <img src={`/img/drivers/${photo.file}`} alt={driver.name} /> : <Silhouette />}
+        {photo?.file ? <img src={`/img/drivers/${photo.file}`} alt={driver.name} /> : <Initials driver={driver} />}
       </div>
-      {photo?.author && (
+      {!small && photo?.author && (
         <figcaption className="portrait-hint">
           <span className="portrait-credit">Photo: {photo.author}{photo.license ? `, ${photo.license}` : ''}</span>
         </figcaption>
@@ -14,11 +14,12 @@ export default function DriverPortrait({ driver, photo }) {
   );
 }
 
-function Silhouette() {
+function Initials({ driver }) {
+  const initials = `${driver.firstName?.[0] || ''}${driver.lastName?.[0] || ''}`;
   return (
-    <svg viewBox="0 0 400 500" className="portrait-silhouette" aria-hidden="true">
-      <path d="M200 70 C258 70 296 116 296 186 C296 250 262 302 200 302 C138 302 104 250 104 186 C104 116 142 70 200 70 Z" />
-      <path d="M160 290 H240 L246 340 C310 352 372 380 392 440 L400 500 H0 L8 440 C28 380 90 352 154 340 Z" />
-    </svg>
+    <div className="portrait-initials" style={{ '--team': driver.teamColor || '#888888' }} role="img" aria-label={driver.name}>
+      <span className="portrait-number mono">{driver.number}</span>
+      <span className="portrait-letters">{initials}</span>
+    </div>
   );
 }
