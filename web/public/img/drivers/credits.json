@@ -1,7 +1,7 @@
 {
   "lando-norris": {
     "file": "lando-norris.jpg",
-    "author": "Original: Steffen Prößdorf; Derivative work: Mb2437",
+    "author": "Original: Steffen Pr\u00f6\u00dfdorf; Derivative work: Mb2437",
     "license": "CC BY-SA 4.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3968_by_Stepro_(cropped2).jpg",
     "head": {
@@ -67,7 +67,7 @@
   },
   "max-verstappen": {
     "file": "max-verstappen.jpg",
-    "author": "Steffen Prößdorf",
+    "author": "Steffen Pr\u00f6\u00dfdorf",
     "license": "CC BY-SA 4.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3973_by_Stepro_(medium_crop).jpg",
     "head": {
@@ -218,5 +218,8 @@
       "y": 35,
       "w": 72
     }
+  },
+  "lewis-hamilton": {
+    "file": "lewis-hamilton.jpg"
   }
 }
