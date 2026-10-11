@@ -9,7 +9,8 @@ import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { ValidationError } from './labValidation.jsx';
 import { PushPin, ThumbsUp } from '@phosphor-icons/react';
-import { useDisplayName, rememberDisplayName } from '../lib/displayName.js';
+import { useDisplayName, rememberDisplayName, canWrite, ownsEntry } from '../lib/displayName.js';
+import SignInPrompt from './SignInPrompt.jsx';
 
 const ago = (iso) => {
   const s = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -59,6 +60,8 @@ export function LapNotes({ race }) {
     e.preventDefault();
     if (await run(() => api(`/api/notes/${editing.id}`, { method: 'PATCH', body: { text: editing.text } }))) setEditing(null);
   };
+  const remove = (n) => confirm('Delete this note?') && run(() => api(`/api/notes/${n._id}`, { method: 'DELETE' }));
+  const writer = canWrite(me);
   const addTag = async (e) => {
     e.preventDefault();
     if (await run(() => api(`/api/notes/${tagFor.id}/tags`, { method: 'POST', body: { tag: tagFor.tag } }))) setTagFor(null);
@@ -66,18 +69,19 @@ export function LapNotes({ race }) {
 
   return (
     <div className="lap-notes">
-      <form className="note-form" onSubmit={submit} noValidate autoComplete="off">
+      {!writer && <SignInPrompt>Sign in with Google to add notes, mark them helpful and tag them. Your notes are saved under your Google name, and only you can edit or delete them.</SignInPrompt>}
+      {writer && <form className="note-form" onSubmit={submit} noValidate autoComplete="off">
         <label>Your name<input type="text" value={form.author} onChange={set('author')} placeholder="Aarush" maxLength={40} readOnly={me.signedIn} /></label>
         <label>Lap<input type="text" inputMode="numeric" value={form.lapNumber} onChange={set('lapNumber')} placeholder={`1-${race.laps}`} /></label>
         <label>Driver<select value={form.driverId} onChange={set('driverId')}><option value="">Whole race</option>{race.results.map((r) => driverById.get(r.driverId)).filter(Boolean).map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}</select></label>
         <label className="note-text">Note<input type="text" value={form.text} onChange={set('text')} placeholder="The undercut that won it" maxLength={280} /></label>
         <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>Add note</button>
-      </form>
+      </form>}
       {msg && !msg.ok && <div className="msg msg-err" role="status">{msg.payload?.mongoError ? <ValidationError payload={msg.payload} /> : msg.text}</div>}
 
       <div className="notes-toolbar">
         <span className="muted small">{list.length ? `${list.length} ${list.length === 1 ? 'note' : 'notes'} · ${pinned} pinned on the gap chart` : 'No notes on this race yet. Be the first.'}</span>
-        {!!list.length && (
+        {!!list.length && writer && (
           <span className="notes-bulk">
             <button type="button" className="btn-link" disabled={busy || pinned === list.length} onClick={() => run(() => api(`/api/races/${race.round}/notes/pin`, { method: 'POST', body: { pinned: true } }))}>Pin all</button>
             <button type="button" className="btn-link" disabled={busy || !pinned} onClick={() => run(() => api(`/api/races/${race.round}/notes/pin`, { method: 'POST', body: { pinned: false } }))}>Unpin all</button>
@@ -88,10 +92,11 @@ export function LapNotes({ race }) {
       <ul className="note-list">
         {list.map((n) => {
           const d = n.driverId && driverById.get(n.driverId);
+          const mine = ownsEntry(me, n);
           return (
             <li key={n._id} className="note">
               <div className="note-head">
-                <strong>{n.author}</strong> <span className="user-tag">(user note)</span>
+                <strong>{n.author}</strong> <span className="user-tag">(user note)</span>{me.configured && mine ? <span className="you-tag">you</span> : null}
                 <span className="muted small">{n.lapNumber ? `Lap ${n.lapNumber}` : 'Whole race'}{d ? ` · ${d.code}` : ''} · {ago(n.createdAt)}{n.editedAt ? ' (edited)' : ''}{n.pinned ? <PushPin size={12} weight="fill" className="inline-icon" aria-label="pinned" /> : null}</span>
               </div>
               {editing?.id === n._id ? (
@@ -102,15 +107,18 @@ export function LapNotes({ race }) {
                 </form>
               ) : <p className="note-body">{n.text}</p>}
               <div className="note-actions">
-                <button type="button" className="btn-link" disabled={busy} onClick={() => run(() => api(`/api/notes/${n._id}/helpful`, { method: 'POST' }))}><ThumbsUp size={14} className="inline-icon" /> Helpful {n.helpful}</button>
-                <button type="button" className="btn-link" onClick={() => setEditing({ id: n._id, text: n.text })}>Edit</button>
+                {writer
+                  ? <button type="button" className="btn-link" disabled={busy} onClick={() => run(() => api(`/api/notes/${n._id}/helpful`, { method: 'POST' }))}><ThumbsUp size={14} className="inline-icon" /> Helpful {n.helpful}</button>
+                  : <span className="muted small"><ThumbsUp size={14} className="inline-icon" /> {n.helpful} found this helpful</span>}
+                {mine && <button type="button" className="btn-link" onClick={() => setEditing({ id: n._id, text: n.text })}>Edit</button>}
+                {mine && <button type="button" className="btn-link danger" disabled={busy} onClick={() => remove(n)}>Delete</button>}
                 {n.tags.map((t) => <span key={t} className="note-tag">#{t}</span>)}
                 {tagFor?.id === n._id ? (
                   <form className="note-inline" onSubmit={addTag}>
                     <input type="text" value={tagFor.tag} onChange={(e) => setTagFor({ ...tagFor, tag: e.target.value })} placeholder="overtake" maxLength={24} autoFocus />
                     <button type="submit" className="btn-link" disabled={busy}>Add</button>
                   </form>
-                ) : <button type="button" className="btn-link" onClick={() => setTagFor({ id: n._id, tag: '' })}>+ tag</button>}
+                ) : writer && <button type="button" className="btn-link" onClick={() => setTagFor({ id: n._id, tag: '' })}>+ tag</button>}
               </div>
             </li>
           );
@@ -124,7 +132,7 @@ export function LapNotes({ race }) {
 
 // ---------------------------------------------------------- Latest notes (Home, capped collection)
 
-const VERB = { created: 'noted', edited: 'edited a note on', upvoted: 'found a note helpful on' };
+const VERB = { created: 'noted', edited: 'edited a note on', upvoted: 'found a note helpful on', deleted: 'deleted a note on' };
 
 export function NotesFeed() {
   const { data, error } = useApi('/api/notes/feed');
@@ -190,6 +198,7 @@ export function SeasonSummary() {
 // ---------------------------------------------------------- Share a comparison (Compare, TTL index)
 
 export function ShareComparison({ a, b, sharedDays }) {
+  const me = useDisplayName();
   const [share, setShare] = useState(null);
   const [err, setErr] = useState(null);
   const [copied, setCopied] = useState(false);
@@ -210,7 +219,9 @@ export function ShareComparison({ a, b, sharedDays }) {
           <button type="button" className="btn-link" onClick={copy}>{copied ? 'Copied' : 'Copy'}</button>
           <span className="muted"> · link expires in {share.expiresInDays} days</span>
         </p>
-      ) : <button type="button" className="btn btn-ghost btn-sm" onClick={make}>Share this comparison</button>}
+      ) : canWrite(me)
+        ? <button type="button" className="btn btn-ghost btn-sm" onClick={make}>Share this comparison</button>
+        : <SignInPrompt>Sign in with Google to make a share link for this comparison.</SignInPrompt>}
       {err && <p className="msg msg-err">{err}</p>}
       <FeatureLabel name="TTL index: shared links expire after 7 days" />
       {share && <Query text={share.query} label="Query that ran" />}

@@ -15,6 +15,7 @@ import Compare from './pages/Compare.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Team from './pages/Team.jsx';
 import Teams from './pages/Teams.jsx';
+import MyActivity from './pages/MyActivity.jsx';
 import { startReveals } from './lib/reveal.js';
 import { connectLenis, startScrollMotion } from './lib/scrollMotion.js';
 
@@ -27,6 +28,7 @@ function route(path) {
   if ((m = path.match(/^\/driver\/([a-z0-9-]+)\/?$/))) return { key: 'driver-' + m[1], el: <Driver driverKey={m[1]} /> };
   if (/^\/teams\/?$/.test(path)) return { key: 'teams', el: <Teams /> };
   if ((m = path.match(/^\/team\/([a-z0-9-]+)\/?$/))) return { key: 'team-' + m[1], el: <Team teamKey={m[1]} /> };
+  if (/^\/me\/?$/.test(path)) return { key: 'me', el: <MyActivity /> };
   if (path.startsWith('/compare')) return { key: 'compare', el: <Compare /> };
   return { key: '404', el: <NotFound /> };
 }
