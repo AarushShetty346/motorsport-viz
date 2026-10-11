@@ -11,13 +11,17 @@ import { openLap } from './LapDrawer.jsx';
 import { ValidationError } from './labValidation.jsx';
 import { useRaceNotes } from './Community.jsx';
 import { ChatCircle } from '@phosphor-icons/react';
+import { useDisplayName, canWrite, ownsEntry } from '../lib/displayName.js';
+import SignInPrompt from './SignInPrompt.jsx';
 
 const EMPTY = { id: '', driverId: '', lapNumber: '', lapTime: '', position: '', compound: '', speed: '', rpm: '', throttle: '', brake: '' };
 
 // Every lap of one race. Steward mode adds, edits, penalises, hides and deletes laps.
 export default function RaceLaps({ race }) {
   const { drivers, driverById, health } = useSeason();
-  const steward = useSteward();
+  const me = useDisplayName();
+  const steward = useSteward() && canWrite(me);
+  const stewardWanted = useSteward();
   const [driverId, setDriverId] = useState('');
   const [page, setPage] = useState(1);
   const [form, setForm] = useState(null);
@@ -89,12 +93,13 @@ export default function RaceLaps({ race }) {
         </label>
         <span className="muted small">{data ? `${fmtNum(data.total)} laps · click a lap to see its document` : ''}</span>
         <label className="steward-toggle">
-          <input type="checkbox" checked={steward} onChange={(e) => setSteward(e.target.checked)} />
+          <input type="checkbox" checked={stewardWanted} onChange={(e) => setSteward(e.target.checked)} />
           <span>Steward mode</span>
         </label>
       </div>
 
       <FeatureLabel name="CRUD: insertOne, find, updateOne, deleteOne (turn on Steward mode)" />
+      {stewardWanted && !steward && <SignInPrompt>Sign in with Google to use Steward mode. Laps you add are saved under your name, and only you can edit or delete them.</SignInPrompt>}
       {steward && (
         <div className="steward-bar">
           <p className="small">Steward mode: changes here are not real race data. Added laps are tagged <span className="lap-tag added">added</span>, changed real laps <span className="lap-tag edited">edited</span>. Neither counts towards leaderboards or stats.</p>
@@ -159,10 +164,10 @@ export default function RaceLaps({ race }) {
                   <td className="num mono">{fmtNum(l.telemetry?.speed, 1)}</td>
                   {steward && (
                     <td className="row-actions" onClick={(e) => e.stopPropagation()}>
-                      <button type="button" className="btn-link" onClick={() => startEdit(l)} disabled={busy}>Edit</button>
+                      {(!added || ownsEntry(me, l)) && <button type="button" className="btn-link" onClick={() => startEdit(l)} disabled={busy}>Edit</button>}
                       {!added && <button type="button" className="btn-link" onClick={() => penalty(l)} disabled={busy || l.deleted}>Apply 5 s penalty</button>}
                       {added
-                        ? <button type="button" className="btn-link danger" onClick={() => remove(l)} disabled={busy}>Delete</button>
+                        ? (ownsEntry(me, l) ? <button type="button" className="btn-link danger" onClick={() => remove(l)} disabled={busy}>Delete</button> : <span className="muted small">added by {l.addedBy?.name}</span>)
                         : <button type="button" className="btn-link danger" onClick={() => hide(l, !l.deleted)} disabled={busy}>{l.deleted ? 'Restore' : 'Hide'}</button>}
                     </td>
                   )}

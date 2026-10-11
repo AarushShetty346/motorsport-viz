@@ -38,22 +38,30 @@ async function setupAuthCollections(db) {
   await db.collection('sessions').createIndex({ expiresAt: 1 }, { name: 'expiresAt_ttl', expireAfterSeconds: 0 });
 }
 
+// The signed-in user for this request (from the session cookie), or null.
+async function currentUser(getDb, req) {
+  const token = readCookies(req)[SESSION_COOKIE];
+  if (!token) return null;
+  const session = await getDb().collection('sessions').findOne({ _id: hashToken(token), expiresAt: { $gt: new Date() } });
+  if (!session) return null;
+  return getDb().collection('users').findOne({ _id: session.userId }, { projection: { googleId: 0 } });
+}
+
+async function startSession(getDb, res, userId) {
+  const now = new Date();
+  const token = crypto.randomBytes(32).toString('hex');
+  await getDb().collection('sessions').insertOne({ _id: hashToken(token), userId, createdAt: now, expiresAt: new Date(now.getTime() + SESSION_DAYS * 86400000) });
+  setCookie(res, SESSION_COOKIE, token, SESSION_DAYS * 86400);
+}
+
 function authRouter(getDb) {
   const router = express.Router();
   const users = () => getDb().collection('users');
   const sessions = () => getDb().collection('sessions');
 
-  async function currentUser(req) {
-    const token = readCookies(req)[SESSION_COOKIE];
-    if (!token) return null;
-    const session = await sessions().findOne({ _id: hashToken(token), expiresAt: { $gt: new Date() } });
-    if (!session) return null;
-    return users().findOne({ _id: session.userId }, { projection: { googleId: 0 } });
-  }
-
   // Who is signed in (null if nobody), and whether Google sign-in is set up at all.
   router.get('/me', async (req, res) => {
-    res.json({ configured: configured(), user: configured() ? await currentUser(req) : null });
+    res.json({ configured: configured(), user: configured() ? await currentUser(getDb, req) : null });
   });
 
   // Step 1: send the browser to Google's sign-in page.
@@ -109,9 +117,7 @@ function authRouter(getDb) {
       { upsert: true, returnDocument: 'after' }
     );
 
-    const token = crypto.randomBytes(32).toString('hex');
-    await sessions().insertOne({ _id: hashToken(token), userId: user._id, createdAt: now, expiresAt: new Date(now.getTime() + SESSION_DAYS * 86400000) });
-    setCookie(res, SESSION_COOKIE, token, SESSION_DAYS * 86400);
+    await startSession(getDb, res, user._id);
     console.log(`[auth] ${profile.email} signed in`);
     res.redirect('/');
   });
@@ -123,7 +129,21 @@ function authRouter(getDb) {
     res.json({ ok: true });
   });
 
+  // Tests only (NODE_ENV=test): sign in as a made-up user without going through Google.
+  if (process.env.NODE_ENV === 'test') {
+    router.post('/test-login', async (req, res) => {
+      const name = String(req.body?.name || 'Test User').slice(0, 40);
+      const user = await users().findOneAndUpdate(
+        { googleId: 'test:' + name },
+        { $set: { email: `${name.toLowerCase().replace(/[^a-z0-9]+/g, '.')}@example.com`, name, picture: null, lastSignInAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+        { upsert: true, returnDocument: 'after' }
+      );
+      await startSession(getDb, res, user._id);
+      res.json({ user: { _id: user._id, name: user.name } });
+    });
+  }
+
   return router;
 }
 
-module.exports = { authRouter, setupAuthCollections, REDIRECT_URI, configured };
+module.exports = { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured };

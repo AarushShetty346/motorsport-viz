@@ -6,7 +6,7 @@ const path = require('path');
 const express = require('express');
 const { ObjectId } = require('mongodb');
 const { init, resetDemoData, getDb, client } = require('./db');
-const { authRouter, setupAuthCollections, REDIRECT_URI, configured: googleConfigured } = require('./auth');
+const { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured: googleConfigured } = require('./auth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DIST = path.join(__dirname, 'dist');
@@ -14,6 +14,19 @@ const app = express();
 
 app.use(express.json());
 app.use('/api/auth', authRouter(getDb));
+
+// Anyone can browse. Writing (notes, steward changes, shared links) needs a Google
+// sign-in and records who did it. With no Google keys set, sign-in is off and
+// anyone can write, so the app still works out of the box.
+async function signedIn(req, res, next) {
+  req.user = googleConfigured() ? await currentUser(getDb, req) : null;
+  if (googleConfigured() && !req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
+  next();
+}
+const byline = (user) => (user ? { userId: user._id, name: user.name } : undefined);
+// Only the person who added something can change or delete it (anything added while sign-in was off is open to all).
+const owns = (doc, user) => !user || !doc.addedBy?.userId || doc.addedBy.userId.equals(user._id);
+const notYours = (res, what) => res.status(403).json({ error: `Only the person who added this ${what} can change it.` });
 
 const laps = () => getDb().collection('laps');
 const drivers = () => getDb().collection('drivers');
@@ -177,7 +190,7 @@ app.get('/api/races/:round/laps', async (req, res) => {
   res.json({ query: `db.laps.find({ round: ${round}, deleted: { $ne: true }, source: { $ne: "steward" } }).sort({ lapNumber: 1 })`, explain, results });
 });
 
-app.post('/api/reset', async (req, res) => {
+app.post('/api/reset', signedIn, async (req, res) => {
   await resetDemoData();
   res.json({ ok: true, drivers: await drivers().countDocuments(), races: await races().countDocuments(), laps: await laps().countDocuments() });
 });
@@ -263,8 +276,8 @@ function writeError(err, res) {
 }
 
 // CREATE: always a steward lap
-app.post('/api/laps', async (req, res) => {
-  const doc = await lapFromBody(req.body || {});
+app.post('/api/laps', signedIn, async (req, res) => {
+  const doc = stripUndefined({ ...(await lapFromBody(req.body || {})), addedBy: byline(req.user) });
   if (!(await assertDriverExists(doc, res))) return;
   try {
     const result = await laps().insertOne(doc);
@@ -275,11 +288,12 @@ app.post('/api/laps', async (req, res) => {
 });
 
 // UPDATE with $set. Editing a real lap marks it stewardEdited.
-app.put('/api/laps/:id', async (req, res) => {
+app.put('/api/laps/:id', signedIn, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
-  const lap = await laps().findOne({ _id }, { projection: { source: 1 } });
+  const lap = await laps().findOne({ _id }, { projection: { source: 1, addedBy: 1 } });
   if (!lap) return res.status(404).json({ error: 'Lap not found' });
+  if (!owns(lap, req.user)) return notYours(res, 'lap');
   const fields = lapFields(req.body || {});
   const set = {};
   for (const [k, v] of Object.entries(fields)) {
@@ -287,6 +301,7 @@ app.put('/api/laps/:id', async (req, res) => {
     else set[k] = v;
   }
   if (lap.source !== 'steward') set.stewardEdited = true;
+  if (req.user) set.lastEditedBy = byline(req.user);
   const update = { $set: set };
   try {
     const result = await laps().updateOne({ _id }, update);
@@ -297,10 +312,12 @@ app.put('/api/laps/:id', async (req, res) => {
 });
 
 // DELETE: only laps a steward added. Real laps are hidden instead (soft delete, below).
-app.delete('/api/laps/:id', async (req, res) => {
+app.delete('/api/laps/:id', signedIn, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const filter = { _id, source: 'steward' };
+  const mine = await laps().findOne(filter, { projection: { addedBy: 1 } });
+  if (mine && !owns(mine, req.user)) return notYours(res, 'lap');
   const result = await laps().deleteOne(filter);
   if (result.deletedCount === 0) {
     const exists = await laps().countDocuments({ _id });
@@ -314,21 +331,21 @@ app.delete('/api/laps/:id', async (req, res) => {
 // ------------------------------- NoSQL Functionality 6: update operators
 
 // Hide / restore one lap: the soft-delete path for real laps.
-app.patch('/api/laps/:id/hidden', async (req, res) => {
+app.patch('/api/laps/:id/hidden', signedIn, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const hidden = req.body?.hidden === true;
-  const update = { $set: { deleted: hidden, stewardEdited: true } };
+  const update = { $set: { deleted: hidden, stewardEdited: true, ...(req.user && { lastEditedBy: byline(req.user) }) } };
   const result = await laps().updateOne({ _id }, update);
   if (result.matchedCount === 0) return res.status(404).json({ error: 'Lap not found' });
   res.json({ query: `db.laps.updateOne({ _id: ObjectId("${_id}") }, ${shell(update)})`, modifiedCount: result.modifiedCount });
 });
 
 // Restore every hidden lap of a race in one updateMany.
-app.post('/api/races/:round/restore', async (req, res) => {
+app.post('/api/races/:round/restore', signedIn, async (req, res) => {
   const round = intParam(req.params.round);
   const filter = { round, deleted: true };
-  const update = { $set: { deleted: false, stewardEdited: true } };
+  const update = { $set: { deleted: false, stewardEdited: true, ...(req.user && { lastEditedBy: byline(req.user) }) } };
   const result = await laps().updateMany(filter, update);
   res.json({ query: `db.laps.updateMany(${shell(filter)}, ${shell(update)})`, matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
 });
@@ -337,7 +354,7 @@ app.post('/api/races/:round/restore', async (req, res) => {
 // A time penalty changes the lap ($inc lapTime) and the driver's entry in the
 // race's embedded results, in one multi-document transaction: both or neither.
 
-app.post('/api/laps/:id/penalty', async (req, res) => {
+app.post('/api/laps/:id/penalty', signedIn, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const seconds = Number(req.body?.seconds) || 5;
@@ -347,7 +364,7 @@ app.post('/api/laps/:id/penalty', async (req, res) => {
   const lap = await laps().findOne({ _id });
   if (!lap) return res.status(404).json({ error: 'Lap not found' });
 
-  const lapUpdate = { $inc: { lapTime: seconds, penaltySeconds: seconds }, $set: { stewardEdited: true } };
+  const lapUpdate = { $inc: { lapTime: seconds, penaltySeconds: seconds }, $set: { stewardEdited: true, ...(req.user && { lastEditedBy: byline(req.user) }) } };
   const raceUpdate = { $inc: { 'results.$[r].penaltySeconds': seconds }, $set: { 'results.$[r].stewardEdited': true } };
   const arrayFilters = [{ 'r.driverId': lap.driverId }];
   const session = client.startSession();
@@ -816,14 +833,16 @@ app.get('/api/races/:round/notes', async (req, res) => {
   res.json({ query: `db.annotations.find(${shell(filter)}).sort({ helpful: -1, createdAt: -1 })`, results });
 });
 
-app.post('/api/races/:round/notes', async (req, res) => {
+app.post('/api/races/:round/notes', signedIn, async (req, res) => {
   const round = intParam(req.params.round);
-  const { author, text } = noteInput(req.body || {});
+  const { author: typed, text } = noteInput(req.body || {});
+  const author = req.user ? req.user.name.slice(0, 40) : typed;
   const lapNumber = intParam(req.body?.lapNumber);
   const doc = {
     round, lapNumber: lapNumber && lapNumber > 0 ? lapNumber : null, driverId: toObjectId(req.body?.driverId),
     author, text, helpful: 0, tags: [], pinned: true, createdAt: new Date(),
   };
+  if (req.user) doc.addedBy = byline(req.user);
   try {
     const r = await annotations().insertOne(doc);
     await logNote('created', doc);
@@ -834,9 +853,13 @@ app.post('/api/races/:round/notes', async (req, res) => {
   }
 });
 
-async function updateNote(req, res, update, action) {
+async function updateNote(req, res, update, action, ownOnly = false) {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid note id' });
+  if (ownOnly) {
+    const existing = await annotations().findOne({ _id }, { projection: { addedBy: 1 } });
+    if (existing && !owns(existing, req.user)) return notYours(res, 'note');
+  }
   try {
     const note = await annotations().findOneAndUpdate({ _id }, update, { returnDocument: 'after' });
     if (!note) return res.status(404).json({ error: 'Note not found' });
@@ -849,23 +872,54 @@ async function updateNote(req, res, update, action) {
 }
 
 // "Helpful" upvote: $inc.
-app.post('/api/notes/:id/helpful', (req, res) => updateNote(req, res, { $inc: { helpful: 1 } }, 'upvoted'));
+app.post('/api/notes/:id/helpful', signedIn, (req, res) => updateNote(req, res, { $inc: { helpful: 1 } }, 'upvoted'));
 
 // Edit: $set the new text and an editedAt timestamp, shown as "(edited)".
-app.patch('/api/notes/:id', (req, res) => {
+app.patch('/api/notes/:id', signedIn, (req, res) => {
   const { text } = noteInput(req.body || {});
-  return updateNote(req, res, { $set: { text, editedAt: new Date() } }, 'edited');
+  return updateNote(req, res, { $set: { text, editedAt: new Date() } }, 'edited', true);
+});
+
+// Delete your own note.
+app.delete('/api/notes/:id', signedIn, async (req, res) => {
+  const _id = toObjectId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid note id' });
+  const note = await annotations().findOne({ _id });
+  if (!note) return res.status(404).json({ error: 'Note not found' });
+  if (!owns(note, req.user)) return notYours(res, 'note');
+  await annotations().deleteOne({ _id });
+  await logNote('deleted', note);
+  res.json({ deletedCount: 1, query: `db.annotations.deleteOne({ _id: ObjectId("${_id}") })` });
+});
+
+// ------------------------- My activity: everything the signed-in user added or changed
+
+app.get('/api/me/activity', signedIn, async (req, res) => {
+  if (!req.user) return res.status(404).json({ error: 'Sign-in is off, so there is no personal activity to show.' });
+  const mine = { 'addedBy.userId': req.user._id };
+  const edited = { 'lastEditedBy.userId': req.user._id, source: { $ne: 'steward' } };
+  const [notes, added, changed] = await Promise.all([
+    annotations().find(mine).sort({ createdAt: -1 }).toArray(),
+    laps().aggregate([{ $match: mine }, { $sort: { round: 1, lapNumber: 1 } }, ...lookupDriver]).toArray(),
+    laps().aggregate([{ $match: edited }, { $sort: { round: 1, lapNumber: 1 } }, ...lookupDriver]).toArray(),
+  ]);
+  const id = `ObjectId("${req.user._id}")`;
+  res.json({
+    user: { name: req.user.name, email: req.user.email, picture: req.user.picture },
+    query: `db.annotations.find({ "addedBy.userId": ${id} }).sort({ createdAt: -1 })\ndb.laps.find({ "addedBy.userId": ${id} })\ndb.laps.find({ "lastEditedBy.userId": ${id}, source: { $ne: "steward" } })`,
+    notes, added, changed,
+  });
 });
 
 // Tags: $addToSet, so the same tag is never stored twice.
-app.post('/api/notes/:id/tags', (req, res) => {
+app.post('/api/notes/:id/tags', signedIn, (req, res) => {
   const tag = String(req.body?.tag || '').trim().toLowerCase().replace(/[^a-z0-9 -]/g, '').slice(0, 24);
   if (!tag) return res.status(400).json({ error: 'Type a tag first' });
   return updateNote(req, res, { $addToSet: { tags: tag } });
 });
 
 // Pin or unpin every note of a race on the charts in one updateMany.
-app.post('/api/races/:round/notes/pin', async (req, res) => {
+app.post('/api/races/:round/notes/pin', signedIn, async (req, res) => {
   const filter = { round: intParam(req.params.round) };
   const update = { $set: { pinned: !!req.body?.pinned } };
   const r = await annotations().updateMany(filter, update);
@@ -901,7 +955,7 @@ app.get('/api/season/summary', async (req, res) => {
 const SHARE_TTL_DAYS = 7;
 const daysLeft = (createdAt) => Math.max(0, Math.ceil((createdAt.getTime() + SHARE_TTL_DAYS * 864e5 - Date.now()) / 864e5));
 
-app.post('/api/shares', async (req, res) => {
+app.post('/api/shares', signedIn, async (req, res) => {
   const a = String(req.body?.a || ''), b = String(req.body?.b || '');
   if (!/^[a-z0-9-]{2,40}$/.test(a) || !/^[a-z0-9-]{2,40}$/.test(b)) return res.status(400).json({ error: 'Pick two drivers' });
   const doc = { _id: Math.random().toString(36).slice(2, 8), a, b, createdAt: new Date() };

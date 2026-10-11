@@ -10,7 +10,7 @@
     "build": "vite build",
     "dev": "vite",
     "serve": "node server.js",
-    "test": "node --test test/api.test.js",
+    "test": "node --test test/api.test.js test/signin.test.js",
     "data:build": "python3 scripts/build_season.py",
     "photos:fetch": "node scripts/fetch-driver-photos.mjs",
     "docker": "docker compose up --build",

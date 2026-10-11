@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from '../lib/router.jsx';
+import { useDisplayName, refreshMe } from '../lib/displayName.js';
+import { invalidate } from '../lib/api.js';
 
 // Sign in with Google: a button when signed out, the user's avatar and a menu when signed in.
 export default function Account() {
-  const [state, setState] = useState(null);
+  const me = useDisplayName();
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
-
-  useEffect(() => {
-    fetch('/api/auth/me').then((r) => (r.ok ? r.json() : null)).then(setState, () => setState(null));
-  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -19,9 +18,9 @@ export default function Account() {
     return () => { removeEventListener('pointerdown', close); removeEventListener('keydown', esc); };
   }, [open]);
 
-  if (!state?.configured) return null;
+  if (!me.configured) return null;
 
-  if (!state.user) {
+  if (!me.user) {
     return (
       <a className="signin-btn" href="/api/auth/google" aria-label="Sign in with Google">
         <GoogleMark />
@@ -30,10 +29,11 @@ export default function Account() {
     );
   }
 
-  const { name, email, picture } = state.user;
+  const { name, email, picture } = me.user;
   const signOut = async () => {
     await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
-    setState({ ...state, user: null });
+    refreshMe();
+    invalidate();
     setOpen(false);
   };
 
@@ -46,6 +46,7 @@ export default function Account() {
         <div className="account-menu tone-dark" role="menu">
           <p className="account-name">{name}</p>
           <p className="account-email">{email}</p>
+          <Link to="/me" role="menuitem" className="account-link" onClick={() => setOpen(false)}>My activity</Link>
           <button type="button" role="menuitem" onClick={signOut}>Sign out</button>
         </div>
       )}

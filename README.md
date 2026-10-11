@@ -208,7 +208,15 @@ db.races.findOne({ round: 24 }, { results: { $slice: 3 }, track: 0 })
 
 ### Sign in with Google (optional)
 
-The site has a **Sign in** button (top right) that lets people log in with their Google / Gmail account. Everything works without signing in; signing in just shows your name and photo in the corner. When you are signed in, Fan notes on the Race page use your Google name automatically: the name comes from one helper, `web/src/lib/displayName.js`, which asks `/api/auth/me` and falls back to the name typed in the form. The button only appears once you've given the app a Google "client ID" and "client secret". Getting them is free and takes about five minutes:
+The site has a **Sign in** button (top right) that lets people log in with their Google / Gmail account. Once sign-in is on:
+
+- **Anyone can browse** every page, chart and stat without signing in.
+- **Writing needs a sign-in.** Adding Fan notes, marking them helpful, tagging, Steward mode (adding, editing, hiding or penalising laps), resetting the demo data and making share links all show a "Sign in with Google" box instead of the form until you sign in. The server enforces this too: those requests answer `401` when nobody is signed in.
+- **Everything you add carries your name.** Notes use your Google name (you can't type someone else's), and notes and laps store `addedBy: { userId, name }` in MongoDB. Real laps you change remember `lastEditedBy`.
+- **Only you can edit or delete what you added.** Other people see your notes and laps but get no Edit or Delete buttons (the server answers `403` if they try anyway).
+- **My activity** (in the menu under your photo, or `/me`) lists your notes, the laps you added and the real laps you changed.
+
+**Without Google keys, sign-in is off** and the app behaves as before: anyone can add, edit and delete, and Fan notes use the name typed in the form. So the app still runs for anyone who clones it without setting anything up. The button only appears once you've given the app a Google "client ID" and "client secret". Getting them is free and takes about five minutes:
 
 1. Go to **https://console.cloud.google.com** and sign in with your Google account.
 2. At the top, click the project picker, then **New project**. Call it `Lap by Lap` and click **Create**. Make sure the new project is selected.
