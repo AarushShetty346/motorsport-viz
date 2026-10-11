@@ -762,11 +762,11 @@ pre.json.tall { max-height: 460px; }
   .signin-btn { width: 38px; padding: 0; justify-content: center; }
 }
 /* ---------------------------------------------------------------- scroll reveals */
-.js-reveal .section-head:not(.in-view) > *,
+.js-reveal .section-head:not(.in-view) > * { opacity: 0; }
 .js-reveal :is(.reveal, .lab-card, .h2h-card, .podium-step, .kpis > div, .cta-card, .speed-trap, .delta-chart, .team-driver):not(.in-view) {
   opacity: 0; transform: translateY(42px);
 }
-.js-reveal .section-head > *,
+.js-reveal .section-head > * { transition: opacity 700ms var(--ease-out); }
 .js-reveal :is(.reveal, .lab-card, .h2h-card, .podium-step, .kpis > div, .cta-card, .speed-trap, .delta-chart, .team-driver) {
   transition: opacity 900ms var(--ease-out), transform 1100ms var(--ease-out);
 }

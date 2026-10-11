@@ -48,12 +48,13 @@ export function startScrollMotion(root) {
   const seen = new WeakSet();
   const ctx = gsap.context(() => {});
   const scan = () => ctx.add(() => {
-    // Big headings rise out of a mask: the eye lands on the title first.
+    // Big headings wipe in from a mask: the eye lands on the title first. They never slide, so a
+    // tween that stalls can't leave a heading sitting over the text below it.
     root.querySelectorAll(HEADINGS).forEach((el) => {
       if (seen.has(el)) return; seen.add(el);
       gsap.fromTo(el,
-        { yPercent: 40, opacity: 0, clipPath: 'inset(0 0 100% 0)' },
-        { yPercent: 0, opacity: 1, clipPath: 'inset(0 0 -20% 0)', duration: 0.9, ease: 'power4.out',
+        { opacity: 0, clipPath: 'inset(0 0 100% 0)' },
+        { opacity: 1, clipPath: 'inset(0 0 -20% 0)', duration: 0.9, ease: 'power4.out',
           scrollTrigger: { trigger: el, start: 'top 90%', once: true } });
     });
     root.querySelectorAll(NUMBERS).forEach((el) => {
