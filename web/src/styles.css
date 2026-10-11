@@ -745,14 +745,14 @@ pre.json.tall { max-height: 460px; }
 
 /* ---------------------------------------------------------------- footer */
 .footer { margin-top: 136px; padding: 56px 0 0; overflow: hidden; border-top: 1.5px solid var(--flag-ink); }
-.footer-inner { max-width: 1320px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: 1.2fr auto 1.4fr; gap: 48px; font-size: 13px; }
+.footer-inner { position: relative; z-index: 1; max-width: 1320px; margin: 0 auto; padding: 0 var(--gutter); display: grid; grid-template-columns: 1.2fr auto 1.4fr; gap: 48px; font-size: 13px; }
 .footer-brand { font: 800 18px/1 var(--sans); letter-spacing: -0.04em; margin: 0 0 10px; }
 .footer-links { display: flex; flex-direction: column; gap: 6px; font: 700 20px/1.2 var(--sans); letter-spacing: -0.03em; }
 .footer-links a { width: fit-content; background: linear-gradient(var(--ink), var(--ink)) no-repeat 0 100% / 0 2px; transition: background-size 220ms var(--ease-out); }
 .footer-links a:hover { background-size: 100% 2px; }
 .footer-credits p { margin: 0 0 8px; }
 .footer-credits a { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
-.footer-word { margin: 40px 0 -0.13em; padding-left: calc(var(--gutter) - 0.05em); white-space: nowrap; font: 900 clamp(96px, 20.5vw, 340px)/0.85 var(--sans); letter-spacing: -0.065em; color: var(--flag-ink); user-select: none; }
+.footer-word { margin: 40px 0 -0.13em; padding-left: calc(var(--gutter) - 0.05em); white-space: nowrap; font: 900 clamp(96px, 20.5vw, 340px)/0.85 var(--sans); letter-spacing: -0.065em; color: var(--flag-ink); user-select: none; pointer-events: none; }
 @media (max-width: 800px) { .footer-inner { grid-template-columns: 1fr; gap: 24px; } }
 
 .nowrap { white-space: nowrap; }
@@ -773,8 +773,10 @@ pre.json.tall { max-height: 460px; }
 .js-reveal .section-head > :nth-child(2) { transition-delay: 80ms; }
 .js-reveal .section-head > :nth-child(3) { transition-delay: 160ms; }
 .js-reveal .section-head :is(.display-lg, .display-md) { clip-path: inset(-10% -5% -20% -5%); }
-.js-reveal .section-head:not(.in-view) :is(.display-lg, .display-md) { clip-path: inset(-10% -5% 100% -5%); }
-.js-reveal .section-head :is(.display-lg, .display-md) { transition: opacity 900ms var(--ease-out), transform 1100ms var(--ease-out), clip-path 1100ms var(--ease-out); }
+/* Big headings wipe in with clip-path only. Sliding them too left the heading stuck 42px low over the
+   line below it in some browsers (seen on the pinned races strip), so they never move. */
+.js-reveal .section-head:not(.in-view) :is(.display-lg, .display-md) { clip-path: inset(-10% -5% 100% -5%); transform: none; }
+.js-reveal .section-head :is(.display-lg, .display-md) { transform: none; transition: opacity 900ms var(--ease-out), clip-path 1100ms var(--ease-out); }
 .js-reveal .kpis > div:nth-child(2), .js-reveal .podium-step:nth-child(2) { transition-delay: 70ms; }
 .js-reveal .kpis > div:nth-child(3), .js-reveal .podium-step:nth-child(3) { transition-delay: 140ms; }
 .js-reveal .kpis > div:nth-child(4) { transition-delay: 210ms; }
