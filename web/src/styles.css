@@ -773,8 +773,10 @@ pre.json.tall { max-height: 460px; }
 .js-reveal .section-head > :nth-child(2) { transition-delay: 80ms; }
 .js-reveal .section-head > :nth-child(3) { transition-delay: 160ms; }
 .js-reveal .section-head :is(.display-lg, .display-md) { clip-path: inset(-10% -5% -20% -5%); }
-.js-reveal .section-head:not(.in-view) :is(.display-lg, .display-md) { clip-path: inset(-10% -5% 100% -5%); }
-.js-reveal .section-head :is(.display-lg, .display-md) { transition: opacity 900ms var(--ease-out), transform 1100ms var(--ease-out), clip-path 1100ms var(--ease-out); }
+/* Big headings wipe in with clip-path only. Sliding them too left the heading stuck 42px low over the
+   line below it in some browsers (seen on the pinned races strip), so they never move. */
+.js-reveal .section-head:not(.in-view) :is(.display-lg, .display-md) { clip-path: inset(-10% -5% 100% -5%); transform: none; }
+.js-reveal .section-head :is(.display-lg, .display-md) { transform: none; transition: opacity 900ms var(--ease-out), clip-path 1100ms var(--ease-out); }
 .js-reveal .kpis > div:nth-child(2), .js-reveal .podium-step:nth-child(2) { transition-delay: 70ms; }
 .js-reveal .kpis > div:nth-child(3), .js-reveal .podium-step:nth-child(3) { transition-delay: 140ms; }
 .js-reveal .kpis > div:nth-child(4) { transition-delay: 210ms; }
