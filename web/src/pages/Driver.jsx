@@ -46,10 +46,10 @@ export default function Driver({ driverKey }) {
         <span className="driver-number" aria-hidden="true">{driver.number}</span>
         <div className="driver-hero">
         <div className="driver-hero-copy">
-          <p className="band-meta"><Flag code={driver.countryCode} /> {driver.nationality} · <Link to={teamPath(driver.team)} className="band-link">{driver.team}</Link> · No. {driver.number}</p>
+          <p className="band-meta"><span><Flag code={driver.countryCode} /> {driver.nationality}</span><Link to={teamPath(driver.team)} className="band-link">{driver.team}</Link><span>No. {driver.number}</span></p>
           <h1 className="display-xl"><span className="driver-first">{driver.firstName}</span><br />{driver.lastName}</h1>
           <div className="driver-actions">
-            <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare with…</Link>
+            <Link to={`/compare?a=${driver.key}`} className="btn btn-primary">Compare</Link>
           </div>
         {st && (
           <dl className="driver-stats">
@@ -57,7 +57,7 @@ export default function Driver({ driverKey }) {
             <div><dt>Points</dt><dd className="display-md mono">{st.points}</dd></div>
             <div><dt>Wins</dt><dd className="display-md mono">{st.wins}</dd></div>
             <div><dt>Podiums</dt><dd className="display-md mono">{st.podiums}</dd></div>
-            <div><dt>Average finish</dt><dd className="display-md mono">{st.avgFinish ?? '—'}</dd></div>
+            <div><dt>Average finish</dt><dd className="display-md mono">{st.avgFinish ?? '-'}</dd></div>
           </dl>
         )}
         </div>
@@ -74,7 +74,6 @@ export default function Driver({ driverKey }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow">Profile</p>
           <h2 className="display-lg">Who is {driver.firstName} {driver.lastName}?</h2>
         </div>
         <DriverProfile driver={driver} raceRows={raceRows} sprintByRound={sprintByRound} />
@@ -124,7 +123,6 @@ export default function Driver({ driverKey }) {
       <section className="container section">
         <div className="section-head row">
           <div>
-            <p className="eyebrow"><span className="num">01</span>Lap explorer</p>
             <h2 className="display-md">{race ? race.name : 'Pick a race'}</h2>
           </div>
           <label className="select">
@@ -139,7 +137,7 @@ export default function Driver({ driverKey }) {
           <>
             <div className="kpis">
               <div><span className="kpi-label">Laps</span><span className="kpi mono">{lapRows.length}</span></div>
-              <div><span className="kpi-label">Personal best</span><span className="kpi mono">{best ? fmtLap(best.lapTime) : '—'}</span><span className="muted small">{best ? `lap ${best.lapNumber}` : ''}</span></div>
+              <div><span className="kpi-label">Personal best</span><span className="kpi mono">{best ? fmtLap(best.lapTime) : '-'}</span><span className="muted small">{best ? `lap ${best.lapNumber}` : ''}</span></div>
               <div><span className="kpi-label">Top speed</span><span className="kpi mono">{fmtNum(Math.max(0, ...lapRows.map((l) => l.telemetry.speed)), 1)}</span><span className="muted small">km/h</span></div>
               <div><span className="kpi-label">Pit stops</span><span className="kpi mono">{lapRows.filter((l) => l.pitIn).length}</span></div>
             </div>
@@ -154,7 +152,7 @@ export default function Driver({ driverKey }) {
                     {lapRows.map((l) => (
                       <tr key={l._id} className={`clickable ${best && l._id === best._id ? 'best' : ''} ${lapRowClass(l)}`} onClick={() => openLap(l._id)}>
                         <td className="num mono">{l.lapNumber}{(l.pitIn || l.pitOut) && <span className="pit-tag">PIT</span>}{lapTags(l).map((t) => <span key={t} className={`lap-tag ${t}`}>({t})</span>)}</td>
-                        <td className="num mono">{l.position ?? '—'}</td>
+                        <td className="num mono">{l.position ?? '-'}</td>
                         <td className="num mono strong">{fmtLap(l.lapTime)}</td>
                         <td>{l.compound && <span className="tyre" style={{ '--tyre': COMPOUND[l.compound]?.color }}>{COMPOUND[l.compound]?.label}</span>}</td>
                         <td className="num mono">{fmtNum(l.telemetry.speed, 1)}</td>

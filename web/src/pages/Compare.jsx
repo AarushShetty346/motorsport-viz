@@ -63,7 +63,7 @@ export default function Compare() {
   return (
     <article className="page band-page compare-page">
       <Band className="compare-band">
-        <p className="band-meta">Head to head · 2025 season</p>
+        <p className="band-meta">Head to head, 2025 season</p>
         <h1 className="display-xl">Who was<br />quicker?</h1>
         <p className="lede">Racing laps only: no opening lap and no pit laps. Averages are compared race by race so every gap is like for like.</p>
         <div className="h2h-pickers">
@@ -119,7 +119,7 @@ export default function Compare() {
                   const bWon = d.b.position && (!d.a.position || d.b.position < d.a.position);
                   return (
                     <span key={d.round} className="duel-cell" style={{ background: aWon ? ra.driver.teamColor : bWon ? rb.driver.teamColor : 'var(--surface-2)' }} title={`${d.name}: ${ra.driver.code} ${d.a.position ?? d.a.positionText} · ${rb.driver.code} ${d.b.position ?? d.b.positionText}`}>
-                      <span className="mono">{aWon ? ra.driver.code : bWon ? rb.driver.code : '–'}</span>
+                      <span className="mono">{aWon ? ra.driver.code : bWon ? rb.driver.code : '-'}</span>
                     </span>
                   );
                 })}

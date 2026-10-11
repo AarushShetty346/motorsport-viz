@@ -71,7 +71,6 @@ export default function TitleFight() {
     <section className={`title-fight ${reduced ? 'is-static' : ''}`} id="title" ref={ref}>
       <div className="title-sticky">
         <div className="section-head container">
-          <p className="eyebrow"><span className="num">01</span>The title fight</p>
           <h2 className="display-lg">Three drivers. Twenty-four rounds. <span className="nowrap">{standings[0].points - standings[1].points} points.</span></h2>
         </div>
         <div className="container title-grid">

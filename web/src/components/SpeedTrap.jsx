@@ -23,9 +23,8 @@ export default function SpeedTrap({ round, defaultMin = 340, title = 'Speed trap
     <div className="speed-trap">
       <div className="speed-head">
         <div>
-          <p className="eyebrow">{num && <span className="num">{num}</span>}{title}</p>
           <p className="speed-count">
-            <span className="display-md mono">{data ? fmtNum(data.total) : '—'}</span>
+            <span className="display-md mono">{data ? fmtNum(data.total) : '-'}</span>
             <span className="muted">laps faster than <strong className="ink">{min} km/h</strong>{round ? ' in this race' : ' all season'}</span>
           </p>
         </div>

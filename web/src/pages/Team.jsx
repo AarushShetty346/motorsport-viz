@@ -52,7 +52,7 @@ export default function Team({ teamKey: key }) {
   return (
     <article className="page band-page team-page" style={{ '--team': color }}>
       <Band className="team-band">
-        <p className="band-meta">Constructor · {ordinal(idx + 1)} in 2025{info.base && ` · ${info.base}`}{info.engine && ` · ${info.engine} power unit`}</p>
+        <p className="band-meta"><span>{ordinal(idx + 1)} in the 2025 constructors' championship</span>{info.base && <span>{info.base}</span>}{info.engine && <span>{info.engine} power</span>}</p>
         <h1 className="display-xl team-title">
           {words.length > 1 ? <><span className="driver-first">{words.slice(0, -1).join(' ')}</span><br />{words.at(-1)}</> : team._id}
         </h1>
@@ -60,10 +60,10 @@ export default function Team({ teamKey: key }) {
           <div><dt>Championship</dt><dd className="display-md">{ordinal(idx + 1)}</dd></div>
           <div><dt>Points</dt><dd className="display-md mono">{team.points}</dd></div>
           <div><dt>Wins</dt><dd className="display-md mono">{team.wins}</dd></div>
-          <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '—'}</dd></div>
-          <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '—'}</dd></div>
+          <div><dt>Podiums</dt><dd className="display-md mono">{season.data ? summary.podiums : '-'}</dd></div>
+          <div><dt>Best finish</dt><dd className="display-md mono">{summary.best ? `P${summary.best}` : '-'}</dd></div>
         </dl>
-        <CarShowcase teamKey={key} name={team._id} info={info} />
+        <CarShowcase name={team._id} info={info} />
         <span className="band-team" aria-hidden="true" />
       </Band>
 
@@ -75,7 +75,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">01</span>Drivers</p>
           <h2 className="display-lg">Who drove for {team._id}</h2>
         </div>
         <div className="team-drivers">
@@ -85,7 +84,7 @@ export default function Team({ teamKey: key }) {
             return (
               <Link key={d.driverId} to={`/driver/${drv.key}`} className="team-driver" style={{ '--team': drv.teamColor }}>
                 <span className="team-driver-name">{drv.firstName}<br /><strong>{drv.lastName}</strong></span>
-                <span className="team-driver-stats mono">{d.points} pts · {d.starts} {d.starts === 1 ? 'start' : 'starts'}{d.best ? ` · best P${d.best}` : ''}</span>
+                <span className="team-driver-stats mono">{d.points} pts, {d.starts} {d.starts === 1 ? 'start' : 'starts'}{d.best ? `, best P${d.best}` : ''}</span>
               </Link>
             );
           })}
@@ -94,7 +93,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow">The team</p>
           <h2 className="display-lg">Factory, people and history</h2>
         </div>
         <TeamProfile team={team._id} rounds={rounds} />
@@ -102,7 +100,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">02</span>Round by round</p>
           <h2 className="display-lg">Points per weekend</h2>
           <p className="lede">Both cars' race and sprint points, added up per round inside MongoDB.</p>
         </div>
@@ -120,7 +117,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">03</span>Teammate battle</p>
           <h2 className="display-lg">Who won the garage</h2>
           <p className="lede">The whole season between the team's own drivers: who finished ahead, and the median gap in racing pace.</p>
         </div>
@@ -129,7 +125,6 @@ export default function Team({ teamKey: key }) {
 
       <section className="container section">
         <div className="section-head">
-          <p className="eyebrow"><span className="num">04</span>Tyre degradation</p>
           <h2 className="display-lg">Pace as the tyres age</h2>
         </div>
         <TyreDegradation team={team._id} color={color} />

@@ -11,9 +11,9 @@ export function SeasonStats({ driver }) {
   return (
     <div>
       <div className="kpis">
-        <div><span className="kpi-label">Average lap</span><span className="kpi mono">{r ? fmtLap(r.avgLapTime) : '—'}</span><span className="muted small">all circuits</span></div>
-        <div><span className="kpi-label">Fastest lap</span><span className="kpi mono">{r ? fmtLap(r.fastestLap) : '—'}</span></div>
-        <div><span className="kpi-label">Laps</span><span className="kpi mono">{r ? fmtNum(r.laps) : '—'}</span><span className="muted small">{r ? `${r.races} races` : ''}</span></div>
+        <div><span className="kpi-label">Average lap</span><span className="kpi mono">{r ? fmtLap(r.avgLapTime) : '-'}</span><span className="muted small">all circuits</span></div>
+        <div><span className="kpi-label">Fastest lap</span><span className="kpi mono">{r ? fmtLap(r.fastestLap) : '-'}</span></div>
+        <div><span className="kpi-label">Laps</span><span className="kpi mono">{r ? fmtNum(r.laps) : '-'}</span><span className="muted small">{r ? `${r.races} races` : ''}</span></div>
       </div>
       <FeatureLabel name="Aggregation: $group + $lookup" />
       <Query text={data?.query} explain={data?.explain} />

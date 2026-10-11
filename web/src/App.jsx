@@ -3,7 +3,7 @@ import Lenis from 'lenis';
 import { AnimatePresence, motion } from 'motion/react';
 import { useRouter } from './lib/router.jsx';
 import { SeasonProvider, useSeason } from './lib/season.jsx';
-import { EASE_OUT, prefersReducedMotion } from './lib/motion.js';
+import { EASE_OUT } from './lib/motion.js';
 import Nav from './components/Nav.jsx';
 import SearchPalette from './components/SearchPalette.jsx';
 import Footer from './components/Footer.jsx';
@@ -14,7 +14,9 @@ import Driver from './pages/Driver.jsx';
 import Compare from './pages/Compare.jsx';
 import NotFound from './pages/NotFound.jsx';
 import Team from './pages/Team.jsx';
+import Teams from './pages/Teams.jsx';
 import { startReveals } from './lib/reveal.js';
+import { connectLenis, startScrollMotion } from './lib/scrollMotion.js';
 
 export let lenis = null;
 
@@ -23,6 +25,7 @@ function route(path) {
   if (path === '/' || path === '') return { key: 'home', el: <Home /> };
   if ((m = path.match(/^\/race\/(\d+)\/?$/))) return { key: 'race-' + m[1], el: <Race round={Number(m[1])} /> };
   if ((m = path.match(/^\/driver\/([a-z0-9-]+)\/?$/))) return { key: 'driver-' + m[1], el: <Driver driverKey={m[1]} /> };
+  if (/^\/teams\/?$/.test(path)) return { key: 'teams', el: <Teams /> };
   if ((m = path.match(/^\/team\/([a-z0-9-]+)\/?$/))) return { key: 'team-' + m[1], el: <Team teamKey={m[1]} /> };
   if (path.startsWith('/compare')) return { key: 'compare', el: <Compare /> };
   return { key: '404', el: <NotFound /> };
@@ -37,9 +40,9 @@ function Shell() {
 
   // Smooth scrolling (skipped for people who ask for reduced motion).
   useEffect(() => {
-    if (prefersReducedMotion()) return;
-    lenis = new Lenis({ autoRaf: true, lerp: 0.075, wheelMultiplier: 0.95 });
-    return () => { lenis.destroy(); lenis = null; };
+    lenis = new Lenis({ autoRaf: false, lerp: 0.075, wheelMultiplier: 0.95 });
+    const unhook = connectLenis(lenis);
+    return () => { unhook(); lenis.destroy(); lenis = null; };
   }, []);
 
   // New page: jump to the top, or to the #section in the URL.
@@ -59,7 +62,10 @@ function Shell() {
     let stop = () => {};
     const t = setTimeout(() => {
       const mains = document.querySelectorAll('main');
-      stop = startReveals(mains[mains.length - 1]);
+      const main = mains[mains.length - 1];
+      const stopReveals = startReveals(main);
+      const stopMotion = startScrollMotion(main);
+      stop = () => { stopReveals(); stopMotion(); };
     }, 220);
     return () => { clearTimeout(t); stop(); };
   }, [current.key]);

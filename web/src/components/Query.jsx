@@ -18,7 +18,7 @@ export default function Query({ text, explain, label = 'Under the hood' }) {
 }
 
 function ExplainStats({ explain: e }) {
-  const line = (p) => `${fmtNum(p.totalDocsExamined)} docs examined · ${fmtNum(p.totalKeysExamined)} keys · ${fmtNum(p.nReturned)} returned · ${p.executionTimeMillis} ms`;
+  const line = (p) => `${fmtNum(p.totalDocsExamined)} docs examined, ${fmtNum(p.totalKeysExamined)} keys, ${fmtNum(p.nReturned)} returned, ${p.executionTimeMillis} ms`;
   return (
     <div className="explain-mini small">
       <p>

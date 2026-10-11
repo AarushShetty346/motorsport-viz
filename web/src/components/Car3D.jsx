@@ -125,8 +125,6 @@ function buildCar(livery) {
     rubber: new THREE.MeshStandardMaterial({ color: '#141416', metalness: 0, roughness: 0.92 }),
     rim: new THREE.MeshStandardMaterial({ color: '#2a2a2e', metalness: 0.8, roughness: 0.35 }),
     compound: new THREE.MeshStandardMaterial({ color: '#f6d32b', roughness: 0.6 }),
-    helmet: paint(livery.accent),
-    visor: new THREE.MeshStandardMaterial({ color: '#08080a', metalness: 0.9, roughness: 0.1 }),
   };
   const car = new THREE.Group();
   const add = (geo, mat) => car.add(geo instanceof THREE.Object3D ? geo : new THREE.Mesh(geo, mat));
@@ -183,13 +181,7 @@ function buildCar(livery) {
   finGeo.translate(0, 0, -0.008);
   add(finGeo, mats.accent);
 
-  // Driver, halo and mirrors.
-  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.135, 32, 20), mats.helmet);
-  helmet.position.set(0.3, 0.66, 0);
-  car.add(helmet);
-  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.137, 32, 12, Math.PI - Math.PI / 2.6, Math.PI / 1.3, Math.PI / 2.5, Math.PI / 6), mats.visor);
-  visor.position.copy(helmet.position);
-  car.add(visor);
+  // Halo and mirrors.
   const haloPath = new THREE.CatmullRomCurve3([
     [0.0, 0.6, 0.29], [0.4, 0.75, 0.25], [0.66, 0.78, 0], [0.4, 0.75, -0.25], [0.0, 0.6, -0.29],
   ].map((p) => new THREE.Vector3(...p)));
@@ -464,7 +456,7 @@ export default function Car3D({ livery, car, label, model = null }) {
       aria-label={`${label}. Drag or use the arrow keys to turn it; it returns to the side view when you let go.`}
     >
       {car && <span className="car3d-word" aria-hidden="true">{car}</span>}
-      <p className="car3d-hint mono">{car && <strong>{car}</strong>}Drag to spin it · let go and it settles back</p>
+      <p className="car3d-hint mono">{car && <strong>{car}</strong>}Drag to spin it, let go and it settles back</p>
     </div>
   );
 }

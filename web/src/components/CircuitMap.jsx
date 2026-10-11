@@ -21,7 +21,6 @@ export function CircuitMap() {
   return (
     <section className="section container" id="map">
       <div className="section-head">
-        <p className="eyebrow">Circuit map</p>
         <h2 className="display-lg">Where they raced</h2>
       </div>
       <figure className="chart circuit-map">
@@ -42,7 +41,7 @@ export function CircuitMap() {
             })}
           </svg>
         </div>
-        <figcaption className="muted small">{hover ? `Round ${hover.round} · ${hover.name} · ${hover.circuit}` : 'The line follows the calendar order. Click a circuit to open its race.'}</figcaption>
+        <figcaption className="muted small">{hover ? `Round ${hover.round}: ${hover.name}, ${hover.circuit}` : 'The line follows the calendar order. Click a circuit to open its race.'}</figcaption>
       </figure>
       <FeatureLabel name="Geospatial: GeoJSON points + 2dsphere index" />
       <Query text={circuits.data?.query} />

@@ -161,7 +161,7 @@ export function TyreStrategy({ race }) {
                   key={s.stint}
                   className="stint"
                   style={{ left: `${((s.from - 1) / maxLap) * 100}%`, width: `${((s.to - s.from + 1) / maxLap) * 100}%`, background: compoundColor(s.compound) }}
-                  title={`${compoundLabel(s.compound)}: laps ${s.from}–${s.to}`}
+                  title={`${compoundLabel(s.compound)}: laps ${s.from}-${s.to}`}
                 >
                   <span className="mono">{s.to - s.from + 1}</span>
                 </span>

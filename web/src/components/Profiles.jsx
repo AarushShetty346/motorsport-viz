@@ -11,13 +11,15 @@ export const constructorName = (id) => SPECIAL[id] || id.split('-').map((w) => w
 const age = (iso) => Math.floor((new Date('2025-12-07') - new Date(iso)) / (365.25 * 864e5));
 
 function SeasonBars({ seasons, label }) {
-  const worst = Math.max(10, ...seasons.map((s) => s.position || 0));
+  // Non-numeric positions (McLaren's 2007 "EX" exclusion) get a stub bar instead of breaking the scale.
+  const pos = (s) => (Number.isFinite(s.position) ? s.position : null);
+  const worst = Math.max(10, ...seasons.map((s) => pos(s) || 0));
   return (
     <div className="career-bars" role="list" aria-label={label}>
       {seasons.map((s) => (
-        <div key={s.year} className={`career-col ${s.position === 1 ? 'champ' : ''}`} role="listitem" title={`${s.year}: ${s.position ? ordinal(s.position) : 'unclassified'}, ${s.points} pts${s.as || s.teams ? ` · ${(s.teams || [s.as]).map(constructorName).join(', ')}` : ''}`}>
-          <span className="career-pos mono">{s.position ?? '–'}</span>
-          <span className="career-fill" style={{ height: `${s.position ? ((worst + 1 - s.position) / worst) * 100 : 4}%` }} />
+        <div key={s.year} className={`career-col ${s.position === 1 ? 'champ' : ''}`} role="listitem" title={`${s.year}: ${pos(s) ? ordinal(pos(s)) : s.position === 'EX' ? 'excluded' : 'unclassified'}, ${s.points} pts${s.as || s.teams ? ` · ${(s.teams || [s.as]).map(constructorName).join(', ')}` : ''}`}>
+          <span className="career-pos mono">{s.position ?? '-'}</span>
+          <span className="career-fill" style={{ height: `${pos(s) ? ((worst + 1 - pos(s)) / worst) * 100 : 4}%` }} />
           <span className="career-year mono">{String(s.year).slice(2)}</span>
         </div>
       ))}

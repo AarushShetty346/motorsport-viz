@@ -45,10 +45,6 @@ export default function Hero() {
   return (
     <section className="stage tone-light" ref={ref} onPointerMove={onPointerMove}>
       <div className="stage-sticky">
-        <div className="stage-top container">
-          <p className="stage-label">2025 Formula 1 World Championship</p>
-          {finale && <p className="stage-label stage-label-right">Round 24 · {finale.circuit}</p>}
-        </div>
 
         <motion.p className="stage-word" aria-hidden="true" style={{ x: wordX }}>
           Lap by Lap
@@ -92,8 +88,8 @@ export default function Hero() {
 
         <div className="stage-stats container">
           <Stat value="24" label="Grands Prix" />
-          <Stat value={health ? fmtNum(health.counts.drivers) : '—'} label="Drivers" />
-          <Stat value={health ? fmtNum(health.counts.laps) : '—'} label="Laps in MongoDB" />
+          <Stat value={health ? fmtNum(health.counts.drivers) : '-'} label="Drivers" />
+          <Stat value={health ? fmtNum(health.counts.laps) : '-'} label="Laps in MongoDB" />
           {p1 && p2 && <Stat value={`${p1.points - p2.points} pts`} label="Title margin" />}
         </div>
 

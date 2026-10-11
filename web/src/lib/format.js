@@ -1,13 +1,13 @@
 // 81.452 -> "1:21.452"
 export function fmtLap(sec) {
-  if (typeof sec !== 'number' || !Number.isFinite(sec)) return '—';
+  if (typeof sec !== 'number' || !Number.isFinite(sec)) return '-';
   const m = Math.floor(sec / 60);
   const s = (sec - m * 60).toFixed(3).padStart(6, '0');
   return m > 0 ? `${m}:${s}` : sec.toFixed(3);
 }
 
 export const fmtNum = (n, d = 0) =>
-  typeof n === 'number' && Number.isFinite(n) ? n.toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d }) : '—';
+  typeof n === 'number' && Number.isFinite(n) ? n.toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d }) : '-';
 
 export const fmtGap = (g) => (g <= 0 ? 'Leader' : `+${g.toFixed(3)}s`);
 

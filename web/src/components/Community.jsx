@@ -8,6 +8,7 @@ import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { ValidationError } from './labValidation.jsx';
+import { PushPin, ThumbsUp } from '@phosphor-icons/react';
 import { useDisplayName, rememberDisplayName } from '../lib/displayName.js';
 
 const ago = (iso) => {
@@ -91,7 +92,7 @@ export function LapNotes({ race }) {
             <li key={n._id} className="note">
               <div className="note-head">
                 <strong>{n.author}</strong> <span className="user-tag">(user note)</span>
-                <span className="muted small">{n.lapNumber ? `Lap ${n.lapNumber}` : 'Whole race'}{d ? ` · ${d.code}` : ''} · {ago(n.createdAt)}{n.editedAt ? ' (edited)' : ''}{n.pinned ? ' · 📍' : ''}</span>
+                <span className="muted small">{n.lapNumber ? `Lap ${n.lapNumber}` : 'Whole race'}{d ? ` · ${d.code}` : ''} · {ago(n.createdAt)}{n.editedAt ? ' (edited)' : ''}{n.pinned ? <PushPin size={12} weight="fill" className="inline-icon" aria-label="pinned" /> : null}</span>
               </div>
               {editing?.id === n._id ? (
                 <form className="note-inline" onSubmit={saveEdit}>
@@ -101,7 +102,7 @@ export function LapNotes({ race }) {
                 </form>
               ) : <p className="note-body">{n.text}</p>}
               <div className="note-actions">
-                <button type="button" className="btn-link" disabled={busy} onClick={() => run(() => api(`/api/notes/${n._id}/helpful`, { method: 'POST' }))}>👍 Helpful · {n.helpful}</button>
+                <button type="button" className="btn-link" disabled={busy} onClick={() => run(() => api(`/api/notes/${n._id}/helpful`, { method: 'POST' }))}><ThumbsUp size={14} className="inline-icon" /> Helpful {n.helpful}</button>
                 <button type="button" className="btn-link" onClick={() => setEditing({ id: n._id, text: n.text })}>Edit</button>
                 {n.tags.map((t) => <span key={t} className="note-tag">#{t}</span>)}
                 {tagFor?.id === n._id ? (
@@ -132,7 +133,7 @@ export function NotesFeed() {
   return (
     <div className="notes-feed">
       {!data ? <div className="skeleton" style={{ height: 160 }} /> : !list.length ? (
-        <p className="muted">No notes yet. Open any race and add one under “Fan notes”.</p>
+        <div className="empty-state"><p className="empty-title">No fan notes yet.</p><p className="muted">Notes left on any race page show up here, newest first.</p><Link to="/race/24" className="btn btn-ghost btn-sm">Add one on Abu Dhabi</Link></div>
       ) : (
         <ul className="feed-list">
           {list.map((f) => (
@@ -173,8 +174,8 @@ export function SeasonSummary() {
                 <td className="num mono">{r.wins}</td>
                 <td className="num mono">{r.podiums}</td>
                 <td className="num mono">{fmtNum(r.racingLaps)}</td>
-                <td className="num mono">{r.topSpeed ? `${fmtNum(r.topSpeed)} km/h` : '—'}</td>
-                <td className="num mono">{r.avgThrottle ? `${r.avgThrottle}%` : '—'}</td>
+                <td className="num mono">{r.topSpeed ? `${fmtNum(r.topSpeed)} km/h` : '-'}</td>
+                <td className="num mono">{r.avgThrottle ? `${r.avgThrottle}%` : '-'}</td>
               </tr>
             ))}
           </tbody>
@@ -228,9 +229,9 @@ export function Consistency({ driver }) {
     <div className="consistency">
       <h3 className="h-small">Consistency</h3>
       <div className="kpis">
-        <div><span className="kpi-label">Lap-time spread</span><span className="kpi mono">{r ? `± ${r.stdDev.toFixed(3)} s` : '—'}</span><span className="muted small">average std dev per race</span></div>
-        <div><span className="kpi-label">Rank</span><span className="kpi mono">{r ? `${r.rank} / ${r.field}` : '—'}</span><span className="muted small">1 = most consistent</span></div>
-        <div><span className="kpi-label">Field average</span><span className="kpi mono">{r ? `± ${r.fieldAvg.toFixed(3)} s` : '—'}</span><span className="muted small">{r ? `over ${r.races} races` : ''}</span></div>
+        <div><span className="kpi-label">Lap-time spread</span><span className="kpi mono">{r ? `± ${r.stdDev.toFixed(3)} s` : '-'}</span><span className="muted small">average std dev per race</span></div>
+        <div><span className="kpi-label">Rank</span><span className="kpi mono">{r ? `${r.rank} / ${r.field}` : '-'}</span><span className="muted small">1 = most consistent</span></div>
+        <div><span className="kpi-label">Field average</span><span className="kpi mono">{r ? `± ${r.fieldAvg.toFixed(3)} s` : '-'}</span><span className="muted small">{r ? `over ${r.races} races` : ''}</span></div>
       </div>
       <FeatureLabel name="Driver consistency" type="user" />
       <FeatureLabel name="View: clean_laps (no pit laps, lap 1 or laps over 107%)" />
@@ -275,7 +276,7 @@ export function TeammateBattle({ team }) {
                 const bWon = r.bPos && (!r.aPos || r.bPos < r.aPos);
                 return (
                   <Link key={r.round} to={`/race/${r.round}`} className="duel-cell" style={{ background: aWon ? A.teamColor : bWon ? B.teamColor : 'var(--surface-2)', opacity: bWon ? 0.6 : 1 }} title={`${r.name}: ${A.code} ${r.aPos ?? 'DNF'} · ${B.code} ${r.bPos ?? 'DNF'}${r.gap != null ? ` · pace gap ${r.gap > 0 ? '+' : ''}${r.gap}s` : ''}`}>
-                    <span className="mono">{aWon ? A.code : bWon ? B.code : '–'}</span>
+                    <span className="mono">{aWon ? A.code : bWon ? B.code : '-'}</span>
                   </Link>
                 );
               })}

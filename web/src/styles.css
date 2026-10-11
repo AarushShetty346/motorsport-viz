@@ -26,8 +26,8 @@
   --radius-sm: 3px;
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
   --display: var(--sans);
-  --sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
+  --sans: 'Geist Variable', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'Geist Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
   --nav-h: 64px;
   --gutter: clamp(16px, 4vw, 48px);
 }
@@ -295,7 +295,6 @@ kbd { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line-2); border
   .circuit { width: 92vw; --depth: 0.9px; }
   .stage-object { inset: 0 0 22% 0; }
 }
-@media (prefers-reduced-motion: reduce) { .stage { height: auto; } .stage-sticky { position: relative; } .stage-scroll { animation: none; } }
 
 /* ---------------------------------------------------------------- charts (shared) */
 .chart { margin: 0; }
@@ -756,9 +755,6 @@ pre.json.tall { max-height: 460px; }
 .footer-word { margin: 40px 0 -0.13em; padding-left: calc(var(--gutter) - 0.05em); white-space: nowrap; font: 900 clamp(96px, 20.5vw, 340px)/0.85 var(--sans); letter-spacing: -0.065em; color: var(--flag-ink); user-select: none; }
 @media (max-width: 800px) { .footer-inner { grid-template-columns: 1fr; gap: 24px; } }
 
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; scroll-behavior: auto !important; }
-}
 .nowrap { white-space: nowrap; }
 
 @media (max-width: 420px) {
@@ -962,3 +958,107 @@ tr.row-hidden td.row-actions { opacity: 1; }
 @media (max-width: 860px) { .profile-grid { grid-template-columns: 1fr; } }
 .chips .chip { cursor: default; }
 .profile-facts dd { font-size: 15px; }
+.inline-icon { vertical-align: -2px; margin: 0 2px; }
+.note-icon { color: var(--note); display: inline-flex; vertical-align: -1px; }
+
+/* Chart polish: quieter grids, crisp marks, one calm entry animation */
+.grid line { stroke: var(--line); stroke-dasharray: 2 4; }
+.grid text, .axis { font: 500 11px var(--mono); letter-spacing: 0.02em; }
+.chart-wrap svg path[fill="none"] { stroke-linecap: round; stroke-linejoin: round; }
+.chart-wrap svg g { transition: opacity 200ms var(--ease-out); }
+.histogram { gap: 3px; height: 220px; padding-bottom: 26px; }
+.histo-bar { border-radius: 3px 3px 0 0; transition: filter 150ms var(--ease-out); }
+.histo-col:hover .histo-bar { filter: brightness(1.15); }
+.histo-label { transform: none; bottom: -22px; font-size: 10px; }
+.histo-col:nth-child(4n+2) .histo-label, .histo-col:nth-child(4n+3) .histo-label, .histo-col:nth-child(4n) .histo-label { visibility: hidden; }
+.stint-track { background: transparent; border-bottom: 1px solid var(--line); border-radius: 0; }
+.stint { border-radius: 2px; }
+.compound-split { height: 10px; gap: 2px; border-radius: 0; }
+.compound-split span { border-radius: 2px; }
+.career-bars { gap: 2px; }
+.career-fill { border-radius: 2px 2px 0 0; }
+.kpi { letter-spacing: -0.02em; }
+@media all {
+  .chart-wrap svg path[fill="none"]:not([stroke-dasharray]) { stroke-dasharray: 4000; stroke-dashoffset: 4000; animation: draw 1.4s var(--ease-out) forwards; }
+  .histo-bar, .team-bar-fill, .career-fill, .stint { transform-origin: bottom; animation: grow 700ms var(--ease-out) both; }
+  .stint { transform-origin: left; animation-name: grow-x; }
+  .histo-col:nth-child(n) .histo-bar { animation-delay: calc(var(--i, 0) * 25ms); }
+}
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes grow { from { transform: scaleY(0); } }
+@keyframes grow-x { from { transform: scaleX(0); } }
+
+
+/* ---------------------------------------------------------------- polish pass */
+::selection { background: var(--flag); color: var(--flag-ink); }
+
+/* Labels read as plain words instead of a wall of tiny mono caps. */
+.eyebrow, .band-meta, .h-small, .stage-label, .stage-outro-kicker {
+  font-family: var(--sans); font-size: 14px; font-weight: 600;
+  letter-spacing: -0.01em; text-transform: none;
+}
+.h-small { font-size: 17px; font-weight: 700; letter-spacing: -0.02em; padding-bottom: 12px; }
+
+/* Nav slides away while reading and returns on the first scroll up. */
+.nav { transition: transform 420ms var(--ease-out), background-color 240ms var(--ease-out), border-color 240ms var(--ease-out); }
+.nav.nav-hidden { transform: translateY(-100%); }
+.nav:focus-within { transform: none; }
+
+/* No "scroll" arrow: the hero already invites it. */
+.stage-scroll { display: none; }
+
+/* Primary buttons fill from the left on hover, like a timing bar. */
+.btn-primary, .btn-stage { position: relative; overflow: hidden; isolation: isolate; }
+.btn-primary::before, .btn-stage::before {
+  content: ''; position: absolute; inset: 0; z-index: -1;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+  transform: scaleX(0); transform-origin: left; transition: transform 380ms var(--ease-out);
+}
+.btn-primary:hover:not(:disabled)::before, .btn-stage:hover::before { transform: scaleX(1); }
+.btn-primary:hover:not(:disabled) { background: var(--accent); }
+.btn:active:not(:disabled) { transform: scale(0.98); }
+
+/* Table rows pick up a yellow edge under the pointer so the eye can track a line. */
+.data-table tbody tr { transition: background-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out); }
+.data-table tbody tr:hover { background: color-mix(in srgb, var(--flag) 7%, transparent); box-shadow: inset 3px 0 0 var(--flag); }
+
+/* Photos sit inside their frame while they drift. */
+.portrait-layer img { will-change: transform; }
+
+/* Stat labels match the plainer label style. */
+.driver-stats dt, .facts dt, .kpi-label { font-family: var(--sans); font-size: 13px; font-weight: 600; letter-spacing: -0.005em; text-transform: none; }
+
+/* Band meta: plain items spaced apart instead of a chain of dots. */
+.band-meta { gap: 6px 22px; }
+.band-meta > span { display: inline-flex; align-items: center; gap: 8px; }
+
+/* Two smaller stories side by side break up the run of full-width headed sections. */
+.home-pair { display: grid; grid-template-columns: 1.15fr 1fr; gap: clamp(32px, 5vw, 72px); align-items: start; }
+.home-pair h2 { margin: 0 0 24px; }
+@media (max-width: 900px) { .home-pair { grid-template-columns: 1fr; } }
+
+.empty-state { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 28px 0; border-top: 1.5px solid var(--line-2); }
+.empty-title { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.02em; color: var(--ink); }
+.empty-state p { margin: 0; }
+
+/* ---------------------------------------------------------------- portrait fallback */
+.portrait-initials { position: relative; width: 100%; height: 100%; display: grid; place-items: center; background: var(--team); color: #fff; overflow: hidden; }
+.portrait-letters { font: 800 clamp(28px, 9vw, 140px)/1 var(--display, inherit); letter-spacing: -0.04em; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.25); }
+.portrait-number { position: absolute; right: 8%; top: 6%; font-size: 14px; opacity: 0.8; }
+.portrait-small { width: 64px; flex: none; }
+.portrait-small .portrait-letters { font-size: 22px; }
+.portrait-small .portrait-number { display: none; }
+
+/* ---------------------------------------------------------------- teams list */
+.teams-page { padding-top: 120px; padding-bottom: 96px; }
+.teams-grid { list-style: none; margin: 40px 0 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.teams-card { border: 1.5px solid var(--ink, #0b0b0c); border-top: 8px solid var(--team); padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+.teams-card-link { display: flex; flex-direction: column; gap: 10px; color: inherit; text-decoration: none; }
+.teams-card-link:hover .car-side { transform: translateX(6px); }
+.teams-card .car-side { transition: transform 0.3s ease; }
+.teams-card-head { display: flex; align-items: baseline; gap: 12px; }
+.teams-card-head h2 { margin: 0; flex: 1; }
+.teams-card-car { margin: 0; font-size: 12px; color: var(--ink-2); }
+.teams-card-drivers { list-style: none; margin: 0; padding: 0; display: flex; gap: 20px; flex-wrap: wrap; }
+.teams-card-drivers a { display: flex; align-items: center; gap: 10px; color: inherit; text-decoration: none; }
+.teams-card-drivers a:hover strong { text-decoration: underline; }
