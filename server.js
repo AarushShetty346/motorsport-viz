@@ -1,15 +1,19 @@
 // Lap by Lap — Express API over MongoDB + the built web app (dist/).
 const fs = require('fs');
+// Read settings such as the Google sign-in keys from .env when running without Docker.
+try { process.loadEnvFile(); } catch {}
 const path = require('path');
 const express = require('express');
 const { ObjectId } = require('mongodb');
 const { init, resetDemoData, getDb, client } = require('./db');
+const { authRouter, setupAuthCollections, REDIRECT_URI, configured: googleConfigured } = require('./auth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DIST = path.join(__dirname, 'dist');
 const app = express();
 
 app.use(express.json());
+app.use('/api/auth', authRouter(getDb));
 
 const laps = () => getDb().collection('laps');
 const drivers = () => getDb().collection('drivers');
@@ -1019,7 +1023,11 @@ app.use((err, req, res, next) => {
 });
 
 init()
-  .then(() => {
+  .then(async (db) => {
+    await setupAuthCollections(db);
+    console.log(googleConfigured()
+      ? `[auth] Google sign-in is on (redirect URI: ${REDIRECT_URI})`
+      : '[auth] Google sign-in is off: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to turn it on');
     const server = app.listen(PORT, () => {
       console.log(`\n  Lap by Lap is running at http://localhost:${PORT}\n`);
     });

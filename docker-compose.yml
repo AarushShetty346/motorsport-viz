@@ -29,6 +29,10 @@ services:
       MONGO_URI: mongodb://mongo:27017/?directConnection=true
       DB_NAME: motorsport
       PORT: 3000
+      # Google sign-in: put these in a .env file next to this one (see .env.example)
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost:3000}
     ports:
       - "3000:3000"
 
