@@ -902,6 +902,7 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .movers-list li { display: flex; justify-content: space-between; align-items: center; }
 
 /* Circuit map */
+.map-land { fill: var(--line); stroke: var(--line-2); stroke-width: 0.6; stroke-linejoin: round; }
 .map-grid { stroke: var(--line); stroke-width: 1; }
 .map-grid.equator { stroke: var(--line-2); }
 .map-route { fill: none; stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 4; opacity: 0.6; }

@@ -5,6 +5,7 @@ import { Link, useRouter } from '../lib/router.jsx';
 import Flag from './Flag.jsx';
 import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
+import { LAND_PATH } from './worldLand.js';
 
 const W = 1000, H = 440;
 // Plain equirectangular projection, cropped to where the calendar goes (60°N to 45°S).
@@ -26,6 +27,7 @@ export function CircuitMap() {
       <figure className="chart circuit-map">
         <div className="chart-wrap">
           <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Map of the 24 circuits">
+            <path d={LAND_PATH} className="map-land" />
             {[-150, -120, -90, -60, -30, 0, 30, 60, 90, 120, 150].map((l) => <line key={l} className="map-grid" x1={x(l)} x2={x(l)} y1={0} y2={H} />)}
             {[45, 30, 15, 0, -15, -30].map((l) => <line key={l} className={`map-grid ${l === 0 ? 'equator' : ''}`} x1={0} x2={W} y1={y(l)} y2={y(l)} />)}
             <path d={route} className="map-route" />
