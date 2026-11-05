@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: lap-by-lap
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: node server.js
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: MONGODB_URI
+        sync: false
+      - key: DB_NAME
+        value: motorsport

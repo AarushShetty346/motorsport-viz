@@ -6,7 +6,7 @@ const express = require('express');
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '';
 const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
-const PUBLIC_URL = (process.env.PUBLIC_URL || `http://localhost:${Number(process.env.PORT) || 3000}`).replace(/\/+$/, '');
+const PUBLIC_URL = (process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || `http://localhost:${Number(process.env.PORT) || 3000}`).replace(/\/+$/, '');
 const REDIRECT_URI = `${PUBLIC_URL}/api/auth/google/callback`;
 const SECURE = PUBLIC_URL.startsWith('https://');
 const SESSION_DAYS = 30;
