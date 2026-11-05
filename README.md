@@ -4,7 +4,7 @@
 
 Lap by Lap turns a full F1 season (24 Grands Prix, 21 drivers, 26,657 laps with car telemetry) into an interactive site. Replay each circuit from the car's GPS trace, follow the title fight round by round, dig into any driver's laps, spin each team's car in 3D and put two drivers head to head. Every chart can show the exact MongoDB query behind it.
 
-**Live demo:** _coming soon_ <!-- replace with the Render URL -->
+**Live demo:** [lap-by-lap.onrender.com](https://lap-by-lap.onrender.com) (free hosting, so the first visit can take up to a minute to wake)
 
 ![Season page](docs/screenshots/home.png)
 
