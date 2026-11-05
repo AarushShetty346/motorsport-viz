@@ -5,7 +5,9 @@ const path = require('path');
 const zlib = require('zlib');
 const { MongoClient, ObjectId } = require('mongodb');
 
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017';
+const MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || 'mongodb://localhost:27017';
+// Connection string with any password hidden, for log lines.
+const SAFE_URI = MONGO_URI.replace(/\/\/([^:@/]+):[^@/]*@/, '//$1:***@');
 const DB_NAME = process.env.DB_NAME || 'motorsport';
 const SEASON_FILE = path.join(__dirname, 'data', 'season-2025.json.gz');
 
@@ -141,7 +143,7 @@ function loadSeason() {
   return season;
 }
 
-const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
+const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 10000 });
 let db;
 
 async function connectWithRetry(attempts = 75, delayMs = 2000) {
@@ -150,14 +152,14 @@ async function connectWithRetry(attempts = 75, delayMs = 2000) {
       await client.connect();
       await client.db('admin').command({ ping: 1 });
       db = client.db(DB_NAME);
-      console.log(`[db] Connected to MongoDB at ${MONGO_URI} (database "${DB_NAME}")`);
+      console.log(`[db] Connected to MongoDB at ${SAFE_URI} (database "${DB_NAME}")`);
       return db;
     } catch (err) {
       console.log(`[db] MongoDB not reachable yet (attempt ${i}/${attempts}): ${err.message}`);
       if (i === 1) console.log('[db] Is MongoDB running? Start it with "docker compose up -d mongo" (or start MongoDB Community Server). Retrying...');
       if (i === attempts) {
         throw new Error(
-          `Could not connect to MongoDB at ${MONGO_URI}. Start it with "docker compose up -d mongo" ` +
+          `Could not connect to MongoDB at ${SAFE_URI}. Start it with "docker compose up -d mongo" ` +
             'or start your local MongoDB Community Server, then run "npm start" again.'
         );
       }

@@ -99,7 +99,7 @@ const seasonEntries = [
   { $unwind: '$entries' },
 ];
 
-// NoSQL Functionality 3 (indexing): every "Under the hood" panel shows explain().
+// Indexing: every "Under the hood" panel shows explain().
 
 // Laps hidden by a steward ($set: { deleted: true }) never show up outside Steward mode.
 const LIVE = { deleted: { $ne: true } };
@@ -195,7 +195,7 @@ app.post('/api/reset', signedIn, async (req, res) => {
   res.json({ ok: true, drivers: await drivers().countDocuments(), races: await races().countDocuments(), laps: await laps().countDocuments() });
 });
 
-// ------------------------------------------- NoSQL Functionality 1: CRUD
+// ------------------------------------------- CRUD
 // Steward mode on the Race page. Laps a steward adds carry source: "steward";
 // real laps a steward changes get stewardEdited: true.
 
@@ -328,7 +328,7 @@ app.delete('/api/laps/:id', signedIn, async (req, res) => {
   res.json({ query: `db.laps.deleteOne({ _id: ObjectId("${_id}"), source: "steward" })`, deletedCount: result.deletedCount });
 });
 
-// ------------------------------- NoSQL Functionality 6: update operators
+// ------------------------------- update operators
 
 // Hide / restore one lap: the soft-delete path for real laps.
 app.patch('/api/laps/:id/hidden', signedIn, async (req, res) => {
@@ -350,7 +350,7 @@ app.post('/api/races/:round/restore', signedIn, async (req, res) => {
   res.json({ query: `db.laps.updateMany(${shell(filter)}, ${shell(update)})`, matchedCount: result.matchedCount, modifiedCount: result.modifiedCount });
 });
 
-// --------------------------------- NoSQL Functionality 10: transactions
+// --------------------------------- transactions
 // A time penalty changes the lap ($inc lapTime) and the driver's entry in the
 // race's embedded results, in one multi-document transaction: both or neither.
 
@@ -393,7 +393,7 @@ app.post('/api/laps/:id/penalty', signedIn, async (req, res) => {
   });
 });
 
-// ------------------------------- NoSQL Functionality 2: aggregation
+// ------------------------------- aggregation
 // Championship standings, computed inside MongoDB from the embedded race + sprint results.
 app.get('/api/season/standings', async (req, res) => {
   const pipeline = [
@@ -467,7 +467,7 @@ app.get('/api/teams/:team/season', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// ------------------------------- User Functionality 1: laps for one driver
+// ------------------------------- laps for one driver
 
 app.get('/api/user/driver-laps/:driverId', async (req, res) => {
   const driverId = toObjectId(req.params.driverId);
@@ -493,7 +493,7 @@ app.get('/api/drivers/:id/season', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// -------------------------- User Functionality 2: compare two drivers' averages
+// -------------------------- compare two drivers' averages
 
 app.get('/api/user/compare', async (req, res) => {
   const a = toObjectId(req.query.a);
@@ -534,7 +534,7 @@ app.get('/api/user/compare', async (req, res) => {
   });
 });
 
-// ------------------ User Functionality 3: fastest lap per driver (all laps, or one race)
+// ------------------ fastest lap per driver (all laps, or one race)
 
 app.get('/api/user/leaderboard', async (req, res) => {
   const round = intParam(req.query.round);
@@ -557,7 +557,7 @@ app.get('/api/user/leaderboard', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// ------------------------ User Functionality 4: laps above a speed threshold
+// ------------------------ laps above a speed threshold
 
 app.get('/api/user/speed', async (req, res) => {
   const min = Number(req.query.min);
@@ -581,7 +581,7 @@ app.get('/api/user/speed', async (req, res) => {
   });
 });
 
-// ----------------------------- User Functionality 5: text search on circuit
+// ----------------------------- text search on circuit
 
 app.get('/api/user/search', async (req, res) => {
   const q = String(req.query.q || '').trim();
@@ -596,7 +596,7 @@ app.get('/api/user/search', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// ------------------------------ NoSQL Functionality 7: $facet + $bucket
+// ------------------------------ $facet + $bucket
 // "Race in numbers": lap-time histogram, tyre split and summary stats in ONE query.
 
 app.get('/api/races/:round/numbers', async (req, res) => {
@@ -640,7 +640,7 @@ app.get('/api/races/:round/numbers', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, ...result, summary: result.summary[0] || null });
 });
 
-// --------------------------- NoSQL Functionality 8: window functions
+// --------------------------- window functions
 // Gap to the leader at the end of every lap, worked out inside MongoDB:
 // a running total of each driver's lap times, then the smallest total on each lap.
 
@@ -669,7 +669,7 @@ app.get('/api/races/:round/gaps', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results: results.map((r) => ({ driverId: r._id, gaps: r.gaps })) });
 });
 
-// ------------------------------- User Functionality 6: tyre strategy
+// ------------------------------- tyre strategy
 // Each driver's stints: the compound and the first and last lap on it.
 
 app.get('/api/races/:round/stints', async (req, res) => {
@@ -684,7 +684,7 @@ app.get('/api/races/:round/stints', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results: results.map((r) => ({ driverId: r._id, stints: r.stints })) });
 });
 
-// -------------------------------- User Functionality 7: pit stop analysis
+// -------------------------------- pit stop analysis
 // Stops, the laps they happened on, and time lost: in-lap + out-lap time
 // minus what two normal racing laps would have taken.
 
@@ -717,7 +717,7 @@ app.get('/api/races/:round/pitstops', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// --------------------------------- User Functionality 8: biggest movers
+// --------------------------------- biggest movers
 // Places gained or lost from the grid, for one race or added up over the season.
 
 app.get('/api/movers', async (req, res) => {
@@ -736,7 +736,7 @@ app.get('/api/movers', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// ------------- NoSQL Functionality 2 (Driver page): season stats with $group + $lookup
+// ------------- Driver page: season stats with $group + $lookup
 
 app.get('/api/drivers/:id/stats', async (req, res) => {
   const driverId = toObjectId(req.params.id);
@@ -752,7 +752,7 @@ app.get('/api/drivers/:id/stats', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, result: result || null });
 });
 
-// User Functionality 9: best S1 + best S2 + best S3 in one race, against the fastest real lap.
+// best S1 + best S2 + best S3 in one race, against the fastest real lap.
 app.get('/api/drivers/:id/theoretical', async (req, res) => {
   const driverId = toObjectId(req.params.id);
   const round = intParam(req.query.round);
@@ -767,7 +767,7 @@ app.get('/api/drivers/:id/theoretical', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, result: result || null });
 });
 
-// ------------------------- User Functionality 10: tyre degradation for one team
+// ------------------------- tyre degradation for one team
 // Each lap as a % of that race's fastest lap, averaged by tyre age, for this team and the field.
 
 app.get('/api/teams/:team/degradation', async (req, res) => {
@@ -787,7 +787,7 @@ app.get('/api/teams/:team/degradation', async (req, res) => {
   res.json({ query: 'db.laps.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// ------------------------------- NoSQL Functionality 9: geospatial queries
+// ------------------------------- geospatial queries
 // Circuits nearest to this one, by straight-line distance, on the 2dsphere index.
 
 app.get('/api/races/:round/nearby', async (req, res) => {
@@ -818,13 +818,13 @@ function noteInput(body) {
   return { author: clip(body.author, 40), text: clip(body.text, 280) };
 }
 
-// NoSQL Functionality 13 (capped collection): every note action is logged to notes_feed (max 50 docs, oldest roll off).
+// Capped collection: every note action is logged to notes_feed (max 50 docs, oldest roll off).
 async function logNote(action, note) {
   const race = await races().findOne({ round: note.round }, { projection: { name: 1 } });
   await notesFeed().insertOne({ action, noteId: note._id, round: note.round, race: race?.name, lapNumber: note.lapNumber ?? null, author: note.author, text: note.text.slice(0, 120), at: new Date() });
 }
 
-// ------------------------- NoSQL Functionality 6: lap notes with update operators
+// ------------------------- lap notes with update operators
 
 app.get('/api/races/:round/notes', async (req, res) => {
   const round = intParam(req.params.round);
@@ -926,7 +926,7 @@ app.post('/api/races/:round/notes/pin', signedIn, async (req, res) => {
   res.json({ matchedCount: r.matchedCount, modifiedCount: r.modifiedCount, query: `db.annotations.updateMany(${shell(filter)}, ${shell(update)})` });
 });
 
-// ------------------------- NoSQL Functionality 13: the latest notes, newest first, from the capped collection
+// ------------------------- the latest notes, newest first, from the capped collection
 
 app.get('/api/notes/feed', async (req, res) => {
   const [results, stats] = await Promise.all([
@@ -936,21 +936,21 @@ app.get('/api/notes/feed', async (req, res) => {
   res.json({ query: 'db.createCollection("notes_feed", { capped: true, size: 65536, max: 50 })\ndb.notes_feed.find().sort({ $natural: -1 }).limit(12)', capped: !!stats.capped, max: stats.max, count: stats.count, results });
 });
 
-// ------------------------- NoSQL Functionality 9: circuits with GeoJSON points
+// ------------------------- circuits with GeoJSON points
 
 app.get('/api/circuits', async (req, res) => {
   const results = await getDb().collection('circuits').find({}, { projection: { _id: 0 } }).sort({ round: 1 }).toArray();
   res.json({ query: 'db.circuits.find({}).sort({ round: 1 })   // location: { type: "Point", coordinates: [lng, lat] }\ndb.circuits.createIndex({ location: "2dsphere" })', results });
 });
 
-// ------------------------- NoSQL Functionality 11: season_summary, materialised with $merge
+// ------------------------- season_summary, materialised with $merge
 
 app.get('/api/season/summary', async (req, res) => {
   const results = await getDb().collection('season_summary').find().sort({ position: 1 }).toArray();
   res.json({ query: 'db.season_summary.find().sort({ position: 1 })   // rebuilt from races + clean_laps with $merge: npm run summary:rebuild', builtAt: results[0]?.builtAt, results });
 });
 
-// ------------------------- NoSQL Functionality 12: shared comparisons that expire (TTL index)
+// ------------------------- shared comparisons that expire (TTL index)
 
 const SHARE_TTL_DAYS = 7;
 const daysLeft = (createdAt) => Math.max(0, Math.ceil((createdAt.getTime() + SHARE_TTL_DAYS * 864e5 - Date.now()) / 864e5));
@@ -969,7 +969,7 @@ app.get('/api/shares/:code', async (req, res) => {
   res.json({ a: doc.a, b: doc.b, expiresInDays: daysLeft(doc.createdAt) });
 });
 
-// ------------------------- User Functionality 11: driver consistency (clean_laps view, NoSQL 10)
+// ------------------------- driver consistency (clean_laps view)
 // Std dev of each driver's racing laps in every race, averaged over the season, ranked against the field.
 
 app.get('/api/drivers/:id/consistency', async (req, res) => {
@@ -988,7 +988,7 @@ app.get('/api/drivers/:id/consistency', async (req, res) => {
   res.json({ query: 'db.clean_laps.aggregate(' + shell(pipeline) + ')', explain, result: result || null });
 });
 
-// ------------------------- User Functionality 12: teammate battle over the whole season
+// ------------------------- teammate battle over the whole season
 
 app.get('/api/teams/:team/teammates', async (req, res) => {
   const team = String(req.params.team);
@@ -1032,7 +1032,7 @@ app.get('/api/teams/:team/teammates', async (req, res) => {
   res.json({ query: 'db.races.aggregate(' + shell(pipeline) + ')', explain, results });
 });
 
-// ------------------------- Driver and team profiles (NoSQL 2: aggregation with $lookup)
+// ------------------------- Driver and team profiles (aggregation with $lookup)
 
 app.get('/api/drivers/:key/profile', async (req, res) => {
   const pipeline = [
