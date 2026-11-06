@@ -38,7 +38,7 @@ async function dropTestDb() {
 before(async () => {
   await dropTestDb();
   server = spawn(process.execPath, [path.join(__dirname, '..', 'server.js')], {
-    env: { ...process.env, PORT: String(PORT), MONGO_URI, DB_NAME, NODE_ENV: 'test', GOOGLE_CLIENT_ID: 'test-id', GOOGLE_CLIENT_SECRET: 'test-secret' },
+    env: { ...process.env, PORT: String(PORT), MONGO_URI, DB_NAME, NODE_ENV: 'test', GOOGLE_CLIENT_ID: 'test-id', GOOGLE_CLIENT_SECRET: 'test-secret', ADMIN_EMAILS: 'Admin@example.com' },
     stdio: ['ignore', 'pipe', 'inherit'],
   });
   await new Promise((resolve, reject) => {
@@ -74,49 +74,76 @@ test('signed out: browsing works, every write asks to sign in', async () => {
   assert.equal((await api('/api/me/activity')).status, 401);
 });
 
-test('signed in: notes carry your Google name, only you can edit or delete them', async () => {
+const notesFor = async (cookie) => (await api('/api/races/3/notes', { cookie })).body.results.map((n) => n._id);
+
+test('notes: private to their author until an admin approves them', async () => {
   const alice = await signIn('Alice');
   const bob = await signIn('Bob');
+  const admin = await signIn('Admin');
+  const before = (await api('/api/user/leaderboard')).body;
   const created = await api('/api/races/3/notes', { method: 'POST', cookie: alice, body: { author: 'Someone else', text: 'Great restart', lapNumber: 20 } });
   assert.equal(created.status, 201);
+  assert.equal(created.body.approved, false);
   const id = created.body.insertedId;
-  const note = (await api('/api/races/3/notes')).body.results.find((n) => n._id === id);
-  assert.equal(note.author, 'Alice', 'the typed name is ignored when signed in');
 
-  assert.equal((await api(`/api/notes/${id}`, { method: 'PATCH', cookie: bob, body: { text: 'hijacked' } })).status, 403);
-  assert.equal((await api(`/api/notes/${id}`, { method: 'DELETE', cookie: bob })).status, 403);
+  // Unapproved: only Alice and the admin can see it, and the public feed stays quiet.
+  assert.ok((await notesFor(alice)).includes(id));
+  assert.equal((await notesFor(bob)).includes(id), false);
+  assert.equal((await notesFor()).includes(id), false);
+  assert.ok((await notesFor(admin)).includes(id));
+  assert.equal((await api('/api/notes/feed')).body.results.some((f) => String(f.noteId) === id), false);
+  assert.equal((await api(`/api/notes/${id}/helpful`, { method: 'POST', cookie: bob })).status, 404, 'cannot touch a note you cannot see');
+  const note = (await api('/api/races/3/notes', { cookie: alice })).body.results.find((n) => n._id === id);
+  assert.equal(note.author, 'Alice', 'the typed name is ignored');
+
+  // Review queue is admin-only.
+  assert.equal((await api('/api/admin/notes')).status, 401);
+  assert.equal((await api('/api/admin/notes', { cookie: alice })).status, 403);
+  assert.equal((await api(`/api/admin/notes/${id}/approve`, { method: 'POST', cookie: alice })).status, 403);
+  assert.ok((await api('/api/admin/notes', { cookie: admin })).body.results.some((n) => n._id === id));
+  assert.equal((await api(`/api/admin/notes/${id}/approve`, { method: 'POST', cookie: admin })).body.note.approved, true);
+  assert.equal((await api('/api/admin/notes', { cookie: admin })).body.results.some((n) => n._id === id), false);
+
+  // Approved: everyone sees it, including signed-out visitors.
+  assert.ok((await notesFor()).includes(id));
+  assert.ok((await notesFor(bob)).includes(id));
+  assert.equal((await api('/api/notes/feed')).body.results[0].action, 'created');
+
+  // Update operators, with ownership rules.
   assert.equal((await api(`/api/notes/${id}/helpful`, { method: 'POST', cookie: bob })).body.note.helpful, 1, 'anyone signed in can upvote');
-  assert.equal((await api(`/api/notes/${id}`, { method: 'PATCH', cookie: alice, body: { text: 'Great restart!' } })).status, 200);
+  assert.equal((await api(`/api/notes/${id}`, { method: 'PATCH', cookie: bob, body: { text: 'hijacked' } })).status, 403);
+  assert.equal((await api(`/api/notes/${id}/tags`, { method: 'POST', cookie: bob, body: { tag: 'x' } })).status, 403);
+  await api(`/api/notes/${id}/tags`, { method: 'POST', cookie: alice, body: { tag: 'restart' } });
+  assert.deepEqual((await api(`/api/notes/${id}/tags`, { method: 'POST', cookie: alice, body: { tag: 'restart' } })).body.note.tags, ['restart']);
+  assert.equal((await api('/api/races/3/notes/pin', { method: 'POST', cookie: alice, body: { pinned: false } })).status, 403);
+  assert.equal((await api('/api/races/3/notes/pin', { method: 'POST', cookie: admin, body: { pinned: false } })).body.modifiedCount, 1);
+  const bad = await api('/api/races/3/notes', { method: 'POST', cookie: alice, body: { text: '' } });
+  assert.equal(bad.body.mongoError.code, 121);
+
+  // Editing sends it back for review.
+  const edited = await api(`/api/notes/${id}`, { method: 'PATCH', cookie: alice, body: { text: 'Great restart!' } });
+  assert.equal(edited.body.note.approved, false);
+  assert.ok(edited.body.note.editedAt);
+  assert.equal((await notesFor()).includes(id), false);
 
   const activity = await api('/api/me/activity', { cookie: alice });
-  assert.equal(activity.status, 200);
   assert.deepEqual(activity.body.notes.map((n) => n.text), ['Great restart!']);
   assert.equal((await api('/api/me/activity', { cookie: bob })).body.notes.length, 0);
-
+  assert.equal((await api(`/api/notes/${id}`, { method: 'DELETE', cookie: bob })).status, 404);
   assert.equal((await api(`/api/notes/${id}`, { method: 'DELETE', cookie: alice })).status, 200);
-  assert.equal((await api('/api/races/3/notes')).body.results.some((n) => n._id === id), false);
+  assert.deepEqual((await api('/api/user/leaderboard')).body.results, before.results, 'notes never touch race stats');
 });
 
-test('signed in: steward laps belong to whoever added them', async () => {
+test('steward changes are not saved on the server for normal users', async () => {
   const alice = await signIn('Alice');
-  const bob = await signIn('Bob');
+  const admin = await signIn('Admin');
   const [driver] = (await api('/api/drivers')).body;
   const lap = { driverId: driver._id, round: 3, lapNumber: 70, lapTime: 90.1, position: 5, telemetry: { speed: 310, rpm: 11500, throttle: 70, brake: 15 } };
-  const created = await api('/api/laps', { method: 'POST', cookie: alice, body: lap });
-  assert.equal(created.status, 201, JSON.stringify(created.body));
-  assert.equal(created.body.document.addedBy.name, 'Alice');
-  const id = created.body.insertedId;
-
-  assert.equal((await api(`/api/laps/${id}`, { method: 'PUT', cookie: bob, body: { lapTime: 50 } })).status, 403);
-  assert.equal((await api(`/api/laps/${id}`, { method: 'DELETE', cookie: bob })).status, 403);
-  assert.equal((await api(`/api/laps/${id}`, { method: 'PUT', cookie: alice, body: { lapTime: 91 } })).status, 200);
-
-  // Real laps can be changed by anyone signed in, and remember who did it last.
+  assert.equal((await api('/api/laps', { method: 'POST', cookie: alice, body: lap })).status, 403);
   const real = (await api('/api/laps?round=3&limit=1')).body.results[0];
-  assert.equal((await api(`/api/laps/${real._id}/hidden`, { method: 'PATCH', cookie: bob, body: { hidden: true } })).status, 200);
-  const bobs = (await api('/api/me/activity', { cookie: bob })).body;
-  assert.deepEqual(bobs.changed.map((l) => l._id), [real._id]);
-  assert.equal((await api('/api/me/activity', { cookie: alice })).body.added.length, 1);
-
-  assert.equal((await api(`/api/laps/${id}`, { method: 'DELETE', cookie: alice })).status, 200);
+  assert.equal((await api(`/api/laps/${real._id}/hidden`, { method: 'PATCH', cookie: alice, body: { hidden: true } })).status, 403);
+  assert.equal((await api('/api/reset', { method: 'POST', cookie: alice })).status, 403);
+  const created = await api('/api/laps', { method: 'POST', cookie: admin, body: lap });
+  assert.equal(created.status, 201, JSON.stringify(created.body));
+  assert.equal((await api(`/api/laps/${created.body.insertedId}`, { method: 'DELETE', cookie: admin })).status, 200);
 });

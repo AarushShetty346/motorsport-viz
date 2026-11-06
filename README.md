@@ -20,9 +20,9 @@ Lap by Lap turns a full F1 season (24 Grands Prix, 21 drivers, 26,657 laps with 
 - **Race pages:** circuit replay, podium, position changes, gap to the leader, tyre strategy, pit stops, fastest laps and every lap of the race.
 - **Driver and team profiles:** bios, past seasons, race-by-race results, consistency, theoretical best lap, teammate battles, tyre degradation and a draggable 3D car.
 - **Head to head:** compare two drivers' race pace across the season, with a shareable link.
-- **Steward mode:** add, edit, penalise and hide laps. Edited data is tagged and kept out of every statistic.
+- **Steward mode:** add, edit, penalise and hide laps to play out "what if" scenarios. Changes stay in your browser and never touch the shared race data.
 - **Search:** press `/` or `Ctrl+K` to jump to any circuit or driver.
-- **Optional Google sign-in:** notes and edits carry your name and only you can change them.
+- **Moderated fan notes:** anyone signed in with Google can leave notes on a race. A note is private to its author until an admin approves it from the review page, then everyone can read it, signed in or not.
 
 ## Tech stack
 
@@ -77,7 +77,8 @@ npm start          # builds the site, then starts the server
 | `DB_NAME` | `motorsport` | Database name |
 | `PORT` | `3000` | Port to listen on (Render sets this) |
 | `PUBLIC_URL` | Render URL or localhost | Public address, used for the Google redirect |
-| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | unset | Turn on Google sign-in. Without them the app runs with sign-in off. |
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | unset | Turn on Google sign-in. Without them the app runs with sign-in off and notes are read-only. |
+| `ADMIN_EMAILS` | unset | Comma-separated Google emails that can review and approve notes at `/admin/notes`. |
 
 Copy `.env.example` to `.env` for local settings.
 
@@ -108,7 +109,7 @@ In the Google Cloud console, open your OAuth client and add:
 - **Authorised JavaScript origin:** `https://<your-app>.onrender.com`
 - **Authorised redirect URI:** `https://<your-app>.onrender.com/api/auth/google/callback`
 
-Then add `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` under **Environment** on Render and redeploy. The app uses Render's URL automatically; set `PUBLIC_URL` only if you add a custom domain.
+Then add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `ADMIN_EMAILS` (your Google email) under **Environment** on Render and redeploy. The app uses Render's URL automatically; set `PUBLIC_URL` only if you add a custom domain.
 
 ## Data sources
 

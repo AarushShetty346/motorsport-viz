@@ -288,26 +288,11 @@ test('reset re-seeds the season', async () => {
 
 // ------------------------------ newer features (read-only on race data)
 
-test('lap notes: insert, $inc, $set + editedAt, $addToSet, updateMany, validator', async () => {
-  const before = (await api('/api/user/leaderboard')).body;
+test('lap notes are read-only when sign-in is off', async () => {
   const created = await api('/api/races/3/notes', { method: 'POST', body: { author: 'Tester', text: 'Great restart', lapNumber: 20 } });
-  assert.equal(created.status, 201);
-  const id = created.body.insertedId;
-  assert.equal((await api(`/api/notes/${id}/helpful`, { method: 'POST' })).body.note.helpful, 1);
-  const edited = await api(`/api/notes/${id}`, { method: 'PATCH', body: { text: 'Great restart, again' } });
-  assert.ok(edited.body.note.editedAt);
-  await api(`/api/notes/${id}/tags`, { method: 'POST', body: { tag: 'restart' } });
-  const tagged = await api(`/api/notes/${id}/tags`, { method: 'POST', body: { tag: 'restart' } });
-  assert.deepEqual(tagged.body.note.tags, ['restart']);
-  const unpin = await api('/api/races/3/notes/pin', { method: 'POST', body: { pinned: false } });
-  assert.equal(unpin.body.modifiedCount, 1);
-  const bad = await api('/api/races/3/notes', { method: 'POST', body: { author: '', text: 'x' } });
-  assert.equal(bad.status, 400);
-  assert.equal(bad.body.mongoError.code, 121);
-  const feed = await api('/api/notes/feed');
-  assert.equal(feed.body.capped, true);
-  assert.deepEqual(feed.body.results.slice(0, 3).map((f) => f.action), ['edited', 'upvoted', 'created']);
-  assert.deepEqual((await api('/api/user/leaderboard')).body.results, before.results, 'notes never touch race stats');
+  assert.equal(created.status, 403);
+  assert.equal((await api('/api/races/3/notes')).status, 200);
+  assert.equal((await api('/api/notes/feed')).body.capped, true);
 });
 
 test('season_summary ($merge), clean_laps view, consistency and teammate battle', async () => {

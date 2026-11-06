@@ -110,6 +110,8 @@ const annotationsValidator = {
       pinned: { bsonType: 'bool' },
       createdAt: { bsonType: 'date' },
       editedAt: { bsonType: 'date' },
+      approved: { bsonType: 'bool' },
+      approvedAt: { bsonType: 'date' },
     },
   },
 };
