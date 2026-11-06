@@ -1079,3 +1079,8 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .me-stats span { font: 500 12px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); }
 .me-list { list-style: none; margin: 0; padding: 0; }
 .me-list li { display: grid; grid-template-columns: 220px 1fr auto; gap: 16px; align-items: baseline; padding: 12px 0; border-bottom: 1px solid var(--line-2); }
+.pending-tag { margin-left: 6px; padding: 2px 6px; font: 500 10px/1 var(--mono); text-transform: uppercase; letter-spacing: 0.06em; border: 1px dashed currentColor; border-radius: 2px; opacity: 0.75; }
+.review-list { list-style: none; padding: 0; margin: 24px 0; display: grid; gap: 12px; }
+.review-list li { padding: 16px; border: 1px solid var(--line, rgba(127,127,127,.3)); border-radius: 4px; display: grid; gap: 6px; }
+.review-actions { display: flex; gap: 12px; }
+.review-tabs { display: flex; gap: 8px; margin-top: 16px; }

@@ -47,6 +47,7 @@ export default function Account() {
           <p className="account-name">{name}</p>
           <p className="account-email">{email}</p>
           <Link to="/me" role="menuitem" className="account-link" onClick={() => setOpen(false)}>My activity</Link>
+          {me.isAdmin && <Link to="/admin/notes" role="menuitem" className="account-link" onClick={() => setOpen(false)}>Review notes</Link>}
           <button type="button" role="menuitem" onClick={signOut}>Sign out</button>
         </div>
       )}

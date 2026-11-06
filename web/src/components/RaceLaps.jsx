@@ -1,34 +1,37 @@
 import { useEffect, useState } from 'react';
-import { api } from '../lib/api.js';
 import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
 import { fmtLap, fmtNum, COMPOUND } from '../lib/format.js';
-import { useSteward, setSteward, lapTags, lapRowClass } from '../lib/steward.js';
+import { useSteward, setSteward, lapTags, lapRowClass, useStewardChanges, applyChanges, isLocalLap, addLocalLap, editLocalLap, removeLocalLap, hideLocalLap, penaliseLocalLap, restoreLocalLaps, clearLocalChanges, checkLap } from '../lib/steward.js';
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { openLap } from './LapDrawer.jsx';
-import { ValidationError } from './labValidation.jsx';
 import { useRaceNotes } from './Community.jsx';
 import { ChatCircle } from '@phosphor-icons/react';
-import { useDisplayName, canWrite, ownsEntry } from '../lib/displayName.js';
-import SignInPrompt from './SignInPrompt.jsx';
 
 const EMPTY = { id: '', driverId: '', lapNumber: '', lapTime: '', position: '', compound: '', speed: '', rpm: '', throttle: '', brake: '' };
 
-// Every lap of one race. Steward mode adds, edits, penalises, hides and deletes laps.
+// Every lap of one race. Steward mode adds, edits, penalises, hides and deletes laps,
+// in this browser only: nothing is saved on the server.
 export default function RaceLaps({ race }) {
-  const { drivers, driverById, health } = useSeason();
-  const me = useDisplayName();
-  const steward = useSteward() && canWrite(me);
-  const stewardWanted = useSteward();
+  const { drivers, driverById } = useSeason();
+  const steward = useSteward();
+  const changes = useStewardChanges(race.round);
   const [driverId, setDriverId] = useState('');
   const [page, setPage] = useState(1);
   const [form, setForm] = useState(null);
   const [msg, setMsg] = useState(null);
-  const [busy, setBusy] = useState(false);
-  const qs = new URLSearchParams({ round: race.round, page, limit: 20, ...(driverId && { driverId }), ...(steward && { steward: '1' }) });
-  const { data, error } = useApi(`/api/laps?${qs}`);
+  const busy = false;
+  const qs = new URLSearchParams({ round: race.round, page, limit: 20, ...(driverId && { driverId }), });
+  const { data: served, error } = useApi(`/api/laps?${qs}`);
+  // This browser's steward changes on top of the real laps. Added laps show on page 1.
+  const data = served && (() => {
+    let results = applyChanges(changes, served.results);
+    if (!steward) results = results.filter((l) => !l.deleted);
+    else if (page === 1) results = [...changes.added.filter((l) => !driverId || l.driverId === driverId), ...results];
+    return { ...served, results };
+  })();
   const notes = useRaceNotes(race.round);
   const noted = (l) => (notes.data?.results || []).filter((n) => n.lapNumber === l.lapNumber && (!n.driverId || n.driverId === l.driverId));
   useEffect(() => setPage(1), [driverId, steward]);
@@ -37,29 +40,24 @@ export default function RaceLaps({ race }) {
   const totalPages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
-  const run = async (fn, ok) => {
-    setBusy(true);
-    try {
-      const r = await fn();
-      setMsg({ ok: true, text: ok(r), query: r.query });
-      return r;
-    } catch (err) {
-      setMsg({ ok: false, text: err.message, payload: err.payload });
-    } finally {
-      setBusy(false);
-    }
+  const run = (fn, ok) => {
+    fn();
+    setMsg({ ok: true, text: `${ok} Saved in this browser only.` });
+    return true;
   };
 
-  const submit = async (e) => {
+  const num = (v) => (v === '' || v == null ? undefined : Number(v));
+  const submit = (e) => {
     e.preventDefault();
-    const body = {
-      driverId: form.driverId, round: race.round, lapNumber: form.lapNumber, lapTime: form.lapTime, position: form.position, compound: form.compound,
-      telemetry: { speed: form.speed, rpm: form.rpm, throttle: form.throttle, brake: form.brake },
+    const lap = {
+      driverId: form.driverId, lapNumber: num(form.lapNumber), lapTime: num(form.lapTime), position: num(form.position), compound: form.compound || undefined,
+      telemetry: { speed: num(form.speed), rpm: num(form.rpm), throttle: num(form.throttle), brake: num(form.brake) },
     };
-    const r = form.id
-      ? await run(() => api(`/api/laps/${form.id}`, { method: 'PUT', body }), (r) => `Lap updated with updateOne + $set (modifiedCount: ${r.modifiedCount}).`)
-      : await run(() => api('/api/laps', { method: 'POST', body }), (r) => `Lap added with insertOne, _id: ObjectId("${r.insertedId}").`);
-    if (r) setForm(null);
+    const errors = checkLap(lap);
+    if (errors.length) return setMsg({ ok: false, text: `Not saved: ${errors.join(', ')}.` });
+    if (form.id) run(() => editLocalLap(race.round, form.id, lap), 'Lap updated.');
+    else run(() => addLocalLap(race.round, lap), 'Lap added.');
+    setForm(null);
   };
 
   const startAdd = () => {
@@ -73,14 +71,11 @@ export default function RaceLaps({ race }) {
   };
   const code = (l) => driverById.get(l.driverId)?.code;
 
-  const penalty = (l) => run(() => api(`/api/laps/${l._id}/penalty`, { method: 'POST', body: { seconds: 5 } }), () => `5 s penalty applied to ${code(l)} lap ${l.lapNumber}: the lap ($inc) and the race result were updated in one transaction.`);
-  const hide = (l, hidden) => run(() => api(`/api/laps/${l._id}/hidden`, { method: 'PATCH', body: { hidden } }), () => `${hidden ? 'Hid' : 'Restored'} ${code(l)} lap ${l.lapNumber} with $set: { deleted: ${hidden} }.`);
-  const remove = (l) => run(() => api(`/api/laps/${l._id}`, { method: 'DELETE' }), (r) => `Deleted the added lap (deletedCount: ${r.deletedCount}).`);
-  const restoreAll = () => run(() => api(`/api/races/${race.round}/restore`, { method: 'POST' }), (r) => `Restored ${r.modifiedCount} hidden ${r.modifiedCount === 1 ? 'lap' : 'laps'} with updateMany.`);
-  const reset = async () => {
-    if (!confirm('Reload the whole 2025 season? Every steward change is lost.')) return;
-    await run(() => api('/api/reset', { method: 'POST' }), (r) => `Reloaded ${fmtNum(r.laps)} laps from the season file.`);
-  };
+  const penalty = (l) => run(() => penaliseLocalLap(race.round, l._id, 5), `5 s penalty applied to ${code(l)} lap ${l.lapNumber}.`);
+  const hide = (l, hidden) => run(() => hideLocalLap(race.round, l._id, hidden), `${hidden ? 'Hid' : 'Restored'} ${code(l)} lap ${l.lapNumber}.`);
+  const remove = (l) => run(() => removeLocalLap(race.round, l._id), 'Deleted the added lap.');
+  const restoreAll = () => run(() => restoreLocalLaps(race.round), 'Restored every hidden lap.');
+  const reset = () => confirm('Undo every steward change on this race?') && run(() => clearLocalChanges(race.round), 'Steward changes cleared.');
 
   return (
     <div className={`race-laps ${steward ? 'is-steward' : ''}`}>
@@ -93,23 +88,19 @@ export default function RaceLaps({ race }) {
         </label>
         <span className="muted small">{data ? `${fmtNum(data.total)} laps · click a lap to see its document` : ''}</span>
         <label className="steward-toggle">
-          <input type="checkbox" checked={stewardWanted} onChange={(e) => setSteward(e.target.checked)} />
+          <input type="checkbox" checked={steward} onChange={(e) => setSteward(e.target.checked)} />
           <span>Steward mode</span>
         </label>
       </div>
 
-      <FeatureLabel name="CRUD: insertOne, find, updateOne, deleteOne (turn on Steward mode)" />
-      {stewardWanted && !steward && <SignInPrompt>Sign in with Google to use Steward mode. Laps you add are saved under your name, and only you can edit or delete them.</SignInPrompt>}
       {steward && (
         <div className="steward-bar">
-          <p className="small">Steward mode: changes here are not real race data. Added laps are tagged <span className="lap-tag added">added</span>, changed real laps <span className="lap-tag edited">edited</span>. Neither counts towards leaderboards or stats.</p>
+          <p className="small">Steward mode: changes stay in this browser only and are never saved to the race data. Added laps are tagged <span className="lap-tag added">added</span>, changed real laps <span className="lap-tag edited">edited</span>. Neither counts towards leaderboards or stats.</p>
           <div className="steward-actions">
             <button type="button" className="btn btn-primary btn-sm" onClick={startAdd} disabled={busy}>Add lap</button>
             <button type="button" className="btn btn-ghost btn-sm" onClick={restoreAll} disabled={busy}>Restore all hidden laps</button>
-            <button type="button" className="btn btn-ghost btn-sm" onClick={reset} disabled={busy}>Reset demo data</button>
+            <button type="button" className="btn btn-ghost btn-sm" onClick={reset} disabled={busy}>Undo all changes</button>
           </div>
-          <FeatureLabel name="Update operators: $inc, $set, updateMany" />
-          <FeatureLabel name={`Transactions: lap + race result in one session${health && !health.transactions ? ' (unavailable: not a replica set)' : ''}`} />
         </div>
       )}
 
@@ -131,21 +122,11 @@ export default function RaceLaps({ race }) {
             <button type="submit" className="btn btn-primary" disabled={busy}>{form.id ? 'Save lap' : 'Add lap'}</button>
             <button type="button" className="btn btn-ghost" onClick={() => { setForm(null); setMsg(null); }}>Cancel</button>
           </div>
-          {msg && !msg.ok && msg.payload?.mongoError && (
-            <div className="form-error">
-              <ValidationError payload={msg.payload} />
-              <FeatureLabel name="Schema validation: $jsonSchema (code 121)" />
-            </div>
-          )}
+          {msg && !msg.ok && <div className="form-error msg msg-err">{msg.text}</div>}
         </form>
       )}
 
-      {msg && !(form && msg.payload?.mongoError) && (
-        <div className={`msg ${msg.ok ? 'msg-ok' : 'msg-err'}`} role="status">
-          {msg.payload?.mongoError ? <ValidationError payload={msg.payload} /> : msg.text}
-          {msg.query && <Query text={msg.query} label="Query that ran" />}
-        </div>
-      )}
+      {msg && !(form && !msg.ok) && <div className={`msg ${msg.ok ? 'msg-ok' : 'msg-err'}`} role="status">{msg.text}</div>}
 
       {error && <p className="msg msg-err">{error.message}</p>}
       <div className="table-wrap">
@@ -155,7 +136,7 @@ export default function RaceLaps({ race }) {
             {data?.results.map((l) => {
               const added = l.source === 'steward';
               return (
-                <tr key={l._id} className={`clickable ${lapRowClass(l)}`} onClick={() => openLap(l._id)}>
+                <tr key={l._id} className={`clickable ${lapRowClass(l)}`} onClick={() => !isLocalLap(l) && openLap(l._id)}>
                   <td className="num mono">{l.lapNumber}{noted(l).length ? <a href="#notes" className="note-icon" title={noted(l).map((n) => `(user note) ${n.author}: ${n.text}`).join('\n')} onClick={(e) => e.stopPropagation()}><ChatCircle size={13} weight="fill" /></a> : null}</td>
                   <td><DriverName driver={driverById.get(l.driverId)} short sub={lapTags(l).map((t) => `(${t})`).join(' ') || undefined} /></td>
                   <td className="num mono">{l.position ?? '-'}</td>
@@ -164,10 +145,10 @@ export default function RaceLaps({ race }) {
                   <td className="num mono">{fmtNum(l.telemetry?.speed, 1)}</td>
                   {steward && (
                     <td className="row-actions" onClick={(e) => e.stopPropagation()}>
-                      {(!added || ownsEntry(me, l)) && <button type="button" className="btn-link" onClick={() => startEdit(l)} disabled={busy}>Edit</button>}
+                      {<button type="button" className="btn-link" onClick={() => startEdit(l)} disabled={busy}>Edit</button>}
                       {!added && <button type="button" className="btn-link" onClick={() => penalty(l)} disabled={busy || l.deleted}>Apply 5 s penalty</button>}
                       {added
-                        ? (ownsEntry(me, l) ? <button type="button" className="btn-link danger" onClick={() => remove(l)} disabled={busy}>Delete</button> : <span className="muted small">added by {l.addedBy?.name}</span>)
+                        ? <button type="button" className="btn-link danger" onClick={() => remove(l)} disabled={busy}>Delete</button>
                         : <button type="button" className="btn-link danger" onClick={() => hide(l, !l.deleted)} disabled={busy}>{l.deleted ? 'Restore' : 'Hide'}</button>}
                     </td>
                   )}

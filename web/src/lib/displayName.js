@@ -25,11 +25,12 @@ const toUser = (me) => ({
   signedIn: !!me?.user,
   id: me?.user?._id || null,
   name: me?.user?.name || saved(),
+  isAdmin: !!me?.user?.isAdmin,
   user: me?.user || null,
 });
 
 export function useDisplayName() {
-  const [user, setUser] = useState({ ready: false, configured: false, signedIn: false, id: null, name: saved(), user: null });
+  const [user, setUser] = useState({ ready: false, configured: false, signedIn: false, isAdmin: false, id: null, name: saved(), user: null });
   useEffect(() => {
     const update = (me) => setUser(toUser(me));
     listeners.add(update);
@@ -41,6 +42,9 @@ export function useDisplayName() {
 
 // May this visitor write at all? Always, when sign-in is off.
 export const canWrite = (me) => !me.configured || me.signedIn;
+
+// Notes need a Google identity, so they are read-only when sign-in is off.
+export const canNote = (me) => me.configured && me.signedIn;
 
 // May this visitor change or delete something someone added? Only their own,
 // once sign-in is on (things added while it was off stay open to everyone).

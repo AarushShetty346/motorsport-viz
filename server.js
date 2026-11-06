@@ -6,7 +6,7 @@ const path = require('path');
 const express = require('express');
 const { ObjectId } = require('mongodb');
 const { init, resetDemoData, getDb, client } = require('./db');
-const { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured: googleConfigured } = require('./auth');
+const { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured: googleConfigured, isAdmin } = require('./auth');
 
 const PORT = Number(process.env.PORT) || 3000;
 const DIST = path.join(__dirname, 'dist');
@@ -22,6 +22,21 @@ async function signedIn(req, res, next) {
   req.user = googleConfigured() ? await currentUser(getDb, req) : null;
   if (googleConfigured() && !req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
   next();
+}
+// Steward changes live in each visitor's browser. The server lap-write routes stay for
+// local development (sign-in off, not production) and for admins.
+async function stewardWrite(req, res, next) {
+  req.user = googleConfigured() ? await currentUser(getDb, req) : null;
+  if (googleConfigured() && !req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
+  if (googleConfigured() ? !isAdmin(req.user) : process.env.NODE_ENV === 'production') {
+    return res.status(403).json({ error: 'Steward changes are saved in your browser only. The shared race data is read-only.' });
+  }
+  next();
+}
+// Notes need a real identity, so with sign-in off they are read-only.
+async function noteWriter(req, res, next) {
+  if (!googleConfigured()) return res.status(403).json({ error: 'Notes need Google sign-in, which is not set up on this server.' });
+  return signedIn(req, res, next);
 }
 const byline = (user) => (user ? { userId: user._id, name: user.name } : undefined);
 // Only the person who added something can change or delete it (anything added while sign-in was off is open to all).
@@ -190,7 +205,7 @@ app.get('/api/races/:round/laps', async (req, res) => {
   res.json({ query: `db.laps.find({ round: ${round}, deleted: { $ne: true }, source: { $ne: "steward" } }).sort({ lapNumber: 1 })`, explain, results });
 });
 
-app.post('/api/reset', signedIn, async (req, res) => {
+app.post('/api/reset', stewardWrite, async (req, res) => {
   await resetDemoData();
   res.json({ ok: true, drivers: await drivers().countDocuments(), races: await races().countDocuments(), laps: await laps().countDocuments() });
 });
@@ -276,7 +291,7 @@ function writeError(err, res) {
 }
 
 // CREATE: always a steward lap
-app.post('/api/laps', signedIn, async (req, res) => {
+app.post('/api/laps', stewardWrite, async (req, res) => {
   const doc = stripUndefined({ ...(await lapFromBody(req.body || {})), addedBy: byline(req.user) });
   if (!(await assertDriverExists(doc, res))) return;
   try {
@@ -288,7 +303,7 @@ app.post('/api/laps', signedIn, async (req, res) => {
 });
 
 // UPDATE with $set. Editing a real lap marks it stewardEdited.
-app.put('/api/laps/:id', signedIn, async (req, res) => {
+app.put('/api/laps/:id', stewardWrite, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const lap = await laps().findOne({ _id }, { projection: { source: 1, addedBy: 1 } });
@@ -312,7 +327,7 @@ app.put('/api/laps/:id', signedIn, async (req, res) => {
 });
 
 // DELETE: only laps a steward added. Real laps are hidden instead (soft delete, below).
-app.delete('/api/laps/:id', signedIn, async (req, res) => {
+app.delete('/api/laps/:id', stewardWrite, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const filter = { _id, source: 'steward' };
@@ -331,7 +346,7 @@ app.delete('/api/laps/:id', signedIn, async (req, res) => {
 // ------------------------------- update operators
 
 // Hide / restore one lap: the soft-delete path for real laps.
-app.patch('/api/laps/:id/hidden', signedIn, async (req, res) => {
+app.patch('/api/laps/:id/hidden', stewardWrite, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const hidden = req.body?.hidden === true;
@@ -342,7 +357,7 @@ app.patch('/api/laps/:id/hidden', signedIn, async (req, res) => {
 });
 
 // Restore every hidden lap of a race in one updateMany.
-app.post('/api/races/:round/restore', signedIn, async (req, res) => {
+app.post('/api/races/:round/restore', stewardWrite, async (req, res) => {
   const round = intParam(req.params.round);
   const filter = { round, deleted: true };
   const update = { $set: { deleted: false, stewardEdited: true, ...(req.user && { lastEditedBy: byline(req.user) }) } };
@@ -354,7 +369,7 @@ app.post('/api/races/:round/restore', signedIn, async (req, res) => {
 // A time penalty changes the lap ($inc lapTime) and the driver's entry in the
 // race's embedded results, in one multi-document transaction: both or neither.
 
-app.post('/api/laps/:id/penalty', signedIn, async (req, res) => {
+app.post('/api/laps/:id/penalty', stewardWrite, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid lap id' });
   const seconds = Number(req.body?.seconds) || 5;
@@ -818,51 +833,59 @@ function noteInput(body) {
   return { author: clip(body.author, 40), text: clip(body.text, 280) };
 }
 
-// Capped collection: every note action is logged to notes_feed (max 50 docs, oldest roll off).
+// Capped collection: note activity for the home page feed (max 50 docs, oldest roll off).
+// Only approved notes are logged, so nothing unreviewed is ever shown publicly.
 async function logNote(action, note) {
+  if (!note.approved) return;
   const race = await races().findOne({ round: note.round }, { projection: { name: 1 } });
   await notesFeed().insertOne({ action, noteId: note._id, round: note.round, race: race?.name, lapNumber: note.lapNumber ?? null, author: note.author, text: note.text.slice(0, 120), at: new Date() });
 }
+
+// Who can see a note: everyone once it is approved, before that only its author and admins.
+// The server applies this filter, so an unapproved note never leaves it for anyone else.
+function visibleTo(user) {
+  if (isAdmin(user)) return {};
+  return user ? { $or: [{ approved: true }, { 'addedBy.userId': user._id }] } : { approved: true };
+}
+const viewer = async (req) => (googleConfigured() ? currentUser(getDb, req) : null);
 
 // ------------------------- lap notes with update operators
 
 app.get('/api/races/:round/notes', async (req, res) => {
   const round = intParam(req.params.round);
-  const filter = { round };
+  const user = await viewer(req);
+  const filter = { round, ...visibleTo(user) };
   const results = await annotations().find(filter).sort({ helpful: -1, createdAt: -1 }).toArray();
-  res.json({ query: `db.annotations.find(${shell(filter)}).sort({ helpful: -1, createdAt: -1 })`, results });
+  res.json({ query: `db.annotations.find(${shell({ round, approved: true })}).sort({ helpful: -1, createdAt: -1 })`, results });
 });
 
-app.post('/api/races/:round/notes', signedIn, async (req, res) => {
+app.post('/api/races/:round/notes', noteWriter, async (req, res) => {
   const round = intParam(req.params.round);
-  const { author: typed, text } = noteInput(req.body || {});
-  const author = req.user ? req.user.name.slice(0, 40) : typed;
+  const { text } = noteInput(req.body || {});
   const lapNumber = intParam(req.body?.lapNumber);
   const doc = {
     round, lapNumber: lapNumber && lapNumber > 0 ? lapNumber : null, driverId: toObjectId(req.body?.driverId),
-    author, text, helpful: 0, tags: [], pinned: true, createdAt: new Date(),
+    author: req.user.name.slice(0, 40), text, helpful: 0, tags: [], pinned: true, approved: false, createdAt: new Date(),
+    addedBy: byline(req.user),
   };
-  if (req.user) doc.addedBy = byline(req.user);
   try {
     const r = await annotations().insertOne(doc);
-    await logNote('created', doc);
-    res.status(201).json({ insertedId: r.insertedId, query: 'db.annotations.insertOne(' + shell(doc) + ')' });
+    res.status(201).json({ insertedId: r.insertedId, approved: false, query: 'db.annotations.insertOne(' + shell(doc) + ')' });
   } catch (err) {
     if (err.code === 121) return res.status(400).json(validationErrorPayload(err));
     throw err;
   }
 });
 
-async function updateNote(req, res, update, action, ownOnly = false) {
+// who: 'visible' (anyone who can see it), 'own' (author or admin).
+async function updateNote(req, res, update, action, who = 'visible') {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid note id' });
-  if (ownOnly) {
-    const existing = await annotations().findOne({ _id }, { projection: { addedBy: 1 } });
-    if (existing && !owns(existing, req.user)) return notYours(res, 'note');
-  }
+  const existing = await annotations().findOne({ _id, ...visibleTo(req.user) }, { projection: { addedBy: 1 } });
+  if (!existing) return res.status(404).json({ error: 'Note not found' });
+  if (who === 'own' && !isAdmin(req.user) && !owns(existing, req.user)) return notYours(res, 'note');
   try {
     const note = await annotations().findOneAndUpdate({ _id }, update, { returnDocument: 'after' });
-    if (!note) return res.status(404).json({ error: 'Note not found' });
     if (action) await logNote(action, note);
     res.json({ note, query: `db.annotations.updateOne({ _id: ObjectId("${_id}") }, ${shell(update)})` });
   } catch (err) {
@@ -872,24 +895,56 @@ async function updateNote(req, res, update, action, ownOnly = false) {
 }
 
 // "Helpful" upvote: $inc.
-app.post('/api/notes/:id/helpful', signedIn, (req, res) => updateNote(req, res, { $inc: { helpful: 1 } }, 'upvoted'));
+app.post('/api/notes/:id/helpful', noteWriter, (req, res) => updateNote(req, res, { $inc: { helpful: 1 } }, 'upvoted'));
 
-// Edit: $set the new text and an editedAt timestamp, shown as "(edited)".
-app.patch('/api/notes/:id', signedIn, (req, res) => {
+// Edit: $set the new text and an editedAt timestamp. An edited note goes back for review.
+app.patch('/api/notes/:id', noteWriter, (req, res) => {
   const { text } = noteInput(req.body || {});
-  return updateNote(req, res, { $set: { text, editedAt: new Date() } }, 'edited', true);
+  const set = { text, editedAt: new Date(), ...(!isAdmin(req.user) && { approved: false }) };
+  return updateNote(req, res, { $set: set }, 'edited', 'own');
 });
 
-// Delete your own note.
-app.delete('/api/notes/:id', signedIn, async (req, res) => {
+// Delete your own note (admins can delete any).
+app.delete('/api/notes/:id', noteWriter, async (req, res) => {
   const _id = toObjectId(req.params.id);
   if (!_id) return res.status(400).json({ error: 'Invalid note id' });
-  const note = await annotations().findOne({ _id });
+  const note = await annotations().findOne({ _id, ...visibleTo(req.user) });
   if (!note) return res.status(404).json({ error: 'Note not found' });
-  if (!owns(note, req.user)) return notYours(res, 'note');
+  if (!isAdmin(req.user) && !owns(note, req.user)) return notYours(res, 'note');
   await annotations().deleteOne({ _id });
   await logNote('deleted', note);
   res.json({ deletedCount: 1, query: `db.annotations.deleteOne({ _id: ObjectId("${_id}") })` });
+});
+
+// ------------------------- note review (admins only)
+
+async function adminOnly(req, res, next) {
+  if (!googleConfigured()) return res.status(404).json({ error: 'Sign-in is off, so there is no review queue.' });
+  req.user = await currentUser(getDb, req);
+  if (!req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
+  if (!isAdmin(req.user)) return res.status(403).json({ error: 'Only admins can review notes.' });
+  next();
+}
+
+app.get('/api/admin/notes', adminOnly, async (req, res) => {
+  const filter = req.query.status === 'approved' ? { approved: true } : { approved: { $ne: true } };
+  const results = await annotations().aggregate([
+    { $match: filter }, { $sort: { createdAt: -1 } }, { $limit: 200 },
+    { $lookup: { from: 'races', localField: 'round', foreignField: 'round', as: 'race', pipeline: [{ $project: { _id: 0, name: 1 } }] } },
+    { $set: { race: { $first: '$race.name' } } },
+  ]).toArray();
+  res.json({ query: `db.annotations.find(${shell(filter)}).sort({ createdAt: -1 })`, results });
+});
+
+app.post('/api/admin/notes/:id/approve', adminOnly, async (req, res) => {
+  const _id = toObjectId(req.params.id);
+  if (!_id) return res.status(400).json({ error: 'Invalid note id' });
+  const approved = req.body?.approved !== false;
+  const update = { $set: { approved, ...(approved ? { approvedAt: new Date(), approvedBy: byline(req.user) } : {}) } };
+  const note = await annotations().findOneAndUpdate({ _id }, update, { returnDocument: 'after' });
+  if (!note) return res.status(404).json({ error: 'Note not found' });
+  if (approved) await logNote('created', note);
+  res.json({ note, query: `db.annotations.updateOne({ _id: ObjectId("${_id}") }, ${shell(update)})` });
 });
 
 // ------------------------- My activity: everything the signed-in user added or changed
@@ -912,14 +967,15 @@ app.get('/api/me/activity', signedIn, async (req, res) => {
 });
 
 // Tags: $addToSet, so the same tag is never stored twice.
-app.post('/api/notes/:id/tags', signedIn, (req, res) => {
+app.post('/api/notes/:id/tags', noteWriter, (req, res) => {
   const tag = String(req.body?.tag || '').trim().toLowerCase().replace(/[^a-z0-9 -]/g, '').slice(0, 24);
   if (!tag) return res.status(400).json({ error: 'Type a tag first' });
-  return updateNote(req, res, { $addToSet: { tags: tag } });
+  return updateNote(req, res, { $addToSet: { tags: tag } }, null, 'own');
 });
 
-// Pin or unpin every note of a race on the charts in one updateMany.
-app.post('/api/races/:round/notes/pin', signedIn, async (req, res) => {
+// Pin or unpin every note of a race on the charts in one updateMany (admins only).
+app.post('/api/races/:round/notes/pin', noteWriter, async (req, res) => {
+  if (!isAdmin(req.user)) return res.status(403).json({ error: 'Only admins can pin or unpin every note.' });
   const filter = { round: intParam(req.params.round) };
   const update = { $set: { pinned: !!req.body?.pinned } };
   const r = await annotations().updateMany(filter, update);
