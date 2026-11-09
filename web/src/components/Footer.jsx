@@ -19,6 +19,7 @@ export default function Footer() {
           <Link to="/#standings">Drivers</Link>
           <Link to="/team/mclaren">Teams</Link>
           <Link to="/compare">Head to head</Link>
+          <Link to="/privacy">Privacy</Link>
         </div>
         <div className="footer-credits muted">
           <p>

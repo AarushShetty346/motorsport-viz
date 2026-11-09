@@ -13,6 +13,7 @@ import Race from './pages/Race.jsx';
 import Driver from './pages/Driver.jsx';
 import Compare from './pages/Compare.jsx';
 import NotFound from './pages/NotFound.jsx';
+import Privacy from './pages/Privacy.jsx';
 import Team from './pages/Team.jsx';
 import Teams from './pages/Teams.jsx';
 import MyActivity from './pages/MyActivity.jsx';
@@ -32,6 +33,7 @@ function route(path) {
   if (/^\/me\/?$/.test(path)) return { key: 'me', el: <MyActivity /> };
   if (/^\/admin\/notes\/?$/.test(path)) return { key: 'admin-notes', el: <AdminNotes /> };
   if (path.startsWith('/compare')) return { key: 'compare', el: <Compare /> };
+  if (/^\/privacy\/?$/.test(path)) return { key: 'privacy', el: <Privacy /> };
   return { key: '404', el: <NotFound /> };
 }
 
