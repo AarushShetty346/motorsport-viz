@@ -14,6 +14,9 @@ const SESSION_COOKIE = 'lbl_session';
 const STATE_COOKIE = 'lbl_oauth_state';
 
 const configured = () => Boolean(CLIENT_ID && CLIENT_SECRET);
+// Admins (ADMIN_EMAILS, comma-separated Google emails) review notes before anyone else sees them.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').split(',').map((e) => e.trim().toLowerCase()).filter(Boolean);
+const isAdmin = (user) => !!user?.email && ADMIN_EMAILS.includes(user.email.toLowerCase());
 
 function readCookies(req) {
   const out = {};
@@ -61,7 +64,8 @@ function authRouter(getDb) {
 
   // Who is signed in (null if nobody), and whether Google sign-in is set up at all.
   router.get('/me', async (req, res) => {
-    res.json({ configured: configured(), user: configured() ? await currentUser(getDb, req) : null });
+    const user = configured() ? await currentUser(getDb, req) : null;
+    res.json({ configured: configured(), user: user && { ...user, isAdmin: isAdmin(user) } });
   });
 
   // Step 1: send the browser to Google's sign-in page.
@@ -146,4 +150,4 @@ function authRouter(getDb) {
   return router;
 }
 
-module.exports = { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured };
+module.exports = { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured, isAdmin };

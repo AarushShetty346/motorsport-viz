@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { api } from '../lib/api.js';
 import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
@@ -9,7 +9,7 @@ import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { ValidationError } from './labValidation.jsx';
 import { PushPin, ThumbsUp } from '@phosphor-icons/react';
-import { useDisplayName, rememberDisplayName, canWrite, ownsEntry } from '../lib/displayName.js';
+import { useDisplayName, canNote, ownsEntry } from '../lib/displayName.js';
 import SignInPrompt from './SignInPrompt.jsx';
 
 const ago = (iso) => {
@@ -28,8 +28,7 @@ export function LapNotes({ race }) {
   const { driverById } = useSeason();
   const notes = useRaceNotes(race.round);
   const me = useDisplayName();
-  const [form, setForm] = useState({ author: me.name, lapNumber: '', driverId: '', text: '' });
-  useEffect(() => { if (me.signedIn) setForm((f) => ({ ...f, author: me.name })); }, [me]);
+  const [form, setForm] = useState({ lapNumber: '', driverId: '', text: '' });
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -41,7 +40,7 @@ export function LapNotes({ race }) {
     setBusy(true);
     try {
       const r = await fn();
-      setMsg({ ok: true, query: r.query });
+      setMsg({ ok: true, query: r.query, text: r.approved === false ? 'Note saved. Only you can see it until it is approved.' : null });
       return r;
     } catch (err) {
       setMsg({ ok: false, text: err.message, payload: err.payload });
@@ -52,7 +51,6 @@ export function LapNotes({ race }) {
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const submit = async (e) => {
     e.preventDefault();
-    rememberDisplayName(form.author);
     const r = await run(() => api(`/api/races/${race.round}/notes`, { method: 'POST', body: form }));
     if (r) setForm((f) => ({ ...f, text: '' }));
   };
@@ -61,7 +59,8 @@ export function LapNotes({ race }) {
     if (await run(() => api(`/api/notes/${editing.id}`, { method: 'PATCH', body: { text: editing.text } }))) setEditing(null);
   };
   const remove = (n) => confirm('Delete this note?') && run(() => api(`/api/notes/${n._id}`, { method: 'DELETE' }));
-  const writer = canWrite(me);
+  const writer = canNote(me);
+  const approve = (n, approved) => run(() => api(`/api/admin/notes/${n._id}/approve`, { method: 'POST', body: { approved } }));
   const addTag = async (e) => {
     e.preventDefault();
     if (await run(() => api(`/api/notes/${tagFor.id}/tags`, { method: 'POST', body: { tag: tagFor.tag } }))) setTagFor(null);
@@ -69,19 +68,22 @@ export function LapNotes({ race }) {
 
   return (
     <div className="lap-notes">
-      {!writer && <SignInPrompt>Sign in with Google to add notes, mark them helpful and tag them. Your notes are saved under your Google name, and only you can edit or delete them.</SignInPrompt>}
+      {!writer && me.ready && (me.configured
+        ? <SignInPrompt>Sign in with Google to add notes. Your notes stay private to you until they are reviewed, then everyone can read them.</SignInPrompt>
+        : <p className="muted small">Notes are read-only here because Google sign-in is not set up.</p>)}
       {writer && <form className="note-form" onSubmit={submit} noValidate autoComplete="off">
-        <label>Your name<input type="text" value={form.author} onChange={set('author')} placeholder="Aarush" maxLength={40} readOnly={me.signedIn} /></label>
+        <label>Your name<input type="text" value={me.name} readOnly /></label>
         <label>Lap<input type="text" inputMode="numeric" value={form.lapNumber} onChange={set('lapNumber')} placeholder={`1-${race.laps}`} /></label>
         <label>Driver<select value={form.driverId} onChange={set('driverId')}><option value="">Whole race</option>{race.results.map((r) => driverById.get(r.driverId)).filter(Boolean).map((d) => <option key={d._id} value={d._id}>{d.name}</option>)}</select></label>
         <label className="note-text">Note<input type="text" value={form.text} onChange={set('text')} placeholder="The undercut that won it" maxLength={280} /></label>
         <button type="submit" className="btn btn-primary btn-sm" disabled={busy}>Add note</button>
       </form>}
+      {msg?.ok && msg.text && <div className="msg msg-ok" role="status">{msg.text}</div>}
       {msg && !msg.ok && <div className="msg msg-err" role="status">{msg.payload?.mongoError ? <ValidationError payload={msg.payload} /> : msg.text}</div>}
 
       <div className="notes-toolbar">
-        <span className="muted small">{list.length ? `${list.length} ${list.length === 1 ? 'note' : 'notes'} · ${pinned} pinned on the gap chart` : 'No notes on this race yet. Be the first.'}</span>
-        {!!list.length && writer && (
+        <span className="muted small">{list.length ? `${list.length} ${list.length === 1 ? 'note' : 'notes'} · ${pinned} pinned on the gap chart` : 'No notes on this race yet.'}</span>
+        {!!list.length && me.isAdmin && (
           <span className="notes-bulk">
             <button type="button" className="btn-link" disabled={busy || pinned === list.length} onClick={() => run(() => api(`/api/races/${race.round}/notes/pin`, { method: 'POST', body: { pinned: true } }))}>Pin all</button>
             <button type="button" className="btn-link" disabled={busy || !pinned} onClick={() => run(() => api(`/api/races/${race.round}/notes/pin`, { method: 'POST', body: { pinned: false } }))}>Unpin all</button>
@@ -92,11 +94,11 @@ export function LapNotes({ race }) {
       <ul className="note-list">
         {list.map((n) => {
           const d = n.driverId && driverById.get(n.driverId);
-          const mine = ownsEntry(me, n);
+          const mine = me.signedIn && ownsEntry(me, n);
           return (
             <li key={n._id} className="note">
               <div className="note-head">
-                <strong>{n.author}</strong> <span className="user-tag">(user note)</span>{me.configured && mine ? <span className="you-tag">you</span> : null}
+                <strong>{n.author}</strong> <span className="user-tag">(user note)</span>{me.configured && mine ? <span className="you-tag">you</span> : null}{n.approved ? null : <span className="pending-tag">waiting for review</span>}
                 <span className="muted small">{n.lapNumber ? `Lap ${n.lapNumber}` : 'Whole race'}{d ? ` · ${d.code}` : ''} · {ago(n.createdAt)}{n.editedAt ? ' (edited)' : ''}{n.pinned ? <PushPin size={12} weight="fill" className="inline-icon" aria-label="pinned" /> : null}</span>
               </div>
               {editing?.id === n._id ? (
@@ -110,15 +112,16 @@ export function LapNotes({ race }) {
                 {writer
                   ? <button type="button" className="btn-link" disabled={busy} onClick={() => run(() => api(`/api/notes/${n._id}/helpful`, { method: 'POST' }))}><ThumbsUp size={14} className="inline-icon" /> Helpful {n.helpful}</button>
                   : <span className="muted small"><ThumbsUp size={14} className="inline-icon" /> {n.helpful} found this helpful</span>}
+                {me.isAdmin && <button type="button" className="btn-link" disabled={busy} onClick={() => approve(n, !n.approved)}>{n.approved ? 'Unapprove' : 'Approve'}</button>}
                 {mine && <button type="button" className="btn-link" onClick={() => setEditing({ id: n._id, text: n.text })}>Edit</button>}
-                {mine && <button type="button" className="btn-link danger" disabled={busy} onClick={() => remove(n)}>Delete</button>}
+                {(mine || me.isAdmin) && <button type="button" className="btn-link danger" disabled={busy} onClick={() => remove(n)}>Delete</button>}
                 {n.tags.map((t) => <span key={t} className="note-tag">#{t}</span>)}
                 {tagFor?.id === n._id ? (
                   <form className="note-inline" onSubmit={addTag}>
                     <input type="text" value={tagFor.tag} onChange={(e) => setTagFor({ ...tagFor, tag: e.target.value })} placeholder="overtake" maxLength={24} autoFocus />
                     <button type="submit" className="btn-link" disabled={busy}>Add</button>
                   </form>
-                ) : writer && <button type="button" className="btn-link" onClick={() => setTagFor({ id: n._id, tag: '' })}>+ tag</button>}
+                ) : (mine || me.isAdmin) && writer && <button type="button" className="btn-link" onClick={() => setTagFor({ id: n._id, tag: '' })}>+ tag</button>}
               </div>
             </li>
           );
