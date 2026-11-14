@@ -9,7 +9,7 @@ import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { ValidationError } from './labValidation.jsx';
 import { PushPin, ThumbsUp } from '@phosphor-icons/react';
-import { useDisplayName, canNote, ownsEntry } from '../lib/displayName.js';
+import { useDisplayName, canNote, ownsEntry, canWrite } from '../lib/displayName.js';
 import SignInPrompt from './SignInPrompt.jsx';
 
 const ago = (iso) => {
