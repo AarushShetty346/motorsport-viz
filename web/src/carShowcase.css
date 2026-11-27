@@ -1,4 +1,7 @@
 .car-showcase { position: relative; margin-top: 28px; }
-
-/* Flat side view of a car in a team's livery, used on the teams list. */
-.car-side { width: 100%; height: auto; display: block; }
+.car-model { width: 100%; height: clamp(260px, 34vw, 440px); }
+.car-model canvas { display: block; width: 100% !important; height: 100% !important; }
+.car-model.is-interactive { cursor: grab; touch-action: pan-y; }
+.car-model.is-interactive:active { cursor: grabbing; }
+.car-showcase-hint { margin: 6px 0 0; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
+.teams-card .car-model { height: 150px; }
