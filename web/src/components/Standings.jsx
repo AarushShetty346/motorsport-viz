@@ -2,12 +2,11 @@ import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
 import { Link } from '../lib/router.jsx';
 import Flag from './Flag.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { teamPath } from '../lib/teams.js';
 
 export default function Standings() {
-  const { standings, standingsQuery, standingsExplain, driverById } = useSeason();
+  const { standings, driverById } = useSeason();
   const constructors = useApi('/api/season/constructors');
   const leader = standings[0]?.points || 1;
   const teamColor = (team) => standings.find((s) => s.team === team)?.teamColor;
@@ -55,11 +54,9 @@ export default function Standings() {
               </li>
             ))}
           </ol>
-          <Query text={constructors.data?.query} explain={constructors.data?.explain} label="Constructors pipeline" />
         </aside>
       </div>
       <FeatureLabel name="Aggregation: $unwind + $group + $lookup" />
-      <Query text={standingsQuery} explain={standingsExplain} label="Standings pipeline ($unwind → $group → $lookup → $sort)" />
     </section>
   );
 }

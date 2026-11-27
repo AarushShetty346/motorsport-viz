@@ -5,7 +5,6 @@ import { Link, useRouter } from '../lib/router.jsx';
 import { fmtLap, fmtNum, ordinal, COMPOUND } from '../lib/format.js';
 import LapChart from '../components/LapChart.jsx';
 import Flag from '../components/Flag.jsx';
-import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
 import FeatureLabel from '../components/FeatureLabel.jsx';
 import DriverPortrait from '../components/DriverPortrait.jsx';
@@ -111,7 +110,6 @@ export default function Driver({ driverKey }) {
           <span><span className="sw-cell points" />Points</span><span><span className="sw-cell out" />No points</span>
           <span><span className="sw-cell dnf" />Did not finish</span><span><span className="strip-sprint inline" />Sprint weekend</span>
         </p>
-        <Query text={season.data?.query} explain={season.data?.explain} label="This driver's results (aggregation on races)" />
       </section>
 
       <section className="container section-tight">
@@ -168,7 +166,6 @@ export default function Driver({ driverKey }) {
               </div>
             </details>
             <FeatureLabel name="All laps for a driver" type="user" />
-            <Query text={laps.data.query} explain={laps.data.explain} />
           </>
         )}
       </section>

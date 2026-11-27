@@ -6,7 +6,6 @@ import { useApi } from '../lib/useApi.js';
 import { useRouter } from '../lib/router.jsx';
 import { fmtLap } from '../lib/format.js';
 import DriverName from '../components/DriverName.jsx';
-import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
 import FeatureLabel from '../components/FeatureLabel.jsx';
 
@@ -127,7 +126,6 @@ export default function Compare() {
             </section>
           )}
           <FeatureLabel name="Head-to-head comparison" type="user" />
-          <Query text={data.query} explain={data.explain} />
           <ShareComparison key={`${aKey}-${bKey}`} a={aKey} b={bKey} sharedDays={shared?.days} />
         </>
       )}

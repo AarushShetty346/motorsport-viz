@@ -3,7 +3,6 @@ import { motion, useMotionValueEvent, useScroll, useTransform } from 'motion/rea
 import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
 import { prefersReducedMotion } from '../lib/motion.js';
-import Query from './Query.jsx';
 
 const W = 1000, H = 520, PAD = { l: 44, r: 120, t: 20, b: 36 };
 const HIGHLIGHT = 4;
@@ -125,7 +124,6 @@ export default function TitleFight() {
               ))}
               <span className="muted"><svg width="22" height="8" aria-hidden="true"><line x1="0" x2="22" y1="4" y2="4" className="line-faint" /></svg>Rest of the grid</span>
             </figcaption>
-            <Query text={data.query} explain={data.explain} label="Points per driver per round (aggregation on races)" />
           </figure>
         </div>
       </div>

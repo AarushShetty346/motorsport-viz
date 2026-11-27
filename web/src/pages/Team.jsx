@@ -7,7 +7,6 @@ import { teamInfo, teamKey, teamPath } from '../lib/teams.js';
 import Band from '../components/Band.jsx';
 import CarShowcase from '../components/CarShowcase.jsx';
 import ScrollWords from '../components/ScrollWords.jsx';
-import Query from '../components/Query.jsx';
 import { TyreDegradation } from '../components/DriverTeamStats.jsx';
 import { TeammateBattle } from '../components/Community.jsx';
 import { TeamProfile } from '../components/Profiles.jsx';
@@ -113,7 +112,6 @@ export default function Team({ teamKey: key }) {
             </Link>
           ))}
         </div>
-        <Query text={season.data?.query} explain={season.data?.explain} label="This team's season (aggregation on races)" />
       </section>
 
       <section className="container section">

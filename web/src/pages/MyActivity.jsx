@@ -2,7 +2,6 @@ import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
 import { useDisplayName } from '../lib/displayName.js';
 import { Link } from '../lib/router.jsx';
-import Query from '../components/Query.jsx';
 import FeatureLabel from '../components/FeatureLabel.jsx';
 import SignInPrompt from '../components/SignInPrompt.jsx';
 
@@ -49,7 +48,6 @@ function Activity() {
       ) : <p className="muted">No notes yet. Open any race and add one under Fan notes.</p>}
 
       <FeatureLabel name="Queries on a nested field: addedBy.userId (who wrote each document)" />
-      <Query text={data.query} />
     </>
   );
 }

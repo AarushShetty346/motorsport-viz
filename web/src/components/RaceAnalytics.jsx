@@ -3,7 +3,6 @@ import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
 import { fmtLap, fmtNum, COMPOUND } from '../lib/format.js';
 import DriverName from './DriverName.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { useRaceNotes } from './Community.jsx';
 
@@ -67,7 +66,6 @@ export function RaceNumbers({ round }) {
         </div>
       </div>
       <FeatureLabel name="$facet + $bucket: histogram, tyre split and stats in one query" />
-      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }
@@ -133,7 +131,6 @@ export function GapChart({ race }) {
       </div>
       <figcaption className="muted small">Top ten finishers. Each line is that driver's running race time minus the leader's at the end of every lap. Hover a line to pick it out.</figcaption>
       <FeatureLabel name="Window functions: $setWindowFields running total + $min per lap" />
-      <Query text={data.query} explain={data.explain} />
     </figure>
   );
 }
@@ -175,7 +172,6 @@ export function TyreStrategy({ race }) {
         <span className="muted">Numbers are laps on that set.</span>
       </p>
       <FeatureLabel name="Tyre strategy chart" type="user" />
-      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }
@@ -206,7 +202,6 @@ export function PitStops({ round }) {
       </div>
       <p className="muted small">Time lost is the in-lap plus out-lap, minus two of that driver's average racing laps.</p>
       <FeatureLabel name="Pit stop analysis" type="user" />
-      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }
@@ -235,7 +230,6 @@ export function Movers({ round, limit = 5, title }) {
       </div>
       <p className="muted small">Grid position minus finishing position{round ? '' : ', added up over every race'}. Retirements and pit-lane starts are left out.</p>
       <FeatureLabel name={round ? 'Biggest movers' : 'Biggest movers (season)'} type="user" />
-      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }

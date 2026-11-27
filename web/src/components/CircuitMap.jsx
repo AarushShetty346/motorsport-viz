@@ -3,7 +3,6 @@ import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
 import { Link, useRouter } from '../lib/router.jsx';
 import Flag from './Flag.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { LAND_PATH } from './worldLand.js';
 
@@ -46,7 +45,6 @@ export function CircuitMap() {
         <figcaption className="muted small">{hover ? `Round ${hover.round}: ${hover.name}, ${hover.circuit}` : 'The line follows the calendar order. Click a circuit to open its race.'}</figcaption>
       </figure>
       <FeatureLabel name="Geospatial: GeoJSON points + 2dsphere index" />
-      <Query text={circuits.data?.query} />
     </section>
   );
 }
@@ -67,7 +65,6 @@ export function NearbyCircuits({ round }) {
         ))}
       </ol>
       <FeatureLabel name="Geospatial: $geoNear on a 2dsphere index" />
-      <Query text={data?.query} explain={data?.explain} />
     </div>
   );
 }
