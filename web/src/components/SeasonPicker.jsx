@@ -10,7 +10,7 @@ import '../seasonPicker.css';
 const CarModel = lazy(() => import('./CarModel.jsx'));
 
 // One button per season, showing the drivers' champion. Hovering paints it in the
-// champion's team colour and swaps the photo for the constructors' champion's car.
+// constructors' champion's colour and swaps the photo for their car.
 export default function SeasonPicker() {
   const { data } = useApi('/api/seasons');
   const last = rememberedSeason();
@@ -37,7 +37,7 @@ function SeasonButton({ season, last, photo }) {
       raw
       to={`/${season.year}`}
       className={`season-btn ${hover ? 'is-hot' : ''}`}
-      style={{ '--champ': champ?.teamColor || 'var(--flag)' }}
+      style={{ '--champ': cons?.teamColor || champ?.teamColor || 'var(--flag)' }}
       onMouseEnter={() => { setHover(true); setSeen(true); }}
       onMouseLeave={() => setHover(false)}
       onFocus={() => { setHover(true); setSeen(true); }}
@@ -52,7 +52,7 @@ function SeasonButton({ season, last, photo }) {
       <div className="season-car">
         {car?.model && seen && (
           <Suspense fallback={null}>
-            <CarModel model={car.model} distance={1.5} spin={0.8} label={`${cons.team} ${car.car}`} />
+            <CarModel model={car.model} distance={0.78} spin={0.8} label={`${cons.team} ${car.car}`} />
           </Suspense>
         )}
       </div>
