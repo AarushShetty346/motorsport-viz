@@ -1,8 +1,8 @@
 # Lap by Lap
 
-**Every lap of the 2025 Formula 1 season, explorable in the browser.**
+**Every lap of the 2024 and 2025 Formula 1 seasons, explorable in the browser.**
 
-Lap by Lap turns a full F1 season (24 Grands Prix, 21 drivers, 26,657 laps with car telemetry) into an interactive site. Replay each circuit from the car's GPS trace, follow the title fight round by round, dig into any driver's laps, spin each team's car in 3D and put two drivers head to head. Every chart can show the exact MongoDB query behind it.
+Lap by Lap turns two full F1 seasons (48 Grands Prix and over 53,000 laps with car telemetry) into an interactive site. Pick a year on the front page, or switch at any time with the season button in the top bar. Replay each circuit from the car's GPS trace, follow the title fight round by round, dig into any driver's laps, spin each team's real car in 3D and put two drivers head to head. Every chart can show the exact MongoDB query behind it.
 
 **Live demo:** [lap-by-lap.onrender.com](https://lap-by-lap.onrender.com) (free hosting, so the first visit can take up to a minute to wake)
 
@@ -18,7 +18,7 @@ Lap by Lap turns a full F1 season (24 Grands Prix, 21 drivers, 26,657 laps with 
 
 - **Season overview:** a points chart that draws itself as you scroll, the calendar, a world map of circuits, final standings and the biggest movers.
 - **Race pages:** circuit replay, podium, position changes, gap to the leader, tyre strategy, pit stops, fastest laps and every lap of the race.
-- **Driver and team profiles:** bios, past seasons, race-by-race results, consistency, theoretical best lap, teammate battles, tyre degradation and a draggable 3D car.
+- **Driver and team profiles:** bios, past seasons, race-by-race results, consistency, theoretical best lap, teammate battles, tyre degradation and a draggable 3D model of the team's real car.
 - **Head to head:** compare two drivers' race pace across the season, with a shareable link.
 - **Steward mode:** add, edit, penalise and hide laps to play out "what if" scenarios. Changes stay in your browser and never touch the shared race data.
 - **Search:** press `/` or `Ctrl+K` to jump to any circuit or driver.
@@ -44,7 +44,7 @@ Browser (React SPA)  ──fetch /api/*──▶  Express (server.js)  ──dri
 ```
 
 - One Node process serves both the JSON API and the built React app, so there is a single deployable service.
-- On startup the server applies the schema validator, creates indexes and, if the database is empty, loads the season from `data/season-2025.json.gz` (about 2 seconds). No separate seed step is needed.
+- On startup the server applies the schema validator, creates indexes and, if the database is empty, loads each season from `data/season-<year>.json.gz` (about 2 seconds each). Every season gets its own database (`motorsport` for 2025, `motorsport_2024` for 2024) with the same collections; accounts live in the main one. Pages and the API take the year from the URL (`/2024/race/5`, `?season=2024`); links without a year open 2025. No separate seed step is needed.
 - **Collections:** `drivers`, `races` (results embedded, GeoJSON location), `laps` (references drivers and races, telemetry embedded), plus `notes`, `users` and `sessions`.
 
 ## Run it locally
@@ -114,11 +114,12 @@ Then add `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `ADMIN_EMAILS` (your Goo
 ## Data sources
 
 - Results, calendar, circuits and drivers: [F1DB](https://github.com/f1db/f1db) (CC BY 4.0).
-- Laps and telemetry: [TracingInsights 2025](https://github.com/TracingInsights/2025) (Apache-2.0), from the official live-timing feed via [FastF1](https://github.com/theOehrly/Fast-F1).
+- Laps and telemetry: [TracingInsights 2024](https://github.com/TracingInsights/2024) and [2025](https://github.com/TracingInsights/2025) (Apache-2.0), from the official live-timing feed via [FastF1](https://github.com/theOehrly/Fast-F1).
 - Circuit maps: each race's fastest-lap X/Y position trace.
 - Photos: Wikimedia Commons, free licences, credited on the site.
+- 3D car models: Sketchfab artists (mostly Abu Saif and MattDoesBlender) under CC BY 4.0, compressed for the web. Full list in [web/public/models/CREDITS.md](web/public/models/CREDITS.md) and on the site's `/credits` page.
 
-`npm run data:build` rebuilds the season file from source (downloads about 4 GB).
+`npm run data:build -- --year 2024` rebuilds one season file from source (downloads about 4 GB per season).
 
 ## Project structure
 
@@ -128,7 +129,7 @@ db.js         connection, validator, indexes, season loading
 auth.js       Google sign-in, users and sessions
 web/src/      React app (pages, components, lib)
 scripts/      data build, DB setup, photo fetch
-data/         season-2025.json.gz
+data/         season-2024.json.gz, season-2025.json.gz
 test/         end-to-end API tests
 render.yaml   Render deployment
 ```

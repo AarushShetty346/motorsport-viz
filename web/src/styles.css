@@ -1104,3 +1104,4 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .privacy-page { max-width: 760px; }
 .privacy-page h2 { margin-top: 32px; }
 .privacy-page ul { padding-left: 20px; display: grid; gap: 6px; }
+.credits-page a { text-decoration: underline; text-underline-offset: 3px; }
