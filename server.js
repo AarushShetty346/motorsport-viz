@@ -5,7 +5,7 @@ try { process.loadEnvFile(); } catch {}
 const path = require('path');
 const express = require('express');
 const { ObjectId } = require('mongodb');
-const { init, resetDemoData, getDb, client } = require('./db');
+const { init, resetDemoData, getDb, getMainDb, withSeason, currentSeason, SEASONS, client } = require('./db');
 const { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured: googleConfigured, isAdmin } = require('./auth');
 
 const PORT = Number(process.env.PORT) || 3000;
@@ -13,20 +13,22 @@ const DIST = path.join(__dirname, 'dist');
 const app = express();
 
 app.use(express.json());
-app.use('/api/auth', authRouter(getDb));
+app.use('/api/auth', authRouter(getMainDb));
+// Every other API call is about one season: ?season=2024 or the X-Season header (2025 by default).
+app.use('/api', (req, res, next) => withSeason(req.query.season || req.get('x-season'), next));
 
 // Anyone can browse. Writing (notes, steward changes, shared links) needs a Google
 // sign-in and records who did it. With no Google keys set, sign-in is off and
 // anyone can write, so the app still works out of the box.
 async function signedIn(req, res, next) {
-  req.user = googleConfigured() ? await currentUser(getDb, req) : null;
+  req.user = googleConfigured() ? await currentUser(getMainDb, req) : null;
   if (googleConfigured() && !req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
   next();
 }
 // Steward changes live in each visitor's browser. The server lap-write routes stay for
 // local development (sign-in off, not production) and for admins.
 async function stewardWrite(req, res, next) {
-  req.user = googleConfigured() ? await currentUser(getDb, req) : null;
+  req.user = googleConfigured() ? await currentUser(getMainDb, req) : null;
   if (googleConfigured() && !req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
   if (googleConfigured() ? !isAdmin(req.user) : process.env.NODE_ENV === 'production') {
     return res.status(403).json({ error: 'Steward changes are saved in your browser only. The shared race data is read-only.' });
@@ -171,10 +173,30 @@ const onlyRace = (expr) => ({ $cond: [{ $eq: ['$entries.kind', 'race'] }, expr, 
 
 // ---------------------------------------------------------------- general
 
+// Every season in the database with its two champions, for the season picker.
+// The race data never changes at runtime, so this is worked out once.
+let seasonsOverview;
+app.get('/api/seasons', async (req, res) => {
+  seasonsOverview ??= Promise.all(SEASONS.map((year) => withSeason(year, async () => {
+    const totals = (group) => races().aggregate([...seasonEntries, { $group: { _id: group, points: { $sum: '$entries.points' } } }, { $sort: { points: -1 } }, { $limit: 1 }]).next();
+    const [driver, team, raceCount, lapCount] = await Promise.all([totals('$entries.driverId'), totals('$entries.team'), races().countDocuments(), laps().estimatedDocumentCount()]);
+    const champ = driver && await drivers().findOne({ _id: driver._id }, { projection: { name: 1, key: 1, code: 1, team: 1, teamColor: 1 } });
+    const teamColor = team && (await drivers().findOne({ team: team._id }, { projection: { teamColor: 1 } }))?.teamColor;
+    return {
+      year,
+      races: raceCount,
+      laps: lapCount,
+      driversChampion: champ && { ...champ, points: driver.points },
+      constructorsChampion: team && { team: team._id, points: team.points, teamColor },
+    };
+  }))).catch((err) => { seasonsOverview = null; throw err; });
+  res.json({ default: SEASONS[0], seasons: await seasonsOverview });
+});
+
 app.get('/api/health', async (req, res) => {
   await getDb().command({ ping: 1 });
   const [d, r, l] = await Promise.all([drivers().estimatedDocumentCount(), races().estimatedDocumentCount(), laps().estimatedDocumentCount()]);
-  res.json({ ok: true, db: getDb().databaseName, transactions: await supportsTransactions(), counts: { drivers: d, races: r, laps: l } });
+  res.json({ ok: true, season: currentSeason(), db: getDb().databaseName, transactions: await supportsTransactions(), counts: { drivers: d, races: r, laps: l } });
 });
 
 app.get('/api/drivers', async (req, res) => {
@@ -847,7 +869,7 @@ function visibleTo(user) {
   if (isAdmin(user)) return {};
   return user ? { $or: [{ approved: true }, { 'addedBy.userId': user._id }] } : { approved: true };
 }
-const viewer = async (req) => (googleConfigured() ? currentUser(getDb, req) : null);
+const viewer = async (req) => (googleConfigured() ? currentUser(getMainDb, req) : null);
 
 // ------------------------- lap notes with update operators
 
@@ -920,7 +942,7 @@ app.delete('/api/notes/:id', noteWriter, async (req, res) => {
 
 async function adminOnly(req, res, next) {
   if (!googleConfigured()) return res.status(404).json({ error: 'Sign-in is off, so there is no review queue.' });
-  req.user = await currentUser(getDb, req);
+  req.user = await currentUser(getMainDb, req);
   if (!req.user) return res.status(401).json({ error: 'Sign in with Google to do this.', signInRequired: true });
   if (!isAdmin(req.user)) return res.status(403).json({ error: 'Only admins can review notes.' });
   next();
