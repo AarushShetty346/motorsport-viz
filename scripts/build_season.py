@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""Builds data/season-2025.json.gz: the real 2025 Formula 1 season.
+"""Builds data/season-<year>.json.gz: one real Formula 1 season (2024 or 2025).
 
 Sources (both free to reuse):
   * F1DB (https://github.com/f1db/f1db, CC BY 4.0): calendar, circuits,
     drivers, race + sprint classifications and points.
-  * TracingInsights 2025 archive (https://github.com/TracingInsights/2025,
+  * TracingInsights season archives (https://github.com/TracingInsights/<year>,
     Apache-2.0, built from the official F1 live-timing feed via FastF1):
     every lap of every Grand Prix, plus the car telemetry of every lap,
     which is summarised here into top speed, peak RPM, throttle, braking, DRS.
 
 The circuit maps are the car's real X/Y position trace on the race's fastest lap.
 
-Usage:  python3 scripts/build_season.py [--cache DIR]
+Usage:  python3 scripts/build_season.py [--year 2025] [--cache DIR]
 Needs:  Python 3.9+ and PyYAML (pip install pyyaml). Downloads ~4 GB of
         telemetry once (takes 10-20 minutes); the output is ~2 MB.
 """
@@ -28,10 +28,11 @@ from concurrent.futures import ThreadPoolExecutor
 import yaml
 
 F1DB = 'https://raw.githubusercontent.com/f1db/f1db/main/src/data'
-TI = 'https://raw.githubusercontent.com/TracingInsights/2025/main'
+TI = None  # set from --year in main()
+YEAR = 2025
 
 # (round, F1DB race folder, TracingInsights event folder)
-CALENDAR = [
+CAL_2025 = [
     (1, '01-australia', 'Australian Grand Prix'),
     (2, '02-china', 'Chinese Grand Prix'),
     (3, '03-japan', 'Japanese Grand Prix'),
@@ -57,6 +58,35 @@ CALENDAR = [
     (23, '23-qatar', 'Qatar Grand Prix'),
     (24, '24-abu-dhabi', 'Abu Dhabi Grand Prix'),
 ]
+
+CAL_2024 = [
+    (1, '01-bahrain', 'Bahrain Grand Prix'),
+    (2, '02-saudi-arabia', 'Saudi Arabian Grand Prix'),
+    (3, '03-australia', 'Australian Grand Prix'),
+    (4, '04-japan', 'Japanese Grand Prix'),
+    (5, '05-china', 'Chinese Grand Prix'),
+    (6, '06-miami', 'Miami Grand Prix'),
+    (7, '07-emilia-romagna', 'Emilia Romagna Grand Prix'),
+    (8, '08-monaco', 'Monaco Grand Prix'),
+    (9, '09-canada', 'Canadian Grand Prix'),
+    (10, '10-spain', 'Spanish Grand Prix'),
+    (11, '11-austria', 'Austrian Grand Prix'),
+    (12, '12-great-britain', 'British Grand Prix'),
+    (13, '13-hungary', 'Hungarian Grand Prix'),
+    (14, '14-belgium', 'Belgian Grand Prix'),
+    (15, '15-netherlands', 'Dutch Grand Prix'),
+    (16, '16-italy', 'Italian Grand Prix'),
+    (17, '17-azerbaijan', 'Azerbaijan Grand Prix'),
+    (18, '18-singapore', 'Singapore Grand Prix'),
+    (19, '19-united-states', 'United States Grand Prix'),
+    (20, '20-mexico', 'Mexico City Grand Prix'),
+    (21, '21-sao-paulo', 'São Paulo Grand Prix'),
+    (22, '22-las-vegas', 'Las Vegas Grand Prix'),
+    (23, '23-qatar', 'Qatar Grand Prix'),
+    (24, '24-abu-dhabi', 'Abu Dhabi Grand Prix'),
+]
+
+CALENDARS = {2024: CAL_2024, 2025: CAL_2025}
 
 TRACK_POINTS = 480  # points kept for each circuit outline
 
@@ -168,20 +198,47 @@ def classification(rows):
     return out
 
 
+# Some event folders list only code + team. Fill number, name and colour from
+# earlier rounds, or from F1DB's classification for this race.
+KNOWN_DRIVERS = {}
+KNOWN_TEAM_COLORS = {}
+
+
+def fill_driver_info(ti_drivers, results):
+    by_code = {}
+    if any('dn' not in d for d in ti_drivers):
+        for r in results or []:
+            info = fetch_yaml(f'drivers/{r["driverId"]}.yml')
+            by_code[info['abbreviation']] = {'dn': str(r['driverNumber']), 'fn': info['firstName'], 'ln': info['lastName']}
+    for d in ti_drivers:
+        if 'dn' in d:
+            KNOWN_DRIVERS[d['driver']] = {k: d[k] for k in ('dn', 'fn', 'ln')}
+            KNOWN_TEAM_COLORS[d['team']] = d['tc']
+            continue
+        d.update(by_code.get(d['driver']) or KNOWN_DRIVERS[d['driver']])
+        d['tc'] = KNOWN_TEAM_COLORS.get(d['team'], '888888')
+
+
 def build_race(rnd, slug, event, cache_dir, pool):
     cache_file = os.path.join(cache_dir, f'{rnd:02d}.json') if cache_dir else None
     if cache_file and os.path.exists(cache_file):
         with open(cache_file) as f:
-            return json.load(f)
+            cached = json.load(f)
+        for d in cached['drivers']:
+            KNOWN_DRIVERS[d['code']] = {'dn': str(d['number']), 'fn': d['firstName'], 'ln': d['lastName']}
+            if d['teamColor'] != '#888888':
+                KNOWN_TEAM_COLORS[d['team']] = d['teamColor'][1:]
+        return cached
 
-    race = fetch_yaml(f'seasons/2025/races/{slug}/race.yml')
+    race = fetch_yaml(f'seasons/{YEAR}/races/{slug}/race.yml')
     gp = fetch_yaml(f'grands-prix/{race["grandPrixId"]}.yml')
     circuit = fetch_yaml(f'circuits/{race["circuitId"]}.yml')
     country = fetch_yaml(f'countries/{circuit["countryId"]}.yml')
-    results = fetch_yaml(f'seasons/2025/races/{slug}/race-results.yml')
-    sprint = fetch_yaml(f'seasons/2025/races/{slug}/sprint-race-results.yml')
+    results = fetch_yaml(f'seasons/{YEAR}/races/{slug}/race-results.yml')
+    sprint = fetch_yaml(f'seasons/{YEAR}/races/{slug}/sprint-race-results.yml')
 
     ti_drivers = json.loads(fetch(ti_url(event, 'drivers.json')))['drivers']
+    fill_driver_info(ti_drivers, results)
     corners = json.loads(fetch(ti_url(event, 'corners.json')) or b'null')
 
     # Every lap of every driver, then the telemetry of each lap in parallel.
@@ -272,14 +329,19 @@ def build_race(rnd, slug, event, cache_dir, pool):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--cache', help='directory to cache per-race results in (lets a re-run resume)')
-    ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'data', 'season-2025.json.gz'))
+    ap.add_argument('--year', type=int, default=2025, choices=sorted(CALENDARS))
+    ap.add_argument('--out', help='output file (default data/season-<year>.json.gz)')
     args = ap.parse_args()
+    global TI, YEAR
+    YEAR = args.year
+    TI = f'https://raw.githubusercontent.com/TracingInsights/{YEAR}/main'
+    args.out = args.out or os.path.join(os.path.dirname(__file__), '..', 'data', f'season-{YEAR}.json.gz')
     if args.cache:
         os.makedirs(args.cache, exist_ok=True)
 
-    print('Building the 2025 season...', flush=True)
+    print(f'Building the {YEAR} season...', flush=True)
     with ThreadPoolExecutor(max_workers=32) as pool:
-        races = [build_race(r, s, e, args.cache, pool) for r, s, e in CALENDAR]
+        races = [build_race(r, s, e, args.cache, pool) for r, s, e in CALENDARS[YEAR]]
 
     # Drivers: every driver who started a Grand Prix, keyed by F1DB id.
     number_to_key = {}
@@ -307,7 +369,7 @@ def main():
             'countryCode': nat['alpha2Code'],
             'dateOfBirth': str(info['dateOfBirth']),
         }
-    # Team, colour and race number: as raced most recently in 2025
+    # Team, colour and race number: as raced most recently that season
     # (F1DB's permanentNumber is a driver's current number, which can differ).
     for race in races:
         for d in race['drivers']:
@@ -327,10 +389,10 @@ def main():
         race.pop('drivers')
 
     out = {
-        'season': 2025,
+        'season': YEAR,
         'sources': {
             'results': 'F1DB, https://github.com/f1db/f1db (CC BY 4.0)',
-            'laps': 'TracingInsights 2025 archive, https://github.com/TracingInsights/2025 (Apache-2.0), from the F1 live-timing feed via FastF1',
+            'laps': f'TracingInsights {YEAR} archive, https://github.com/TracingInsights/{YEAR} (Apache-2.0), from the F1 live-timing feed via FastF1',
         },
         'drivers': list(drivers.values()),
         'races': races,

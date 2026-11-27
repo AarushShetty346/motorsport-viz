@@ -1,4 +1,4 @@
-"""Builds data/profiles.json: career facts for every 2025 driver and team.
+"""Builds data/profiles.json: career facts for every driver and team of the seasons in data/.
 
 Source: F1DB (https://github.com/f1db/f1db, CC BY 4.0) - driver details,
 championship standings and team line-ups for every season since 1950.
@@ -15,8 +15,12 @@ def get(path):
     with urllib.request.urlopen(f'{F1DB}/{path}', timeout=60) as r:
         return yaml.safe_load(r.read().decode('utf-8')) or []
 
-season = json.load(gzip.open(os.path.join(ROOT, 'data', 'season-2025.json.gz')))
-drivers = [d['key'] for d in season['drivers']]
+drivers = []
+for name in sorted(os.listdir(os.path.join(ROOT, 'data')), reverse=True):
+    if name.startswith('season-') and name.endswith('.json.gz'):
+        for d in json.load(gzip.open(os.path.join(ROOT, 'data', name)))['drivers']:
+            if d['key'] not in drivers:
+                drivers.append(d['key'])
 
 # Every constructor a 2025 team has raced as (the same factory under older names).
 LINEAGE = {
