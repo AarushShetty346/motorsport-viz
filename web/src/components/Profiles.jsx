@@ -3,7 +3,6 @@ import { useSeason } from '../lib/season.jsx';
 import { Link, useRouter } from '../lib/router.jsx';
 import { fmtDate, ordinal } from '../lib/format.js';
 import DriverName from './DriverName.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 
 const SPECIAL = { mclaren: 'McLaren', bar: 'BAR', rb: 'RB', mf1: 'MF1', alphatauri: 'AlphaTauri', 'lotus-f1': 'Lotus', 'bmw-sauber': 'BMW Sauber', 'carlos-sainz-jr': 'Carlos Sainz' };
@@ -62,7 +61,6 @@ export function DriverProfile({ driver, raceRows, sprintByRound }) {
         </div>
       </div>
       <FeatureLabel name="Aggregation: $lookup from drivers into driver_profiles" />
-      <Query text={data.query} explain={data.explain} />
 
       <h3 className="h-small profile-sub">{season}, race by race</h3>
       <div className="table-wrap">
@@ -125,7 +123,6 @@ export function TeamProfile({ team, rounds }) {
         </div>
       </div>
       <FeatureLabel name="Aggregation: team_profiles with $lookup into drivers" />
-      <Query text={data.query} explain={data.explain} />
 
       <h3 className="h-small profile-sub">{season}, race by race</h3>
       <div className="table-wrap">

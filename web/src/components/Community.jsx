@@ -5,7 +5,6 @@ import { useSeason } from '../lib/season.jsx';
 import { Link } from '../lib/router.jsx';
 import { fmtNum } from '../lib/format.js';
 import DriverName from './DriverName.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { ValidationError } from './labValidation.jsx';
 import { PushPin, ThumbsUp } from '@phosphor-icons/react';
@@ -128,7 +127,6 @@ export function LapNotes({ race }) {
         })}
       </ul>
       <FeatureLabel name="Update operators: $inc (helpful), $set (edit), $addToSet (tags), updateMany (pin all)" />
-      <Query text={msg?.ok ? msg.query : notes.data?.query} label={msg?.ok ? 'Query that ran' : undefined} />
     </div>
   );
 }
@@ -159,7 +157,6 @@ export function NotesFeed() {
         </ul>
       )}
       <FeatureLabel name={`Capped collection: notes_feed keeps the newest ${data?.max || 50} events`} />
-      <Query text={data?.query} />
     </div>
   );
 }
@@ -193,7 +190,6 @@ export function SeasonSummary() {
         </table>
       </div>
       <FeatureLabel name="$merge: season_summary materialised from races + clean_laps" />
-      <Query text={data.query} />
     </div>
   );
 }
@@ -227,7 +223,6 @@ export function ShareComparison({ a, b, sharedDays }) {
         : <SignInPrompt>Sign in with Google to make a share link for this comparison.</SignInPrompt>}
       {err && <p className="msg msg-err">{err}</p>}
       <FeatureLabel name="TTL index: shared links expire after 7 days" />
-      {share && <Query text={share.query} label="Query that ran" />}
     </div>
   );
 }
@@ -249,7 +244,6 @@ export function Consistency({ driver }) {
       </div>
       <FeatureLabel name="Driver consistency" type="user" />
       <FeatureLabel name="View: clean_laps (no pit laps, lap 1 or laps over 107%)" />
-      <Query text={data?.query} explain={data?.explain} />
     </div>
   );
 }
@@ -299,7 +293,6 @@ export function TeammateBattle({ team }) {
         );
       })}
       <FeatureLabel name="Teammate battle" type="user" />
-      <Query text={data.query} explain={data.explain} />
     </div>
   );
 }

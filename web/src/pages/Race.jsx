@@ -8,7 +8,6 @@ import Leaderboard from '../components/Leaderboard.jsx';
 import SpeedTrap from '../components/SpeedTrap.jsx';
 import DriverName from '../components/DriverName.jsx';
 import Flag from '../components/Flag.jsx';
-import Query from '../components/Query.jsx';
 import Band from '../components/Band.jsx';
 import FeatureLabel from '../components/FeatureLabel.jsx';
 import RaceLaps from '../components/RaceLaps.jsx';
@@ -64,7 +63,6 @@ export default function Race({ round }) {
         </div>
         {laps.data ? <RaceTrace laps={laps.data.results} results={race.results} /> : <div className="skeleton" style={{ height: 480 }} />}
         <FeatureLabel name="Indexing: { round, lapNumber } index, explain() IXSCAN vs COLLSCAN" />
-        <Query text={laps.data?.query} explain={laps.data?.explain} />
       </section>
 
       <section className="container section">
@@ -108,7 +106,6 @@ export default function Race({ round }) {
               </tbody>
             </table>
           </div>
-          <Query text={`db.races.findOne({ round: ${race.round} }).results   // classification embedded in the race document`} />
         </div>
         <div>
           <div className="section-head">

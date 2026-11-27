@@ -4,7 +4,6 @@ import { useSeason } from '../lib/season.jsx';
 import { fmtLap, fmtNum, COMPOUND } from '../lib/format.js';
 import { useSteward, setSteward, lapTags, lapRowClass, useStewardChanges, applyChanges, isLocalLap, addLocalLap, editLocalLap, removeLocalLap, hideLocalLap, penaliseLocalLap, restoreLocalLaps, clearLocalChanges, checkLap } from '../lib/steward.js';
 import DriverName from './DriverName.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 import { openLap } from './LapDrawer.jsx';
 import { useRaceNotes } from './Community.jsx';
@@ -163,7 +162,6 @@ export default function RaceLaps({ race }) {
         <span className="mono small">Page {page} of {fmtNum(totalPages)}</span>
         <button type="button" className="btn btn-ghost btn-sm" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>Next</button>
       </div>
-      <Query text={data?.query} explain={data?.explain} />
     </div>
   );
 }

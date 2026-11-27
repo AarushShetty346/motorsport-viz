@@ -6,7 +6,6 @@ import { fmtLap } from '../lib/format.js';
 import { EASE_OUT } from '../lib/motion.js';
 import { lapTags } from '../lib/steward.js';
 import JsonView from './JsonView.jsx';
-import Query from './Query.jsx';
 import FeatureLabel from './FeatureLabel.jsx';
 
 // Any lap on the site can be opened here with openLap(id).
@@ -84,7 +83,6 @@ function LapDocument({ id }) {
             <code>driverId</code> and <code>raceId</code> point to documents in the <code>drivers</code> and <code>races</code> collections, which many laps share.
           </p>
           <FeatureLabel name="Embedded documents + referencing" />
-          <Query text={data.query} explain={data.explain} />
         </>
       )}
     </>

@@ -456,15 +456,7 @@ a.driver-name:hover .driver-name-text > strong, a.driver-name:hover .driver-name
 .driver-name .team-bar { height: 28px; }
 .speed-list .driver-name .team-bar { height: 22px; }
 
-/* ---------------------------------------------------------------- query disclosure */
-.query { margin-top: 16px; border: 1px solid var(--line-2); border-radius: var(--radius-sm); }
-.query summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 9px 12px; font-size: 13px; color: var(--ink-2); user-select: none; }
-.query summary::-webkit-details-marker { display: none; }
-.query summary:hover { color: var(--ink); }
-.query[open] summary { border-bottom: 1px solid var(--line); }
-.query-icon { font: 600 11px var(--mono); color: var(--accent-ink); background: var(--accent); padding: 2px 6px; }
-.query pre, pre.json, .lab-card pre { margin: 0; padding: 14px 16px; overflow: auto; max-height: 420px; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); white-space: pre; }
-.query > pre.json { max-height: 360px; }
+pre.json, .lab-card pre { margin: 0; padding: 14px 16px; overflow: auto; max-height: 420px; font-size: 12.5px; line-height: 1.55; color: var(--ink-2); white-space: pre; }
 
 /* ---------------------------------------------------------------- race page */
 .race-hero { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr); gap: 40px; align-items: center; }
@@ -757,7 +749,6 @@ pre.json.tall { max-height: 460px; }
 .pi-main .muted { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pi-meta { font-size: 12px; text-align: right; }
 .palette-foot { border-top: 1px solid var(--line); padding: 0 8px 8px; }
-.palette-foot .query { border: 0; margin-top: 8px; }
 
 /* ---------------------------------------------------------------- footer */
 .footer { margin-top: 136px; padding: 56px 0 0; overflow: hidden; border-top: 1.5px solid var(--flag-ink); }
@@ -848,7 +839,6 @@ pre.json.tall { max-height: 460px; }
 .team-bar-col:hover .team-bar-fill { filter: brightness(1.25); }
 .team-bar-value { font-size: 11px; color: var(--ink-2); margin-bottom: 4px; }
 .team-bar-round { position: absolute; bottom: -22px; font-size: 10px; color: var(--muted); }
-.team-bars + .query { margin-top: 40px; }
 .team-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 0 24px; }
 .team-list a { display: grid; grid-template-columns: 28px 1fr auto; gap: 10px; padding: 14px 0; border-bottom: 1px solid var(--line); font-weight: 650; transition: color 150ms var(--ease-out); }
 .team-list a .mono { color: var(--muted); font-weight: 400; }
@@ -859,11 +849,6 @@ pre.json.tall { max-height: 460px; }
   .team-bars { grid-template-columns: repeat(12, minmax(0, 1fr)); height: auto; row-gap: 40px; border: 0; }
   .team-bar-col { height: 140px; }
 }
-
-/* explain() summary inside the "Under the hood" panels */
-.query summary .plan-stage { margin-left: auto; font-size: 11px; }
-.explain-mini { padding: 0 16px 12px; color: var(--ink-2); }
-.explain-mini p { margin: 6px 0 0; }
 
 /* Feature labels: one small grey caption per feature, the same everywhere */
 .feature-label { margin: 8px 0 0; font: 400 11px/1.4 var(--mono); color: var(--muted); letter-spacing: 0.01em; opacity: 0.85; }
