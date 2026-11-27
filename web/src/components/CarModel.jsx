@@ -18,8 +18,24 @@ const load = (file) => {
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const easeInOut = (t) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
 
-function prepare(scene) {
+function prepare(scene, paint) {
   const car = scene.clone(true);
+  // Repaint named materials that the source model ships without a livery, e.g. { paints: '#0b6fb8' }.
+  if (paint) car.traverse((o) => {
+    if (!o.isMesh) return;
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    o.material = mats.map((m) => {
+      const c = paint[m.name] || paint['*'];
+      if (!c) return m;
+      const n = m.clone();
+      n.color = new THREE.Color(c);
+      n.map = null;
+      n.metalness = 0.35;
+      n.roughness = 0.35;
+      return n;
+    });
+    if (o.material.length === 1) o.material = o.material[0];
+  });
   // Centre it, sit it on the ground and point the nose along +x.
   const box = new THREE.Box3().setFromObject(car);
   const size = box.getSize(new THREE.Vector3());
@@ -102,7 +118,7 @@ export default function CarModel({ model, spin = 0.4, interactive = false, label
     load(model.file).then(
       (gltf) => {
         if (!alive) return;
-        yawGroup.add(prepare(gltf.scene));
+        yawGroup.add(prepare(gltf.scene, model.paint));
         shadow.visible = true;
         setState('ready');
         draw();
