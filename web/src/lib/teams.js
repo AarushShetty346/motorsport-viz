@@ -37,6 +37,7 @@ const LIVERY = {
 
 // model: a file in web/public/models (without .glb). paint: the team's colour is
 // applied to the model's body, for teams shown on the shared base car.
+// paint: { material: colour } repaints materials the source model ships without a livery.
 // shown: the model is another year's car from the same team (no free model of this one exists).
 const CARS = {
   2025: {
@@ -57,7 +58,7 @@ const CARS = {
     'red-bull-racing': { car: 'RB20', model: '2024-red-bull' },
     mercedes: { car: 'W15', model: '2024-mercedes' },
     'aston-martin': { car: 'AMR24', model: '2024-aston-martin' },
-    alpine: { car: 'A524', model: '2024-alpine' },
+    alpine: { car: 'A524', model: '2024-alpine', paint: { paints: '#14325e' } },
     williams: { car: 'FW46', model: '2024-williams' },
     rb: { car: 'VCARB 01', model: '2024-rb' },
     'kick-sauber': { car: 'C44', model: '2025-sauber', shown: 'C45' },
@@ -68,7 +69,7 @@ const CARS = {
 export const carFor = (name, season = apiSeason()) => {
   const car = CARS[season]?.[teamKey(name)];
   if (!car) return null;
-  return { ...car, model: { file: `/models/${car.model}.glb`, shown: car.shown || null } };
+  return { ...car, model: { file: `/models/${car.model}.glb`, shown: car.shown || null, paint: car.paint || null } };
 };
 
 export const teamInfo = (name, color = '#888888', season = apiSeason()) => {
