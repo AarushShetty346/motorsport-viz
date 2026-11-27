@@ -9,6 +9,7 @@ import SearchPalette from './components/SearchPalette.jsx';
 import Footer from './components/Footer.jsx';
 import LapDrawer from './components/LapDrawer.jsx';
 import Home from './pages/Home.jsx';
+import Landing from './pages/Landing.jsx';
 import Race from './pages/Race.jsx';
 import Driver from './pages/Driver.jsx';
 import Compare from './pages/Compare.jsx';
@@ -23,8 +24,9 @@ import { connectLenis, startScrollMotion } from './lib/scrollMotion.js';
 
 export let lenis = null;
 
-function route(path) {
+function route(path, landing) {
   let m;
+  if (landing) return { key: 'landing', el: <Landing /> };
   if (path === '/' || path === '') return { key: 'home', el: <Home /> };
   if ((m = path.match(/^\/race\/(\d+)\/?$/))) return { key: 'race-' + m[1], el: <Race round={Number(m[1])} /> };
   if ((m = path.match(/^\/driver\/([a-z0-9-]+)\/?$/))) return { key: 'driver-' + m[1], el: <Driver driverKey={m[1]} /> };
@@ -38,10 +40,11 @@ function route(path) {
 }
 
 function Shell() {
-  const { path, hash, nav } = useRouter();
+  const { path, hash, nav, landing, season: year } = useRouter();
   const season = useSeason();
   const [searchOpen, setSearchOpen] = useState(false);
-  const current = route(path);
+  const current = route(path, landing);
+  current.key = `${year}-${current.key}`;
   const first = useRef(true);
 
   // Smooth scrolling (skipped for people who ask for reduced motion).
@@ -124,8 +127,10 @@ function DbDown({ error }) {
 }
 
 export default function App() {
+  const { season } = useRouter();
+  // A new season remounts everything, so every page reloads that year's data.
   return (
-    <SeasonProvider>
+    <SeasonProvider key={season}>
       <Shell />
     </SeasonProvider>
   );
