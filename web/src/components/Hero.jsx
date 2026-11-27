@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from 'motion/react';
 import { HERO_PHOTO } from '../content.js';
 import { useSeason } from '../lib/season.jsx';
@@ -137,16 +137,6 @@ export default function Hero({ landing = false }) {
 // recorded speed (the speed profile becomes the motion's keyPoints).
 function Circuit({ race, reduced }) {
   const geo = useMemo(() => trackGeometry(race.track, { width: 1000, height: 620, pad: 30 }), [race]);
-  const keys = useMemo(() => {
-    if (!geo) return null;
-    const n = 60;
-    const times = [], points = [];
-    for (let i = 0; i <= n; i++) {
-      times.push((i / n).toFixed(4));
-      points.push(geo.ease(i / n).toFixed(4));
-    }
-    return { keyTimes: times.join(';'), keyPoints: points.join(';') };
-  }, [geo]);
   if (!geo) return null;
   const box = `0 0 ${geo.width} ${geo.height}`;
 
@@ -175,21 +165,34 @@ function Circuit({ race, reduced }) {
           transition={{ duration: 1.6, ease: EASE_OUT }}
         />
         <path d={geo.d} className="circuit-line" />
-        {!reduced && keys && (
-          <circle r="11" className="circuit-car">
-            <animateMotion
-              dur={`${LAP_SECONDS}s`}
-              repeatCount="indefinite"
-              path={geo.d}
-              calcMode="linear"
-              keyTimes={keys.keyTimes}
-              keyPoints={keys.keyPoints}
-            />
-          </circle>
-        )}
+        {!reduced && <CircuitCar geo={geo} />}
       </svg>
     </div>
   );
+}
+
+// The car on the circuit, moved each frame along the path at the lap's real speed profile.
+// (A script, not SMIL <animateMotion>, which Chrome sometimes leaves frozen at the start.)
+function CircuitCar({ geo }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const car = ref.current;
+    const path = car?.previousElementSibling;
+    if (!car || !path?.getTotalLength) return;
+    const total = path.getTotalLength();
+    const t0 = performance.now();
+    let raf;
+    const tick = (now) => {
+      const lap = ((now - t0) / 1000 / LAP_SECONDS) % 1;
+      const pt = path.getPointAtLength(geo.ease(lap) * total);
+      car.setAttribute('cx', pt.x);
+      car.setAttribute('cy', pt.y);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [geo]);
+  return <circle ref={ref} r="11" className="circuit-car" />;
 }
 
 function Stat({ value, label }) {
