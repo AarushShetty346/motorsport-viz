@@ -52,7 +52,7 @@ const CARS = {
     'haas-f1-team': { car: 'VF-25', model: 'base', shown: 'a generic 2025 car' },
   },
   2024: {
-    mclaren: { car: 'MCL38', model: '2024-mclaren' },
+    mclaren: { car: 'MCL38', model: '2025-mclaren', shown: 'MCL39' },
     ferrari: { car: 'SF-24', model: '2025-ferrari', shown: 'SF-25' },
     'red-bull-racing': { car: 'RB20', model: '2024-red-bull' },
     mercedes: { car: 'W15', model: '2024-mercedes' },

@@ -1,6 +1,6 @@
 // 3D car models used on the site. All are CC BY 4.0 on Sketchfab.
 // Files in web/public/models were compressed and simplified for the web;
-// the 2024 McLaren was also given its papaya and black paint.
+// cars without a model of their own borrow the closest one (see lib/teams.js).
 export const MODEL_CREDITS = [
   { file: '2025-mclaren', title: "2025 McLaren MCL39", author: "Abu Saif", url: 'https://sketchfab.com/3d-models/2025-mclaren-mcl39-710fc591067848d0b3068ae3fb160ede' },
   { file: '2025-ferrari', title: "Ferrari SF-25", author: "Abu Saif", url: 'https://sketchfab.com/3d-models/ferrari-sf-25-11b53fd8dc324ab7b7fed6b43c62e398' },
@@ -10,7 +10,6 @@ export const MODEL_CREDITS = [
   { file: '2025-williams', title: "williams fw47 2025", author: "MattDoesBlender", url: 'https://sketchfab.com/3d-models/williams-fw47-2025-7bddd35e8e0e4aa49d80881a5306ef10' },
   { file: '2025-racing-bulls', title: "2025 Racing-bulls F1 car.", author: "Abu Saif", url: 'https://sketchfab.com/3d-models/2025-racing-bulls-f1-car-39cedcf2f8d845c09f2a72d0a873622f' },
   { file: '2025-sauber', title: "c45", author: "MattDoesBlender", url: 'https://sketchfab.com/3d-models/c45-60526d0d43fe4551b35ac7c6c6dd3087' },
-  { file: '2024-mclaren', title: "mcl38", author: "MattDoesBlender", url: 'https://sketchfab.com/3d-models/mcl38-82f501917050445a98242bae2c194657' },
   { file: '2024-red-bull', title: "Rb20", author: "Abu Saif", url: 'https://sketchfab.com/3d-models/rb20-72731472c2b649eaaaa5b7e0a00761fb' },
   { file: '2024-mercedes', title: "Mercedes W15", author: "Abu Saif", url: 'https://sketchfab.com/3d-models/mercedes-w15-0c6b95f5329f4a4e8c3f039d890ee193' },
   { file: '2024-aston-martin', title: "Amr24", author: "Abu Saif", url: 'https://sketchfab.com/3d-models/amr24-eb362174bb954d05b62983c77ade75e5' },
