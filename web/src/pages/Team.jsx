@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
-import { Link } from '../lib/router.jsx';
+import { Link, useRouter } from '../lib/router.jsx';
 import { ordinal } from '../lib/format.js';
 import { teamInfo, teamKey, teamPath } from '../lib/teams.js';
 import Band from '../components/Band.jsx';
@@ -14,6 +14,7 @@ import { TeamProfile } from '../components/Profiles.jsx';
 
 export default function Team({ teamKey: key }) {
   const { driverById, standings, ready } = useSeason();
+  const { season: year } = useRouter();
   const constructors = useApi('/api/season/constructors');
   const list = constructors.data?.results || [];
   const idx = list.findIndex((t) => teamKey(t._id) === key);
@@ -52,7 +53,7 @@ export default function Team({ teamKey: key }) {
   return (
     <article className="page band-page team-page" style={{ '--team': color }}>
       <Band className="team-band">
-        <p className="band-meta"><span>{ordinal(idx + 1)} in the 2025 constructors' championship</span>{info.base && <span>{info.base}</span>}{info.engine && <span>{info.engine} power</span>}</p>
+        <p className="band-meta"><span>{ordinal(idx + 1)} in the {year} constructors' championship</span>{info.base && <span>{info.base}</span>}{info.engine && <span>{info.engine} power</span>}</p>
         <h1 className="display-xl team-title">
           {words.length > 1 ? <><span className="driver-first">{words.slice(0, -1).join(' ')}</span><br />{words.at(-1)}</> : team._id}
         </h1>
@@ -69,7 +70,7 @@ export default function Team({ teamKey: key }) {
 
       {season.data && (
         <section className="container section-tight">
-          <ScrollWords text={`${team._id} finished ${ordinal(idx + 1)} in the 2025 constructors' championship with ${team.points} points, ${team.wins} ${team.wins === 1 ? 'win' : 'wins'} and ${summary.podiums} ${summary.podiums === 1 ? 'podium' : 'podiums'}, from ${summary.drivers.length} ${summary.drivers.length === 1 ? 'driver' : 'drivers'}.`} />
+          <ScrollWords text={`${team._id} finished ${ordinal(idx + 1)} in the ${year} constructors' championship with ${team.points} points, ${team.wins} ${team.wins === 1 ? 'win' : 'wins'} and ${summary.podiums} ${summary.podiums === 1 ? 'podium' : 'podiums'}, from ${summary.drivers.length} ${summary.drivers.length === 1 ? 'driver' : 'drivers'}.`} />
         </section>
       )}
 

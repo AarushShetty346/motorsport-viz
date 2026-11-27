@@ -12,7 +12,7 @@ import FeatureLabel from '../components/FeatureLabel.jsx';
 
 export default function Compare() {
   const { standings, driverByKey, drivers, ready } = useSeason();
-  const { query, navigate } = useRouter();
+  const { query, navigate, season } = useRouter();
   const code = query.get('s');
   const [shared, setShared] = useState(null);
   useEffect(() => {
@@ -63,7 +63,7 @@ export default function Compare() {
   return (
     <article className="page band-page compare-page">
       <Band className="compare-band">
-        <p className="band-meta">Head to head, 2025 season</p>
+        <p className="band-meta">Head to head, {season} season</p>
         <h1 className="display-xl">Who was<br />quicker?</h1>
         <p className="lede">Racing laps only: no opening lap and no pit laps. Averages are compared race by race so every gap is like for like.</p>
         <div className="h2h-pickers">

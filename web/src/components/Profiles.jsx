@@ -1,6 +1,6 @@
 import { useApi } from '../lib/useApi.js';
 import { useSeason } from '../lib/season.jsx';
-import { Link } from '../lib/router.jsx';
+import { Link, useRouter } from '../lib/router.jsx';
 import { fmtDate, ordinal } from '../lib/format.js';
 import DriverName from './DriverName.jsx';
 import Query from './Query.jsx';
@@ -8,7 +8,7 @@ import FeatureLabel from './FeatureLabel.jsx';
 
 const SPECIAL = { mclaren: 'McLaren', bar: 'BAR', rb: 'RB', mf1: 'MF1', alphatauri: 'AlphaTauri', 'lotus-f1': 'Lotus', 'bmw-sauber': 'BMW Sauber', 'carlos-sainz-jr': 'Carlos Sainz' };
 export const constructorName = (id) => SPECIAL[id] || id.split('-').map((w) => w[0].toUpperCase() + w.slice(1)).join(' ');
-const age = (iso) => Math.floor((new Date('2025-12-07') - new Date(iso)) / (365.25 * 864e5));
+const age = (iso, finale) => Math.floor((new Date(finale) - new Date(iso)) / (365.25 * 864e5));
 
 function SeasonBars({ seasons, label }) {
   // Non-numeric positions (McLaren's 2007 "EX" exclusion) get a stub bar instead of breaking the scale.
@@ -27,14 +27,15 @@ function SeasonBars({ seasons, label }) {
   );
 }
 
-// Background, career and every 2025 race for one driver.
+// Background, career and every race of the season for one driver.
 export function DriverProfile({ driver, raceRows, sprintByRound }) {
-  const { raceByRound } = useSeason();
+  const { raceByRound, races } = useSeason();
+  const { season } = useRouter();
   const { data, error } = useApi(`/api/drivers/${driver.key}/profile`);
   if (error) return <p className="msg msg-err">{error.message}</p>;
   const p = data?.result.profile;
   if (!p) return <div className="skeleton" style={{ height: 320 }} />;
-  const past = p.seasons.filter((s) => s.year < 2025);
+  const past = p.seasons.filter((s) => s.year < season);
   const best = past.reduce((a, s) => (s.position && (!a || s.position < a.position) ? s : a), null);
   const titles = p.seasons.filter((s) => s.position === 1).map((s) => s.year);
   return (
@@ -44,12 +45,12 @@ export function DriverProfile({ driver, raceRows, sprintByRound }) {
           {p.bio && <p className="lede">{p.bio}</p>}
           <dl className="facts profile-facts">
             <div><dt>Born</dt><dd>{fmtDate(p.dateOfBirth, { day: 'numeric', month: 'long', year: 'numeric' })} · {p.placeOfBirth}</dd></div>
-            <div><dt>Age at the 2025 finale</dt><dd className="mono">{age(p.dateOfBirth)}</dd></div>
+            <div><dt>Age at the {season} finale</dt><dd className="mono">{age(p.dateOfBirth, races.at(-1)?.date || `${season}-12-08`)}</dd></div>
             <div><dt>Nationality</dt><dd>{driver.nationality}</dd></div>
             <div><dt>Formula 1 debut</dt><dd className="mono">{p.firstSeason}</dd></div>
             <div><dt>Seasons</dt><dd className="mono">{p.seasons.length}</dd></div>
             <div><dt>World titles</dt><dd className="mono">{titles.length ? `${titles.length} (${titles.join(', ')})` : '0'}</dd></div>
-            {best && <div><dt>Best before 2025</dt><dd className="mono">{ordinal(best.position)} in {best.year}</dd></div>}
+            {best && <div><dt>Best before {season}</dt><dd className="mono">{ordinal(best.position)} in {best.year}</dd></div>}
           </dl>
           <h3 className="h-small">Teams</h3>
           <p className="chips">{p.teams.map((t) => <span key={t} className="chip">{constructorName(t)}</span>)}</p>
@@ -63,7 +64,7 @@ export function DriverProfile({ driver, raceRows, sprintByRound }) {
       <FeatureLabel name="Aggregation: $lookup from drivers into driver_profiles" />
       <Query text={data.query} explain={data.explain} />
 
-      <h3 className="h-small profile-sub">2025, race by race</h3>
+      <h3 className="h-small profile-sub">{season}, race by race</h3>
       <div className="table-wrap">
         <table className="data-table compact">
           <thead><tr><th className="num">Rd</th><th>Grand Prix</th><th className="num">Grid</th><th className="num">Finish</th><th className="num">Sprint</th><th className="num">Pts</th><th>Note</th></tr></thead>
@@ -90,9 +91,10 @@ export function DriverProfile({ driver, raceRows, sprintByRound }) {
   );
 }
 
-// Factory, people and history for one team, plus its 2025 race by race.
+// Factory, people and history for one team, plus its season race by race.
 export function TeamProfile({ team, rounds }) {
   const { driverById } = useSeason();
+  const { season } = useRouter();
   const { data, error } = useApi(`/api/teams/${encodeURIComponent(team)}/profile`);
   if (error) return <p className="msg msg-err">{error.message}</p>;
   const t = data?.result;
@@ -107,7 +109,7 @@ export function TeamProfile({ team, rounds }) {
             <div><dt>Founded</dt><dd>{t.founded}</dd></div>
             <div><dt>Team principal</dt><dd>{t.principal}<span className="muted small block">{t.principalNote}</span></dd></div>
             <div><dt>Constructors' titles</dt><dd className="mono">{t.titles.length ? `${t.titles.length}: ${t.titles.join(', ')}` : 'None yet'}</dd></div>
-            <div><dt>2025 drivers</dt><dd>{t.lineup.map((d, i) => <span key={d.key}>{i ? ', ' : ''}<Link to={`/driver/${d.key}`}>{d.name}</Link></span>)}</dd></div>
+            <div><dt>{season} drivers</dt><dd>{t.lineup.map((d, i) => <span key={d.key}>{i ? ', ' : ''}<Link to={`/driver/${d.key}`}>{d.name}</Link></span>)}</dd></div>
           </dl>
           <h3 className="h-small">Famous names</h3>
           <p className="chips">{t.people.map((n) => <span key={n} className="chip">{n}</span>)}</p>
@@ -125,7 +127,7 @@ export function TeamProfile({ team, rounds }) {
       <FeatureLabel name="Aggregation: team_profiles with $lookup into drivers" />
       <Query text={data.query} explain={data.explain} />
 
-      <h3 className="h-small profile-sub">2025, race by race</h3>
+      <h3 className="h-small profile-sub">{season}, race by race</h3>
       <div className="table-wrap">
         <table className="data-table compact">
           <thead><tr><th className="num">Rd</th><th>Grand Prix</th><th>Finishes</th><th className="num">Pts</th></tr></thead>
