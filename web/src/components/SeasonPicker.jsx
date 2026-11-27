@@ -52,7 +52,7 @@ function SeasonButton({ season, last, photo }) {
       <div className="season-car">
         {car?.model && seen && (
           <Suspense fallback={null}>
-            <CarModel model={car.model} distance={0.78} spin={0.8} label={`${cons.team} ${car.car}`} />
+            <CarModel model={car.model} distance={1.25} spin={0.8} label={`${cons.team} ${car.car}`} />
           </Suspense>
         )}
       </div>

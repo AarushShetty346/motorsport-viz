@@ -125,7 +125,7 @@ export default function CarModel({ model, spin = 0.4, interactive = false, label
         camera.lookAt(0, 0, 0);
       } else {
         camera.position.set(4.6 * distance, 2.0 * distance, 6.0 * distance);
-        camera.lookAt(0, 0, 0);
+        camera.lookAt(0, -0.25, 0);
       }
       camera.updateProjectionMatrix();
       draw();
