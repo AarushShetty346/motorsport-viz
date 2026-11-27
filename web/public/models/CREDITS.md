@@ -1,6 +1,5 @@
 # 3D car model credits
 
-Every model here comes from Sketchfab under the [Creative Commons Attribution 4.0](https://creativecommons.org/licenses/by/4.0/) licence. They were compressed (meshopt, WebP textures at 512 px) and simplified for the web. `2024-mclaren.glb` was also painted, because the original has no textures.
 
 | File | Model | Author |
 | --- | --- | --- |
@@ -12,7 +11,6 @@ Every model here comes from Sketchfab under the [Creative Commons Attribution 4.
 | `2025-williams.glb` | [williams fw47 2025](https://sketchfab.com/3d-models/williams-fw47-2025-7bddd35e8e0e4aa49d80881a5306ef10) | MattDoesBlender |
 | `2025-racing-bulls.glb` | [2025 Racing-bulls F1 car.](https://sketchfab.com/3d-models/2025-racing-bulls-f1-car-39cedcf2f8d845c09f2a72d0a873622f) | Abu Saif |
 | `2025-sauber.glb` | [c45](https://sketchfab.com/3d-models/c45-60526d0d43fe4551b35ac7c6c6dd3087) | MattDoesBlender |
-| `2024-mclaren.glb` | [mcl38](https://sketchfab.com/3d-models/mcl38-82f501917050445a98242bae2c194657) | MattDoesBlender |
 | `2024-red-bull.glb` | [Rb20](https://sketchfab.com/3d-models/rb20-72731472c2b649eaaaa5b7e0a00761fb) | Abu Saif |
 | `2024-mercedes.glb` | [Mercedes W15](https://sketchfab.com/3d-models/mercedes-w15-0c6b95f5329f4a4e8c3f039d890ee193) | Abu Saif |
 | `2024-aston-martin.glb` | [Amr24](https://sketchfab.com/3d-models/amr24-eb362174bb954d05b62983c77ade75e5) | Abu Saif |

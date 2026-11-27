@@ -19,8 +19,8 @@ export default function Credits() {
 
       <h2 className="h-small">3D car models</h2>
       <p>
-        From Sketchfab under <a href={LICENCE}>CC BY 4.0</a>. They were compressed and simplified so they load quickly,
-        and the 2024 McLaren was painted because the original has no textures. Teams without a model of their own car use the closest one available, as noted on the Teams page.
+        From Sketchfab under <a href={LICENCE}>CC BY 4.0</a>. They were compressed and simplified so they load quickly.
+        Teams without a model of their own car use the closest one available, as noted on the Teams page.
       </p>
       <ul className="credits-list">
         {MODEL_CREDITS.map((m) => (
