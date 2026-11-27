@@ -11,12 +11,16 @@ import DriverPortrait from '../components/DriverPortrait.jsx';
 
 // Every team of the season in championship order, each with its car and its drivers.
 export default function Teams() {
-  const { drivers, ready } = useSeason();
+  const { drivers, races, ready } = useSeason();
   const constructors = useApi('/api/season/constructors');
   const photos = useDriverPhotos();
   const { season } = useRouter();
   if (!ready || !constructors.data) return <div className="page" />;
   const list = constructors.data.results || [];
+  // Race starts per driver, so stand-ins sort after the regulars and say how many races they did.
+  const starts = {};
+  for (const r of races) for (const res of r.results || []) starts[res.driverId] = (starts[res.driverId] || 0) + 1;
+  const half = races.length / 2;
 
   return (
     <section className="page container teams-page">
@@ -24,7 +28,7 @@ export default function Teams() {
       <p className="lede">All ten {season} teams, in constructors' championship order.</p>
       <ol className="teams-grid">
         {list.map((t, i) => {
-          const crew = drivers.filter((d) => d.team === t._id);
+          const crew = drivers.filter((d) => d.team === t._id).sort((a, b) => (starts[b._id] || 0) - (starts[a._id] || 0));
           const color = crew[0]?.teamColor || '#888888';
           const info = teamInfo(t._id, color);
           return (
@@ -47,7 +51,9 @@ export default function Teams() {
                   <li key={d.key}>
                     <Link to={`/driver/${d.key}`}>
                       <DriverPortrait driver={d} photo={photos[d.key]} small />
-                      <span>{d.firstName} <strong>{d.lastName}</strong></span>
+                      <span>{d.firstName} <strong>{d.lastName}</strong>
+                        {(starts[d._id] || 0) < half && <em className="teams-card-standin mono">{starts[d._id] || 0} {starts[d._id] === 1 ? 'race' : 'races'}</em>}
+                      </span>
                     </Link>
                   </li>
                 ))}

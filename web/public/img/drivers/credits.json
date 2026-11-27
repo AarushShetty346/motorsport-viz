@@ -1,7 +1,7 @@
 {
   "lando-norris": {
     "file": "lando-norris.jpg",
-    "author": "Original: Steffen Pr\u00f6\u00dfdorf; Derivative work: Mb2437",
+    "author": "Original: Steffen Prößdorf; Derivative work: Mb2437",
     "license": "CC BY-SA 4.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3968_by_Stepro_(cropped2).jpg",
     "head": {
@@ -67,7 +67,7 @@
   },
   "max-verstappen": {
     "file": "max-verstappen.jpg",
-    "author": "Steffen Pr\u00f6\u00dfdorf",
+    "author": "Steffen Prößdorf",
     "license": "CC BY-SA 4.0",
     "sourceUrl": "https://commons.wikimedia.org/wiki/File:2024-08-25_Motorsport,_Formel_1,_Gro%C3%9Fer_Preis_der_Niederlande_2024_STP_3973_by_Stepro_(medium_crop).jpg",
     "head": {
@@ -221,5 +221,41 @@
   },
   "lewis-hamilton": {
     "file": "lewis-hamilton.jpg"
+  },
+  "daniel-ricciardo": {
+    "file": "daniel-ricciardo.jpg",
+    "author": "DaHuzyBru",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Daniel_Ricciardo_January_2024.jpg"
+  },
+  "guanyu-zhou": {
+    "file": "guanyu-zhou.jpg",
+    "author": "Yu Chu Chin",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Zhou_Guanyu_at_the_Melbourne_Walk_during_the_2026_Australian_Grand_Prix_(028A7999).jpg"
+  },
+  "kevin-magnussen": {
+    "file": "kevin-magnussen.jpg",
+    "author": "Marc Alvarado",
+    "license": "CC BY-SA 2.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Kevin_Magnussen,_2019_Formula_One_Tests_Barcelona_(cropped).jpg"
+  },
+  "logan-sargeant": {
+    "file": "logan-sargeant.jpg",
+    "author": "JazzyJoeyD",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Logan_Sargeant_NYC_(cropped).jpg"
+  },
+  "sergio-perez": {
+    "file": "sergio-perez.jpg",
+    "author": "XaviYuahanda",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Sergio_P%C3%A9rez_2019_(cropped).jpg"
+  },
+  "valtteri-bottas": {
+    "file": "valtteri-bottas.jpg",
+    "author": "Yu Chu Chin",
+    "license": "CC BY-SA 4.0",
+    "sourceUrl": "https://commons.wikimedia.org/wiki/File:Valtteri_Bottas_at_the_2026_Adelaide_Motorsport_Festival_(028A7556).jpg"
   }
 }
