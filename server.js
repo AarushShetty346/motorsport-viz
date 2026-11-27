@@ -116,7 +116,7 @@ const seasonEntries = [
   { $unwind: '$entries' },
 ];
 
-// Indexing: every "Under the hood" panel shows explain().
+// Indexing: each API response includes explain().
 
 // Laps hidden by a steward ($set: { deleted: true }) never show up outside Steward mode.
 const LIVE = { deleted: { $ne: true } };
@@ -133,7 +133,7 @@ async function supportsTransactions() {
 }
 
 // Condenses explain('executionStats') output (find or aggregate, classic or SBE)
-// into what the "Under the hood" panels show.
+// into the API response.
 function summarizeExplain(plan) {
   const cursor = plan.stages?.[0]?.$cursor || plan.stages?.[0]?.$geoNearCursor;
   const stats = plan.executionStats || cursor?.executionStats || {};
