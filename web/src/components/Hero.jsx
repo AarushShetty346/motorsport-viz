@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react';
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from 'motion/react';
 import { HERO_PHOTO } from '../content.js';
 import { useSeason } from '../lib/season.jsx';
-import { Link } from '../lib/router.jsx';
+import { Link, SEASONS, useRouter } from '../lib/router.jsx';
 import { fmtNum } from '../lib/format.js';
 import { EASE_OUT, prefersReducedMotion } from '../lib/motion.js';
 import { trackGeometry } from '../lib/track.js';
@@ -11,8 +11,10 @@ const LAYERS = 14; // stacked copies of the circuit that give it thickness
 const LAP_SECONDS = 9;
 const clamp01 = (v) => Math.min(1, Math.max(0, v));
 
-export default function Hero() {
+// On the front door (landing) the hero introduces every season and scrolls into the picker.
+export default function Hero({ landing = false }) {
   const { health, standings, races } = useSeason();
+  const { season } = useRouter();
   const ref = useRef(null);
   const [photo, setPhoto] = useState('loading');
   const reduced = prefersReducedMotion();
@@ -43,7 +45,7 @@ export default function Hero() {
   };
 
   return (
-    <section className="stage tone-light" ref={ref} onPointerMove={onPointerMove}>
+    <section className={`stage tone-light ${landing ? 'stage-landing' : ''}`} ref={ref} onPointerMove={onPointerMove}>
       <div className="stage-sticky">
 
         <motion.p className="stage-word" aria-hidden="true" style={{ x: wordX }}>
@@ -65,21 +67,30 @@ export default function Hero() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.3, ease: EASE_OUT }}
           >
-            The 2025 season,<br /> lap by lap.
+            {landing ? <>Every season,<br /> lap by lap.</> : <>The {season} season,<br /> lap by lap.</>}
           </motion.h1>
           <p className="stage-lede">
-            {health ? fmtNum(health.counts.laps) : 'Every'} laps from 24 Grands Prix, each with its own telemetry.
-            Replay the circuits, follow the title fight and go head to head.
+            {landing
+              ? `${SEASONS.length} full Formula 1 seasons, every lap of every Grand Prix with its own telemetry. Pick a year, replay the circuits and follow the title fight.`
+              : `${health ? fmtNum(health.counts.laps) : 'Every'} laps from ${races.length || 24} Grands Prix, each with its own telemetry. Replay the circuits, follow the title fight and go head to head.`}
           </p>
           <div className="hero-actions">
-            <Link to="/#title" className="btn btn-stage">Explore the season</Link>
-            <Link to="/compare" className="btn btn-stage-ghost">Compare drivers</Link>
+            {landing ? (
+              <a href="#seasons" className="btn btn-stage" onClick={(e) => { e.preventDefault(); document.getElementById('seasons')?.scrollIntoView({ behavior: 'smooth' }); }}>Pick a season</a>
+            ) : (
+              <>
+                <Link to="/#title" className="btn btn-stage">Explore the season</Link>
+                <Link to="/compare" className="btn btn-stage-ghost">Compare drivers</Link>
+              </>
+            )}
           </div>
         </motion.div>
 
         <motion.div className="stage-outro container" style={{ opacity: outroOpacity }}>
-          <p className="stage-outro-kicker">Yas Marina, 7 December</p>
-          {p1 && p2 && (
+          <p className="stage-outro-kicker">{landing ? 'Pick a season below' : `${finale?.circuit || ''}, ${finale ? new Date(finale.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' }) : ''}`}</p>
+          {landing ? (
+            <p className="stage-outro-line">{SEASONS.length} seasons. <span className="nowrap">Every lap.</span></p>
+          ) : p1 && p2 && (
             <p className="stage-outro-line">
               {p1.name.split(' ').slice(-1)} wins the title by <span className="nowrap">{p1.points - p2.points} points.</span>
             </p>
@@ -87,13 +98,27 @@ export default function Hero() {
         </motion.div>
 
         <div className="stage-stats container">
-          <Stat value="24" label="Grands Prix" />
-          <Stat value={health ? fmtNum(health.counts.drivers) : '-'} label="Drivers" />
-          <Stat value={health ? fmtNum(health.counts.laps) : '-'} label="Laps in MongoDB" />
-          {p1 && p2 && <Stat value={`${p1.points - p2.points} pts`} label="Title margin" />}
+          {landing ? (
+            <>
+              <Stat value={SEASONS.length} label="Seasons" />
+              <Stat value={SEASONS.length * 24} label="Grands Prix" />
+              <Stat value={`${Math.min(...SEASONS)}-${String(Math.max(...SEASONS)).slice(2)}`} label="Years" />
+            </>
+          ) : (
+            <>
+              <Stat value={races.length || 24} label="Grands Prix" />
+              <Stat value={health ? fmtNum(health.counts.drivers) : '-'} label="Drivers" />
+              <Stat value={health ? fmtNum(health.counts.laps) : '-'} label="Laps in MongoDB" />
+              {p1 && p2 && <Stat value={`${p1.points - p2.points} pts`} label="Title margin" />}
+            </>
+          )}
         </div>
 
-        <span className="stage-scroll" aria-hidden="true">↓</span>
+        {landing ? (
+          <button type="button" className="stage-scroll stage-scroll-btn" aria-label="Scroll to the season picker" onClick={() => document.getElementById('seasons')?.scrollIntoView({ behavior: 'smooth' })}>↓</button>
+        ) : (
+          <span className="stage-scroll" aria-hidden="true">↓</span>
+        )}
 
         {photo !== 'missing' && (
           <figure className={`stage-photo ${photo === 'ok' ? 'is-loaded' : ''}`}>

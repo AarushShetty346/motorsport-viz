@@ -1,6 +1,6 @@
 import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
-import { Link } from '../lib/router.jsx';
+import { Link, useRouter } from '../lib/router.jsx';
 import { fmtDate, fmtNum } from '../lib/format.js';
 import TrackMap from '../components/TrackMap.jsx';
 import RaceTrace from '../components/RaceTrace.jsx';
@@ -18,10 +18,11 @@ import { RaceNumbers, GapChart, TyreStrategy, PitStops, Movers } from '../compon
 
 export default function Race({ round }) {
   const { raceByRound, driverById, ready } = useSeason();
+  const { season } = useRouter();
   const laps = useApi(`/api/races/${round}/laps`);
   const race = raceByRound.get(round);
   if (!ready) return <div className="page" />;
-  if (!race) return <section className="page container"><h1 className="display-md">No round {round} in 2025</h1></section>;
+  if (!race) return <section className="page container"><h1 className="display-md">No round {round} in {season}</h1></section>;
 
   const prev = raceByRound.get(round - 1);
   const next = raceByRound.get(round + 1);

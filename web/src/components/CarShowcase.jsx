@@ -2,15 +2,17 @@ import { lazy, Suspense } from 'react';
 import '../carShowcase.css';
 
 // three.js only downloads when someone opens a team page.
-const Car3D = lazy(() => import('./Car3D.jsx'));
+const CarModel = lazy(() => import('./CarModel.jsx'));
 
-// The team's car, drawn in 3D in its own livery.
+// The team's real car in 3D. Drag to turn it.
 export default function CarShowcase({ name, info }) {
+  if (!info.model) return null;
   return (
     <div className="car-showcase">
-      <Suspense fallback={<div className="car3d" />}>
-        <Car3D livery={info.livery} car={info.car} label={`${name} ${info.car || 'car'}, drawn in 3D`} />
+      <Suspense fallback={<div className="car-model" />}>
+        <CarModel model={info.model} interactive label={`${name} ${info.car || 'car'}, 3D model`} />
       </Suspense>
+      <p className="car-showcase-hint mono">{info.car}{info.model.shown ? ` · model shows the ${info.model.shown}` : ''} · drag to turn</p>
     </div>
   );
 }

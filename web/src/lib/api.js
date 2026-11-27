@@ -1,10 +1,17 @@
 // Tiny fetch wrapper with a GET cache. Any write clears the cache so every
 // view re-reads MongoDB after a change.
+// Every call is about the season in the URL (sent as ?season=), unless the path names one.
 const cache = new Map();
 const listeners = new Set();
+let season = 2025;
+export const setApiSeason = (year) => { season = year; };
+export const apiSeason = () => season;
 
-export async function api(path, options = {}) {
+export async function api(rawPath, options = {}) {
   const method = options.method || 'GET';
+  const path = rawPath.startsWith('/api/') && !/[?&]season=/.test(rawPath) && !rawPath.startsWith('/api/auth')
+    ? `${rawPath}${rawPath.includes('?') ? '&' : '?'}season=${season}`
+    : rawPath;
   if (method === 'GET' && cache.has(path)) return cache.get(path);
   const request = fetch(path, {
     headers: { 'Content-Type': 'application/json' },

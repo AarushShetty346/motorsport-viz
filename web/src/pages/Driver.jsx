@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
-import { Link } from '../lib/router.jsx';
+import { Link, useRouter } from '../lib/router.jsx';
 import { fmtLap, fmtNum, ordinal, COMPOUND } from '../lib/format.js';
 import LapChart from '../components/LapChart.jsx';
 import Flag from '../components/Flag.jsx';
@@ -20,6 +20,7 @@ import { DriverProfile } from '../components/Profiles.jsx';
 
 export default function Driver({ driverKey }) {
   const { driverByKey, standings, raceByRound, races, ready } = useSeason();
+  const { season: year } = useRouter();
   const driver = driverByKey.get(driverKey);
   const season = useApi(driver ? `/api/drivers/${driver._id}/season` : null);
   const [round, setRound] = useState(null);
@@ -68,7 +69,7 @@ export default function Driver({ driverKey }) {
 
       {st && (
         <section className="container section-tight">
-          <ScrollWords text={`${driver.firstName} ${driver.lastName} finished ${ordinal(idx + 1)} in 2025 for ${driver.team}, with ${st.points} points, ${st.wins} ${st.wins === 1 ? 'win' : 'wins'} and ${st.podiums} ${st.podiums === 1 ? 'podium' : 'podiums'} from ${st.starts} starts.`} />
+          <ScrollWords text={`${driver.firstName} ${driver.lastName} finished ${ordinal(idx + 1)} in ${year} for ${driver.team}, with ${st.points} points, ${st.wins} ${st.wins === 1 ? 'win' : 'wins'} and ${st.podiums} ${st.podiums === 1 ? 'podium' : 'podiums'} from ${st.starts} starts.`} />
         </section>
       )}
 

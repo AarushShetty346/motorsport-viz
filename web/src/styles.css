@@ -180,6 +180,20 @@ code { font-size: 0.88em; background: var(--surface-2); padding: 0.1em 0.35em; b
 .search-trigger:hover { border-color: var(--ink); color: var(--ink); }
 .search-trigger svg, .palette-input svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
 kbd { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line-2); border-radius: 2px; color: var(--muted); background: transparent; }
+.season-chip { position: relative; }
+.season-chip-btn {
+  display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; cursor: pointer;
+  background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 2px; font-size: 13px; font-weight: 700; letter-spacing: 0.04em;
+}
+.season-chip-btn svg { width: 10px; height: 6px; fill: none; stroke: currentColor; stroke-width: 1.6; transition: transform 200ms var(--ease-out); }
+.season-chip.is-open .season-chip-btn svg { transform: rotate(180deg); }
+.season-chip-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); margin: 0; padding: 6px; list-style: none; min-width: 120px; z-index: 5;
+  background: var(--surface); border: 1px solid var(--line-2); border-radius: 2px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+.season-chip-menu button { display: block; width: 100%; padding: 8px 12px; text-align: left; background: none; border: 0; color: var(--ink-2); font: 600 15px var(--mono); cursor: pointer; border-radius: 2px; }
+.season-chip-menu button:hover { background: var(--surface-2); color: var(--ink); }
+.season-chip-menu button.active { color: var(--ink); box-shadow: inset 3px 0 0 var(--accent); }
 .db-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
 .db-dot.ok { background: var(--good); }
 .on-light .db-dot.ok { background: #138a2e; }
@@ -234,6 +248,8 @@ kbd { font-size: 11px; padding: 2px 7px; border: 1px solid var(--line-2); border
 
 /* ---------------------------------------------------------------- hero stage */
 .stage { position: relative; height: 230svh; background: var(--flag); color: var(--flag-ink); }
+.stage.stage-landing { height: 150svh; }
+.stage-scroll-btn { background: none; border: 0; color: inherit; cursor: pointer; padding: 8px; }
 .stage-sticky { position: sticky; top: 0; height: 100svh; overflow: hidden; isolation: isolate; }
 .stage-top { position: absolute; top: calc(var(--nav-h) + 16px); left: 0; right: 0; display: flex; justify-content: space-between; gap: 16px; }
 .stage-label { margin: 0; font: 500 12px/1.4 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
@@ -1009,6 +1025,7 @@ tr.row-hidden td.row-actions { opacity: 1; }
 
 /* No "scroll" arrow: the hero already invites it. */
 .stage-scroll { display: none; }
+.stage-landing .stage-scroll-btn { display: block; }
 
 /* Primary buttons fill from the left on hover, like a timing bar. */
 .btn-primary, .btn-stage { position: relative; overflow: hidden; isolation: isolate; }
@@ -1087,3 +1104,4 @@ tr.row-hidden td.row-actions { opacity: 1; }
 .privacy-page { max-width: 760px; }
 .privacy-page h2 { margin-top: 32px; }
 .privacy-page ul { padding-left: 20px; display: grid; gap: 6px; }
+.credits-page a { text-decoration: underline; text-underline-offset: 3px; }

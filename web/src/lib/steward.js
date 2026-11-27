@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { apiSeason } from './api.js';
 
 // Steward mode on/off, shared by every page and remembered across reloads.
 const KEY = 'steward-mode';
@@ -36,17 +37,19 @@ const CHANGES_KEY = 'steward-changes';
 const changeListeners = new Set();
 let changes = {};
 try { changes = JSON.parse(localStorage.getItem(CHANGES_KEY) || '{}') || {}; } catch { changes = {}; }
+// 2025 changes keep their old keys (the round number); other seasons are keyed "2024-5".
+const rk = (round) => (apiSeason() === 2025 ? round : `${apiSeason()}-${round}`);
 const empty = () => ({ added: [], edits: {}, hidden: {}, penalties: {} });
 
 function save(round, next) {
-  changes = { ...changes, [round]: next };
+  changes = { ...changes, [rk(round)]: next };
   try { localStorage.setItem(CHANGES_KEY, JSON.stringify(changes)); } catch {}
   changeListeners.forEach((fn) => fn());
 }
-const forRound = (round) => ({ ...empty(), ...changes[round] });
+const forRound = (round) => ({ ...empty(), ...changes[rk(round)] });
 
 export function useStewardChanges(round) {
-  return useSyncExternalStore((fn) => { changeListeners.add(fn); return () => changeListeners.delete(fn); }, () => changes[round] || EMPTY_CHANGES);
+  return useSyncExternalStore((fn) => { changeListeners.add(fn); return () => changeListeners.delete(fn); }, () => changes[rk(round)] || EMPTY_CHANGES);
 }
 const EMPTY_CHANGES = empty();
 

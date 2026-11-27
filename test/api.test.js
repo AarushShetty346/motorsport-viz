@@ -26,6 +26,7 @@ async function dropTestDb() {
   const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 3000 });
   await client.connect();
   await client.db(DB_NAME).dropDatabase();
+  await client.db(`${DB_NAME}_2024`).dropDatabase();
   await client.close();
 }
 
@@ -100,6 +101,21 @@ test('NoSQL 1: CRUD — paginated read, insert, update, delete', async () => {
   assert.equal((await api(`/api/laps/${id}`, { method: 'DELETE' })).body.deletedCount, 1);
   assert.equal((await api(`/api/laps/${id}`, { method: 'DELETE' })).status, 404);
   assert.equal((await api('/api/health')).body.counts.laps, totalLaps);
+});
+
+test('2024 season: its own data, picked with ?season=2024', async () => {
+  const { body: races } = await api('/api/races?season=2024');
+  assert.equal(races.length, 24);
+  assert.equal(races[0].name, 'Bahrain Grand Prix');
+  const { body: standings } = await api('/api/season/standings?season=2024');
+  assert.equal(standings.results[0].name, 'Max Verstappen');
+  assert.equal(standings.results[0].points, 437);
+  const { body: seasons } = await api('/api/seasons');
+  assert.deepEqual(seasons.seasons.map((s) => s.year), [2025, 2024]);
+  assert.equal(seasons.seasons[1].constructorsChampion.team, 'McLaren');
+  // No season means 2025, so old links keep working.
+  const { body: health } = await api('/api/health');
+  assert.equal(health.season, 2025);
 });
 
 test('NoSQL 2: aggregation — driver season stats ($group, $lookup)', async () => {
