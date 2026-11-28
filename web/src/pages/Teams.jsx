@@ -1,12 +1,10 @@
 import { useSeason } from '../lib/season.jsx';
 import { useApi } from '../lib/useApi.js';
 import { useDriverPhotos } from '../lib/photos.js';
-import { lazy, Suspense } from 'react';
 import { Link, useRouter } from '../lib/router.jsx';
-import { teamInfo, teamPath } from '../lib/teams.js';
+import { teamInfo, teamPath, posterFor } from '../lib/teams.js';
 import '../carShowcase.css';
 
-const CarModel = lazy(() => import('../components/CarModel.jsx'));
 import DriverPortrait from '../components/DriverPortrait.jsx';
 
 // Every team of the season in championship order, each with its car and its drivers.
@@ -40,9 +38,7 @@ export default function Teams() {
                   <span className="mono">{t.points} pts</span>
                 </div>
                 {info.model && (
-                  <Suspense fallback={<div className="car-model" />}>
-                    <CarModel model={info.model} spin={0} view="side" label={`${t._id} ${info.car}, 3D model`} />
-                  </Suspense>
+                  <img className="car-poster" src={posterFor(info.model, 'side')} alt={`${t._id} ${info.car}`} width="1120" height="300" loading={i < 4 ? 'eager' : 'lazy'} decoding="async" />
                 )}
                 <p className="teams-card-car mono">{info.car}{info.engine ? `, ${info.engine} power` : ''}</p>
               </Link>

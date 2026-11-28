@@ -20,7 +20,7 @@
 .season-photo figcaption { position: absolute; right: 10px; bottom: 8px; font-size: 10px; color: rgba(255, 255, 255, 0.6); }
 .season-btn.is-hot .season-photo { opacity: 0; }
 /* The car may pass under the year: its canvas runs down behind the text. */
-.season-car .car-model { position: absolute; top: 0; left: 0; right: 0; height: 330px; pointer-events: none; }
+.season-car .car-poster { position: absolute; top: 0; left: 0; width: 100%; height: 330px; object-fit: contain; pointer-events: none; }
 .season-car canvas { display: block; width: 100% !important; height: 100% !important; }
 .season-year { position: relative; z-index: 1; font: 900 clamp(88px, 11vw, 168px)/0.82 var(--display); letter-spacing: -0.05em; transition: color 0.3s; }
 .season-meta { position: relative; z-index: 1; display: grid; gap: 4px; font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em; }

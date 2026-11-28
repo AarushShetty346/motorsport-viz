@@ -66,6 +66,11 @@ const CARS = {
   },
 };
 
+// A still picture of the car, rendered ahead of time by scripts/render-car-posters.mjs.
+// view: 'side' (Teams cards, team page placeholder) or 'tq' (three-quarter, season picker).
+export const posterFor = (model, view = 'side') =>
+  model?.file ? model.file.replace('/models/', '/img/cars/').replace(/\.glb$/, `-${view}.webp`) : null;
+
 export const carFor = (name, season = apiSeason()) => {
   const car = CARS[season]?.[teamKey(name)];
   if (!car) return null;
