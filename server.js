@@ -4,6 +4,7 @@ const fs = require('fs');
 try { process.loadEnvFile(); } catch {}
 const path = require('path');
 const express = require('express');
+const compression = require('compression');
 const { ObjectId } = require('mongodb');
 const { init, resetDemoData, getDb, getMainDb, withSeason, currentSeason, SEASONS, client } = require('./db');
 const { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured: googleConfigured, isAdmin } = require('./auth');
@@ -11,6 +12,8 @@ const { authRouter, setupAuthCollections, currentUser, REDIRECT_URI, configured:
 const PORT = Number(process.env.PORT) || 3000;
 const DIST = path.join(__dirname, 'dist');
 const app = express();
+// gzip JSON, JS and CSS (the API's season data and the app bundle shrink by about 4x).
+app.use(compression());
 
 app.use(express.json());
 app.use('/api/auth', authRouter(getMainDb));
@@ -1141,7 +1144,18 @@ app.get('/api/teams/:team/profile', async (req, res) => {
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 if (fs.existsSync(path.join(DIST, 'index.html'))) {
-  app.use(express.static(DIST, { index: 'index.html', maxAge: '1h' }));
+  // File names under /assets carry a content hash, so browsers can keep them for good.
+  // Car models and pictures rarely change: a week. index.html is always revalidated.
+  app.use(express.static(DIST, {
+    index: 'index.html',
+    maxAge: '1h',
+    setHeaders(res, file) {
+      const rel = path.relative(DIST, file).split(path.sep).join('/');
+      if (rel.startsWith('assets/')) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      else if (/^(models|img)\//.test(rel)) res.setHeader('Cache-Control', 'public, max-age=604800');
+      else if (rel === 'index.html') res.setHeader('Cache-Control', 'no-cache');
+    },
+  }));
   app.get(/^\/(?!api\/).*/, (req, res) => res.sendFile(path.join(DIST, 'index.html')));
 } else {
   app.get('/', (req, res) =>

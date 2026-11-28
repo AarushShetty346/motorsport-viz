@@ -1,13 +1,11 @@
-import { lazy, Suspense, useState } from 'react';
+import { useState } from 'react';
 import { Link, rememberedSeason } from '../lib/router.jsx';
 import { useApi } from '../lib/useApi.js';
-import { carFor } from '../lib/teams.js';
+import { carFor, posterFor } from '../lib/teams.js';
 import { fmtNum } from '../lib/format.js';
 import { useDriverPhotos } from '../lib/photos.js';
 import '../seasonPicker.css';
 
-// three.js only downloads once the picker is on screen.
-const CarModel = lazy(() => import('./CarModel.jsx'));
 
 // One button per season, showing the drivers' champion. Hovering paints it in the
 // constructors' champion's colour and swaps the photo for their car.
@@ -28,7 +26,6 @@ export default function SeasonPicker() {
 
 function SeasonButton({ season, last, photo }) {
   const [hover, setHover] = useState(false);
-  const [seen, setSeen] = useState(false); // load the 3D car on first hover only
   const champ = season.driversChampion;
   const cons = season.constructorsChampion;
   const car = cons && carFor(cons.team, season.year);
@@ -38,9 +35,9 @@ function SeasonButton({ season, last, photo }) {
       to={`/${season.year}`}
       className={`season-btn ${hover ? 'is-hot' : ''}`}
       style={{ '--champ': cons?.teamColor || champ?.teamColor || 'var(--flag)' }}
-      onMouseEnter={() => { setHover(true); setSeen(true); }}
+      onMouseEnter={() => { setHover(true); }}
       onMouseLeave={() => setHover(false)}
-      onFocus={() => { setHover(true); setSeen(true); }}
+      onFocus={() => { setHover(true); }}
       onBlur={() => setHover(false)}
     >
       {photo && champ && (
@@ -50,11 +47,7 @@ function SeasonButton({ season, last, photo }) {
         </figure>
       )}
       <div className="season-car">
-        {car?.model && seen && (
-          <Suspense fallback={null}>
-            <CarModel model={car.model} distance={1.25} spin={0.8} label={`${cons.team} ${car.car}`} />
-          </Suspense>
-        )}
+        {car?.model && <img className="car-poster" src={posterFor(car.model, 'tq')} alt={`${cons.team} ${car.car}`} width="1144" height="660" decoding="async" />}
       </div>
       <span className="season-year">{season.year}</span>
       <span className="season-meta mono">
