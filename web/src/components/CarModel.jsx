@@ -72,7 +72,7 @@ function shadowPlane() {
   return m;
 }
 
-export default function CarModel({ model, spin = 0.4, interactive = false, label, view = 'three-quarter', distance = 1 }) {
+export default function CarModel({ model, spin = 0.4, interactive = false, label, view = 'three-quarter', distance = 1, poster }) {
   const host = useRef(null);
   const spinRef = useRef(spin);
   const [state, setState] = useState('loading');
@@ -81,9 +81,22 @@ export default function CarModel({ model, spin = 0.4, interactive = false, label
   useEffect(() => {
     const el = host.current;
     if (!el || !model?.file) return;
+    // Nothing (no WebGL context, no download) until the car is about to scroll into view.
+    let stop = null;
+    let gone = false;
+    const near = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting || stop || gone) return;
+      near.disconnect();
+      stop = start(el);
+    }, { rootMargin: '300px' });
+    near.observe(el);
+    return () => { gone = true; near.disconnect(); stop?.(); };
+  }, [model?.file, interactive, view, distance]);
+
+  function start(el) {
     const reduced = prefersReducedMotion();
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
-    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+    const renderer = new THREE.WebGLRenderer({ antialias: devicePixelRatio < 2, alpha: true, powerPreference: 'low-power', preserveDrawingBuffer: !!window.__carPoster });
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     el.appendChild(renderer.domElement);
@@ -249,7 +262,7 @@ export default function CarModel({ model, spin = 0.4, interactive = false, label
       renderer.dispose();
       renderer.domElement.remove();
     };
-  }, [model?.file, interactive, view, distance]);
+  }
 
   return (
     <div
@@ -258,6 +271,8 @@ export default function CarModel({ model, spin = 0.4, interactive = false, label
       role="img"
       aria-label={interactive ? `${label}. Drag or use the arrow keys to turn it; it settles back when you let go.` : label}
       tabIndex={interactive ? 0 : undefined}
-    />
+    >
+      {poster && state !== 'ready' && <img className="car-model-poster" src={poster} alt="" decoding="async" />}
+    </div>
   );
 }
